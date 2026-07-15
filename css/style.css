@@ -127,13 +127,19 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  white-space: nowrap;
 }
-.brand-beak {
-  width: 22px; height: 22px;
-  background: var(--coral);
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(-8deg);
-  box-shadow: var(--shadow-1);
+.brand-bird {
+  display: inline-block;
+  width: 42px;
+  height: 28px;
+  flex: 0 0 42px;
+  background-image: url("../assets/sprites/bird_v001_blue_and_yellow.png");
+  background-repeat: no-repeat;
+  background-size: 462px 224px;
+  background-position: 0 -56px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 1px rgba(22, 40, 45, 0.2));
 }
 .nav-links, .nav-auth { display: flex; gap: 0.75rem; align-items: center; }
 .nav-links { margin-left: auto; }
@@ -404,7 +410,7 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .site-footer { position: relative; z-index: 2; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
 .footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(260px, 1.6fr) repeat(2, minmax(160px, 0.7fr)); gap: 2rem; }
 .footer-brand p { max-width: 38ch; margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.9rem; }
-.footer-brand-row { display: flex; align-items: flex-end; gap: 1rem; }
+.footer-brand-row { display: flex; align-items: center; gap: 1rem; }
 .footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; }
 .footer-links strong { margin-bottom: 0.2rem; font-family: var(--font-display); }
 .footer-links a, .footer-links button { padding: 0; border: 0; background: transparent; color: var(--ink-soft); font: 0.9rem var(--font-body); text-decoration: none; cursor: pointer; }
@@ -412,28 +418,6 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .footer-base { padding: 1rem clamp(1rem, 4vw, 3rem); display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-soft); font-size: 0.78rem; }
 .footer-base a { color: inherit; }
 .footer-credits { display: flex; gap: 1rem; flex-wrap: wrap; }
-
-.pixel-bird-perch {
-  position: relative;
-  display: block;
-  flex: 0 0 96px;
-  width: 96px;
-  height: 64px;
-  pointer-events: none;
-  filter: drop-shadow(0 5px 4px rgba(22, 40, 45, 0.18));
-  transform: translateY(2px);
-  transition: transform 0.35s ease;
-}
-.pixel-bird-perch.is-animating { transform: translateY(0); }
-.pixel-bird {
-  display: block;
-  width: 96px;
-  height: 64px;
-  background-image: url("../assets/sprites/bird_v001_blue_and_yellow.png");
-  background-repeat: no-repeat;
-  background-size: 1056px 512px;
-  image-rendering: pixelated;
-}
 
 /* ------------------------------------------------------------------ forms */
 .auth-wrap {
@@ -899,11 +883,11 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .nav-links { margin-left: auto; width: auto; }
   .nav-user { display: none; }
   .nav-user em { display: none; }
-  .brand { font-size: 0.95rem; gap: 0.35rem; }
-  .brand-beak { width: 18px; height: 18px; }
+  .brand { font-size: 0.9rem; gap: 0.25rem; }
+  .brand-bird { width: 27px; height: 18px; flex-basis: 27px; background-size: 297px 144px; background-position: 0 -36px; }
   .nav-icon-link, .nav-icon-button { width: 34px; height: 34px; flex-basis: 34px; }
   .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 21px; }
-  .nav-join { min-height: 34px; padding: 0.35rem 0.65rem; font-size: 0.8rem; }
+  .nav-join { min-height: 34px; padding: 0.35rem 0.5rem; gap: 0.25rem; font-size: 0.75rem; white-space: nowrap; }
   .hero { padding: 3rem 1rem 3.5rem; gap: 2.5rem; }
   .hero h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
   .hero-name { font-size: 0.23em; }
@@ -943,7 +927,6 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .footer-inner { grid-template-columns: 1fr; padding-block: 2.5rem; }
   .footer-base { flex-direction: column; }
   .footer-credits { flex-direction: column; gap: 0.35rem; }
-  .footer-brand-row { justify-content: space-between; }
   .settings-drawer { width: 100%; }
   .drawer-actions .btn { flex: 1 1 100%; }
   .mission-hero { min-height: 640px; }

@@ -55,7 +55,7 @@
          <a class="btn btn-beak btn-sm nav-join" href="signup.html"${signupCurrent}><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>`;
 
     nav.innerHTML = `
-      <a class="brand" href="index.html"><span class="brand-beak"></span>Toucan Music</a>
+      <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
       <div class="nav-links">
         <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"${homeCurrent}><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
         <a class="nav-icon-link" href="calendar.html?v=2" aria-label="Calendar" data-tooltip="Calendar"${calendarCurrent}><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
@@ -82,8 +82,7 @@
       <div class="footer-inner">
         <div class="footer-brand">
           <div class="footer-brand-row">
-            <a class="brand" href="index.html"><span class="brand-beak"></span>Toucan Music</a>
-            <span class="pixel-bird-perch" data-pixel-bird role="img" aria-label="Blue-and-yellow pixel bird mascot"><span class="pixel-bird"></span></span>
+            <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
           </div>
           <p>Free neighborhood music education, instruments, and performance space.</p>
         </div>
@@ -107,47 +106,47 @@
       </div>`;
   }
 
-  function initPixelBird() {
-    const perch = document.querySelector("[data-pixel-bird]");
-    const sprite = perch?.querySelector(".pixel-bird");
-    if (!perch || !sprite || perch.dataset.birdReady) return;
-    perch.dataset.birdReady = "true";
-
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const frameWidth = 96;
-    const frameHeight = 64;
+  function initBirdLogos() {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const idleAnimations = [
       { row: 1, frames: 9, frameTime: 120 },
       { row: 3, frames: 8, frameTime: 135 },
     ];
 
-    const showFrame = (row, frame) => {
-      sprite.style.backgroundPosition = `${-frame * frameWidth}px ${-row * frameHeight}px`;
-    };
-    const schedule = () => {
-      const delay = 6500 + Math.random() * 7000;
-      window.setTimeout(playIdle, delay);
-    };
-    const playIdle = () => {
-      const animation = idleAnimations[Math.floor(Math.random() * idleAnimations.length)];
-      let frame = 0;
-      perch.classList.add("is-animating");
-      showFrame(animation.row, frame);
-      const timer = window.setInterval(() => {
-        frame += 1;
-        if (frame >= animation.frames) {
-          window.clearInterval(timer);
-          perch.classList.remove("is-animating");
-          showFrame(2, 0);
-          schedule();
-          return;
-        }
-        showFrame(animation.row, frame);
-      }, animation.frameTime);
-    };
+    document.querySelectorAll("[data-brand-bird]").forEach((sprite, index) => {
+      if (sprite.dataset.birdReady) return;
+      sprite.dataset.birdReady = "true";
 
-    showFrame(2, 0);
-    schedule();
+      const showFrame = (row, frame) => {
+        const frameWidth = sprite.getBoundingClientRect().width;
+        const frameHeight = sprite.getBoundingClientRect().height;
+        sprite.style.backgroundSize = `${frameWidth * 11}px ${frameHeight * 8}px`;
+        sprite.style.backgroundPosition = `${-frame * frameWidth}px ${-row * frameHeight}px`;
+      };
+      showFrame(2, 0);
+      if (reducedMotion) return;
+
+      const schedule = () => {
+        const delay = 5500 + Math.random() * 7500 + index * 600;
+        window.setTimeout(playIdle, delay);
+      };
+      const playIdle = () => {
+        const animation = idleAnimations[Math.floor(Math.random() * idleAnimations.length)];
+        let frame = 0;
+        showFrame(animation.row, frame);
+        const timer = window.setInterval(() => {
+          frame += 1;
+          if (frame >= animation.frames) {
+            window.clearInterval(timer);
+            showFrame(2, 0);
+            schedule();
+            return;
+          }
+          showFrame(animation.row, frame);
+        }, animation.frameTime);
+      };
+      schedule();
+    });
   }
 
   function buildSettingsDrawer() {
@@ -457,7 +456,7 @@
   document.addEventListener("DOMContentLoaded", async () => {
     const user = await renderNav();
     renderFooter();
-    initPixelBird();
+    initBirdLogos();
     initSettings();
     initFloatFollow();
     document.body.classList.add("ready");

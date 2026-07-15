@@ -256,6 +256,10 @@
       : ident;
   }
 
+  function confirmationRedirectUrl() {
+    return new URL("login.html?confirmed=1", window.location.href).href;
+  }
+
   // ------------------------------------------------------------------ api
   const api = {
     demoMode: DEMO,
@@ -300,7 +304,11 @@
     async resendConfirmation(identifier) {
       if (DEMO) throw new Error("Email confirmation is only used on the deployed site.");
       const email = loginEmail(identifier);
-      const { error } = await sb.auth.resend({ type: "signup", email });
+      const { error } = await sb.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: confirmationRedirectUrl() },
+      });
       if (error) throw new Error(error.message);
     },
 
@@ -329,7 +337,10 @@
       const { data, error } = await sb.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name, role } },
+        options: {
+          emailRedirectTo: confirmationRedirectUrl(),
+          data: { full_name: name, role },
+        },
       });
       if (error) throw new Error(error.message);
       return publicUser({ id: data.user.id, name, email, role, weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null });

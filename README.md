@@ -73,7 +73,22 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    in `js/config.js`; that file must contain only the browser-safe publishable
    key.
 
-4. **Emails** — sign up at [resend.com](https://resend.com) (or swap the
+4. **Set the authentication URLs**: in Dashboard → Authentication → URL
+   Configuration, set **Site URL** to the deployed app origin, not localhost.
+   Add that origin to **Redirect URLs** as well. For the repository's current
+   public URL, use:
+
+   ```text
+   Site URL: https://toucanmusicnet.vercel.app
+   Redirect URL: https://toucanmusicnet.vercel.app/login.html?confirmed=1
+   ```
+
+   Add each preview or alternate production origin that is allowed to send
+   signup emails. The browser includes its current origin in confirmation
+   requests; Supabase will only honor it when that exact callback is
+   allowlisted. Wildcards should be reserved for preview deployments.
+
+5. **Emails** — sign up at [resend.com](https://resend.com) (or swap the
    `fetch` call in the functions for any provider), then deploy the two edge
    functions:
 
@@ -89,7 +104,7 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    supabase secrets set TWILIO_ACCOUNT_SID=AC_xxx TWILIO_AUTH_TOKEN=xxx TWILIO_FROM_NUMBER=+15551234567
    ```
 
-5. **Schedule them** with pg_cron (Dashboard → Database → Extensions → enable
+6. **Schedule them** with pg_cron (Dashboard → Database → Extensions → enable
    `pg_cron` and `pg_net`, then run — replace `PROJECT_REF` and the anon key):
 
    ```sql
@@ -110,7 +125,7 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    $$);
    ```
 
-6. Host the static files anywhere (Netlify, GitHub Pages, S3…) and update the
+7. Host the static files anywhere (Netlify, GitHub Pages, S3…) and update the
    `your-site.example` links inside the two edge functions to your real URL.
 
 ### Notes on behavior
