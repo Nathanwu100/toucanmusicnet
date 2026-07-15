@@ -483,6 +483,10 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   font-size: 0.95rem;
 }
 .form-error.show { display: block; }
+.login-recovery { margin-bottom: 1.2rem; padding: 1rem; border-left: 3px solid var(--beak-deep); border-radius: 4px; background: #fff7e8; }
+.login-recovery strong { display: block; font-family: var(--font-display); }
+.login-recovery > p { margin: 0.3rem 0 0.8rem; color: var(--ink-soft); font-size: 0.9rem; }
+.login-recovery .login-recovery-status { min-height: 1.4em; margin: 0.65rem 0 0; color: var(--leaf-strong); font-weight: 600; }
 
 /* role choice cards on signup */
 .role-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.4rem; }

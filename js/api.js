@@ -249,6 +249,13 @@
     };
   }
 
+  function loginEmail(identifier) {
+    const ident = identifier.trim();
+    return ident.toLowerCase() === String(cfg.ADMIN_NAME || "admin").toLowerCase()
+      ? cfg.ADMIN_EMAIL
+      : ident;
+  }
+
   // ------------------------------------------------------------------ api
   const api = {
     demoMode: DEMO,
@@ -279,12 +286,22 @@
         localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: u.id }));
         return publicUser(u);
       }
-      const email =
-        ident.toLowerCase() === (cfg.ADMIN_NAME || "admin") ? cfg.ADMIN_EMAIL : ident;
+      const email = loginEmail(ident);
       const { data, error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      if (error) {
+        const loginError = new Error(error.message);
+        loginError.code = error.code || (error.message === "Email not confirmed" ? "email_not_confirmed" : "auth_error");
+        throw loginError;
+      }
       const p = await sbProfile(data.user);
       return publicUser({ ...p, email: data.user.email });
+    },
+
+    async resendConfirmation(identifier) {
+      if (DEMO) throw new Error("Email confirmation is only used on the deployed site.");
+      const email = loginEmail(identifier);
+      const { error } = await sb.auth.resend({ type: "signup", email });
+      if (error) throw new Error(error.message);
     },
 
     async signup({ name, email, password, role }) {

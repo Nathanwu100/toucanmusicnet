@@ -53,10 +53,12 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    row-level security, and a trigger that enforces volunteer capacity
    server-side (so the spot limit holds even against a modified client).
 
-3. **Create the admin account**: in Dashboard → Authentication → Users →
-   *Add user*, create `admin@toucanmusic.org` with a unique password from a
-   password manager
-   (auto-confirm on). Then promote it:
+3. **Create and confirm the admin account**: in Dashboard → Authentication →
+   Users → *Add user*, create `admin@toucanmusic.org` with a unique password
+   from a password manager, and enable **Auto Confirm User**. If the account
+   already exists and shows *Waiting for verification*, open that user and
+   confirm its email before trying to log in.
+   Then promote it:
 
    ```sql
    insert into public.profiles (id, full_name, role)
@@ -66,9 +68,10 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    ```
 
    The login page maps the name `admin` to this email automatically. Never
-   commit or share this production password. Do not place a Supabase secret
-   or service-role key in `js/config.js`; that file must contain only the
-   browser-safe publishable key.
+   use the localhost demo password for this account, and never commit or share
+   the production password. Do not place a Supabase secret or service-role key
+   in `js/config.js`; that file must contain only the browser-safe publishable
+   key.
 
 4. **Emails** — sign up at [resend.com](https://resend.com) (or swap the
    `fetch` call in the functions for any provider), then deploy the two edge

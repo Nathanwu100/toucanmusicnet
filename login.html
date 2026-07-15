@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=5" />
+  <link rel="stylesheet" href="css/style.css?v=6" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -29,6 +29,12 @@
       <h1>Welcome back</h1>
       <p class="sub">Log in to see your classes, volunteer spots, and settings.</p>
       <div class="form-error" id="error" role="alert"></div>
+      <div class="login-recovery" id="confirmation-recovery" hidden>
+        <strong>Confirm this account</strong>
+        <p>This account exists, but its email address is still awaiting confirmation.</p>
+        <button class="btn btn-quiet btn-sm" type="button" id="resend-confirmation">Send confirmation email</button>
+        <p class="login-recovery-status" id="confirmation-status" role="status" aria-live="polite"></p>
+      </div>
       <form id="login-form" novalidate>
         <div class="field">
           <label for="identifier">Email (or admin name)</label>
@@ -48,30 +54,54 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js"></script>
-  <script src="js/api.js?v=3"></script>
+  <script src="js/api.js?v=4"></script>
   <script src="js/tutorial.js"></script>
   <script src="js/background.js"></script>
   <script src="js/app.js?v=5"></script>
   <script>
-    document.getElementById("login-form").addEventListener("submit", async (e) => {
+    const loginForm = document.getElementById("login-form");
+    const identifier = document.getElementById("identifier");
+    const recovery = document.getElementById("confirmation-recovery");
+    const recoveryStatus = document.getElementById("confirmation-status");
+    const resendButton = document.getElementById("resend-confirmation");
+
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const err = document.getElementById("error");
       const btn = document.getElementById("submit");
       err.classList.remove("show");
+      recovery.hidden = true;
+      recoveryStatus.textContent = "";
       btn.disabled = true;
-      btn.textContent = "Logging in…";
+      btn.textContent = "Logging in...";
       try {
         const user = await ToucanAPI.login(
-          document.getElementById("identifier").value,
+          identifier.value,
           document.getElementById("password").value
         );
         ToucanTour.queueFirstVisit(user);
         window.location.href = "calendar.html?v=2";
       } catch (ex) {
-        err.textContent = ex.message;
+        const needsConfirmation = ex.code === "email_not_confirmed" || ex.message === "Email not confirmed";
+        err.textContent = needsConfirmation
+          ? "This account needs email confirmation before it can log in."
+          : ex.message;
         err.classList.add("show");
+        recovery.hidden = !needsConfirmation;
         btn.disabled = false;
         btn.textContent = "Log in";
+      }
+    });
+
+    resendButton.addEventListener("click", async () => {
+      resendButton.disabled = true;
+      recoveryStatus.textContent = "Sending...";
+      try {
+        await ToucanAPI.resendConfirmation(identifier.value);
+        recoveryStatus.textContent = "Confirmation sent. Open the email, confirm the account, then log in again.";
+      } catch (ex) {
+        recoveryStatus.textContent = ex.message;
+        resendButton.disabled = false;
       }
     });
   </script>
