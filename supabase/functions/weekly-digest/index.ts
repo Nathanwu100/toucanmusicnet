@@ -2,7 +2,7 @@
 // up in the next 7 days. Schedule it for Monday mornings (see README.md).
 //
 // Secrets required:
-//   supabase secrets set RESEND_API_KEY=re_...  FROM_EMAIL="Toucan Music <hello@toucanmusic.org>"
+//   supabase secrets set RESEND_API_KEY=re_... FROM_EMAIL="Toucan Music <hello@toucanmusic.org>" SITE_URL=https://toucan-music.com
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -13,6 +13,7 @@ const supabase = createClient(
 
 const RESEND_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM = Deno.env.get("FROM_EMAIL") ?? "Toucan Music <onboarding@resend.dev>";
+const SITE_URL = (Deno.env.get("SITE_URL") ?? "https://toucan-music.com").replace(/\/+$/, "");
 
 // Returns { ok, error } instead of swallowing failures — callers must not
 // count a message as sent unless Resend actually accepted it.
@@ -88,7 +89,7 @@ Deno.serve(async () => {
       <table style="border-collapse:collapse;width:100%">${rows}</table>
       <p style="color:#46595e;font-size:13px;margin-top:20px">
         You're getting this because weekly emails are on in your
-        <a href="https://your-site.example/settings.html">settings</a>.
+        <a href="${SITE_URL}/?settings=open">settings</a>.
       </p>
     </div>`;
 

@@ -4,6 +4,7 @@
 //
 // Email secrets: RESEND_API_KEY, FROM_EMAIL (same as weekly-digest).
 // Text secrets: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER.
+// Site link: SITE_URL (defaults to https://toucan-music.com).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -19,6 +20,7 @@ const FROM = Deno.env.get("FROM_EMAIL") ?? "Toucan Music <onboarding@resend.dev>
 const TWILIO_SID = Deno.env.get("TWILIO_ACCOUNT_SID");
 const TWILIO_TOKEN = Deno.env.get("TWILIO_AUTH_TOKEN");
 const TWILIO_FROM = Deno.env.get("TWILIO_FROM_NUMBER");
+const SITE_URL = (Deno.env.get("SITE_URL") ?? "https://toucan-music.com").replace(/\/+$/, "");
 
 // Returns { ok, error } instead of swallowing failures — callers must not
 // count a message as sent unless Resend actually accepted it.
@@ -127,7 +129,7 @@ Deno.serve(async () => {
             ${ev.description ? `<p>${ev.description}</p>` : ""}
             <p style="color:#46595e;font-size:13px;margin-top:20px">
               Reminders can be changed in your
-              <a href="https://your-site.example/index.html?settings=open">settings</a>.
+              <a href="${SITE_URL}/?settings=open">settings</a>.
             </p>
           </div>`
         ));

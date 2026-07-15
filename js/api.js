@@ -257,7 +257,8 @@
   }
 
   function confirmationRedirectUrl() {
-    return new URL("login.html?confirmed=1", window.location.href).href;
+    const siteUrl = cfg.PUBLIC_SITE_URL || window.location.origin;
+    return new URL("/login?confirmed=1", siteUrl).href;
   }
 
   // ------------------------------------------------------------------ api

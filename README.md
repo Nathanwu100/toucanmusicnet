@@ -74,19 +74,17 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    key.
 
 4. **Set the authentication URLs**: in Dashboard → Authentication → URL
-   Configuration, set **Site URL** to the deployed app origin, not localhost.
-   Add that origin to **Redirect URLs** as well. For the repository's current
-   public URL, use:
+   Configuration, use the canonical production domain:
 
    ```text
-   Site URL: https://toucanmusicnet.vercel.app
-   Redirect URL: https://toucanmusicnet.vercel.app/login.html?confirmed=1
+   Site URL: https://toucan-music.com
+   Redirect URL: https://toucan-music.com/login?confirmed=1
    ```
 
-   Add each preview or alternate production origin that is allowed to send
-   signup emails. The browser includes its current origin in confirmation
-   requests; Supabase will only honor it when that exact callback is
-   allowlisted. Wildcards should be reserved for preview deployments.
+   The app always requests this canonical callback so confirmation emails do
+   not inherit localhost or preview deployment URLs. Supabase will only honor
+   it when the exact callback is allowlisted. Wildcards should be reserved for
+   preview deployments.
 
 5. **Emails** — sign up at [resend.com](https://resend.com) (or swap the
    `fetch` call in the functions for any provider), then deploy the two edge
@@ -94,7 +92,7 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 
    ```sh
    supabase functions deploy weekly-digest event-reminders --no-verify-jwt
-   supabase secrets set RESEND_API_KEY=re_xxx FROM_EMAIL="Toucan Music <hello@yourdomain.org>"
+   supabase secrets set RESEND_API_KEY=re_xxx FROM_EMAIL="Toucan Music <hello@yourdomain.org>" SITE_URL=https://toucan-music.com
    ```
 
    For text reminders, add a Twilio number and set the SMS secrets used by
@@ -125,8 +123,10 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    $$);
    ```
 
-7. Host the static files anywhere (Netlify, GitHub Pages, S3…) and update the
-   `your-site.example` links inside the two edge functions to your real URL.
+7. Host the static files on the canonical `https://toucan-music.com` domain.
+   The browser config and email links already default to this origin. If the
+   public domain changes, update `PUBLIC_SITE_URL` in `js/config.js` and the
+   `SITE_URL` Supabase secret together.
 
 ### Notes on behavior
 

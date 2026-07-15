@@ -9,6 +9,7 @@
 // admin account is documented in README.md.
 
 window.TOUCAN_CONFIG = {
+  PUBLIC_SITE_URL: "https://toucan-music.com",
   SUPABASE_URL: "https://vxjewlbbsdvhzpibkppg.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_2kLFCF1SHANnilcFEWQ7LQ_r4l7lAXP",
 
