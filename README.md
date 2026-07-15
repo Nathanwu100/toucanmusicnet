@@ -130,6 +130,13 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 
 ### Notes on behavior
 
+- **Secret keys**: `js/config.js` is downloaded by every visitor and must only
+  contain the browser-safe Supabase publishable/anon key. Keep secret and
+  service-role keys out of the repository and local browser code. Local `.env`
+  and `.dev.vars` files are ignored; production function credentials belong in
+  Supabase Edge Function secrets. Rotate any credential that has been pasted
+  into chat, logs, or other third-party systems.
+
 - **Reminder timing**: "an hour and thirty minutes before" is implemented as
   two nudges — one at 60 minutes and one at 30 minutes before start. To make
   it a single 90-minute reminder instead, change `OFFSETS_MINUTES` in
