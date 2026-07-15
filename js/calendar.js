@@ -62,14 +62,17 @@
     title.textContent = `${MONTHS[month]} ${year}`;
     grid.innerHTML = "";
 
-    DOWS.forEach((day) => grid.appendChild(element("div", "cal-dow", day)));
+    const weekdays = element("div", "cal-weekdays");
+    const daysGrid = element("div", "cal-days");
+    DOWS.forEach((day) => weekdays.appendChild(element("div", "cal-dow", day)));
+    grid.append(weekdays, daysGrid);
 
     const firstDow = new Date(year, month, 1).getDay();
     const days = new Date(year, month + 1, 0).getDate();
     for (let i = 0; i < firstDow; i += 1) {
       const pad = element("div", "cal-cell pad");
       pad.setAttribute("aria-hidden", "true");
-      grid.appendChild(pad);
+      daysGrid.appendChild(pad);
     }
 
     for (let day = 1; day <= days; day += 1) {
@@ -90,7 +93,7 @@
       );
       cell.appendChild(element("span", "d", String(day)));
 
-      dayEvents.forEach((ev) => {
+      dayEvents.slice(0, 1).forEach((ev) => {
         const chip = element(
           "span",
           `chip ${ev.event_type === "class" ? "class" : "event"}`,
@@ -98,9 +101,12 @@
         );
         cell.appendChild(chip);
       });
+      if (dayEvents.length > 1) {
+        cell.appendChild(element("span", "chip-more", `+${dayEvents.length - 1} more`));
+      }
 
       cell.addEventListener("click", () => selectDate(date));
-      grid.appendChild(cell);
+      daysGrid.appendChild(cell);
     }
 
     renderDayPanel();
@@ -146,14 +152,22 @@
     }
 
     for (const ev of dayEvents) {
-      const item = element("article", "day-event-item");
-      const heading = element("div", "day-event-heading");
+      const item = element("details", "day-event-item");
+      const summary = element("summary", "day-event-summary");
+      const summaryInner = element("span", "day-event-summary-inner");
+      const summaryCopy = element("span", "day-event-summary-copy");
       const type = element("span", `event-type ${ev.event_type}`, ev.event_type);
-      heading.append(type, element("h3", "", ev.title));
-      item.appendChild(heading);
-      addMetaRow(item, "pixelarticons:clock", fmtRange(ev));
-      addMetaRow(item, "pixelarticons:map", ev.location || "Location to be announced");
-      if (ev.description) item.appendChild(element("p", "day-event-description", ev.description));
+      summaryCopy.append(
+        element("strong", "", ev.title),
+        element("span", "day-event-summary-time", fmtRange(ev))
+      );
+      summaryInner.append(type, summaryCopy);
+      summary.appendChild(summaryInner);
+      const body = element("div", "day-event-body");
+      item.append(summary, body);
+      addMetaRow(body, "pixelarticons:clock", fmtRange(ev));
+      addMetaRow(body, "pixelarticons:map", ev.location || "Location to be announced");
+      if (ev.description) body.appendChild(element("p", "day-event-description", ev.description));
 
       const isAdmin = user && user.role === "admin";
       const isVolunteer = user && user.role === "volunteer";
@@ -195,12 +209,12 @@
             });
             volunteerRow.appendChild(signup);
           }
-          item.appendChild(volunteerRow);
+          body.appendChild(volunteerRow);
 
           if (isAdmin) {
             const names = await api.listSignups(ev.id);
             if (renderId !== panelRenderId) return;
-            item.appendChild(
+            body.appendChild(
               element(
                 "p",
                 "day-roster",
@@ -211,10 +225,10 @@
             );
           }
         } catch (error) {
-          item.appendChild(element("p", "day-panel-error", error.message));
+          body.appendChild(element("p", "day-panel-error", error.message));
         }
       } else if (isVolunteer) {
-        item.appendChild(element("p", "day-roster", "No volunteer spots for this event."));
+        body.appendChild(element("p", "day-roster", "No volunteer spots for this event."));
       }
 
       if (isAdmin) {
@@ -235,7 +249,7 @@
           }
         });
         actions.append(edit, remove);
-        item.appendChild(actions);
+        body.appendChild(actions);
       }
       list.appendChild(item);
     }

@@ -144,6 +144,44 @@ create policy "update own prefs" on public.profiles
   for update to authenticated using (auth.uid() = id)
   with check (auth.uid() = id and role = (select role from public.profiles where id = auth.uid()));
 
+-- Update only notification fields through a narrow RPC. Keeping the function
+-- server-side prevents a client from including role or identity fields.
+create or replace function public.update_notification_preferences(
+  new_weekly_digest boolean,
+  new_class_reminders boolean,
+  new_text_notifications boolean,
+  new_phone_number text
+)
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_profile public.profiles;
+begin
+  if auth.uid() is null then
+    raise exception 'Log in to update notification settings.';
+  end if;
+
+  update public.profiles
+  set weekly_digest = new_weekly_digest,
+      class_reminders = new_class_reminders,
+      text_notifications = new_text_notifications,
+      phone_number = new_phone_number
+  where id = auth.uid()
+  returning * into updated_profile;
+
+  if updated_profile.id is null then
+    raise exception 'Profile not found.';
+  end if;
+  return updated_profile;
+end;
+$$;
+
+revoke execute on function public.update_notification_preferences(boolean, boolean, boolean, text) from public, anon;
+grant execute on function public.update_notification_preferences(boolean, boolean, boolean, text) to authenticated;
+
 drop policy if exists "events readable by everyone" on public.events;
 create policy "events readable by everyone" on public.events
   for select to anon, authenticated using (true);

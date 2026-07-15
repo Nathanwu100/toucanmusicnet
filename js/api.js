@@ -333,6 +333,7 @@
         const { userId } = JSON.parse(raw);
         const db = loadDb();
         const u = db.users.find((u) => u.id === userId);
+        if (!u) throw new Error("Your session has expired. Log in again.");
         u.weekly_digest = weekly_digest;
         u.class_reminders = class_reminders;
         u.text_notifications = text_notifications;
@@ -342,14 +343,15 @@
       }
       const { data: s } = await sb.auth.getSession();
       if (!s.session) throw new Error("Log in to update notification settings.");
-      const { data: updated, error } = await sb
-        .from("profiles")
-        .update({ weekly_digest, class_reminders, text_notifications, phone_number: phone_number || null })
-        .eq("id", s.session.user.id)
-        .select()
-        .single();
+      const { data: updated, error } = await sb.rpc("update_notification_preferences", {
+        new_weekly_digest: weekly_digest,
+        new_class_reminders: class_reminders,
+        new_text_notifications: text_notifications,
+        new_phone_number: phone_number || null,
+      });
       if (error) throw new Error(error.message);
-      return publicUser({ ...updated, email: s.session.user.email });
+      const profile = Array.isArray(updated) ? updated[0] : updated;
+      return publicUser({ ...profile, email: s.session.user.email });
     },
 
     // ------------------------------------------------------------- events

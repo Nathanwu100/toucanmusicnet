@@ -97,8 +97,60 @@
       </div>
       <div class="footer-base">
         <span>&copy; 2026 Toucan Music, a 501(c)(3) nonprofit</span>
-        <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Gallery photography from Pexels</a>
+        <span class="footer-credits">
+          <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Photography: Pexels</a>
+          <a href="https://opengameart.org/content/bird-2" target="_blank" rel="noreferrer">CC0 pixel bird: rmazanek</a>
+        </span>
       </div>`;
+  }
+
+  function initPixelBird() {
+    if (document.querySelector("[data-pixel-bird]")) return;
+    const perch = document.createElement("div");
+    perch.className = "pixel-bird-perch";
+    perch.dataset.pixelBird = "";
+    perch.setAttribute("role", "img");
+    perch.setAttribute("aria-label", "Blue-and-yellow pixel bird mascot");
+    const sprite = document.createElement("span");
+    sprite.className = "pixel-bird";
+    perch.appendChild(sprite);
+    document.body.appendChild(perch);
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const frameWidth = 96;
+    const frameHeight = 64;
+    const idleAnimations = [
+      { row: 1, frames: 9, frameTime: 120 },
+      { row: 3, frames: 8, frameTime: 135 },
+    ];
+
+    const showFrame = (row, frame) => {
+      sprite.style.backgroundPosition = `${-frame * frameWidth}px ${-row * frameHeight}px`;
+    };
+    const schedule = () => {
+      const delay = 6500 + Math.random() * 7000;
+      window.setTimeout(playIdle, delay);
+    };
+    const playIdle = () => {
+      const animation = idleAnimations[Math.floor(Math.random() * idleAnimations.length)];
+      let frame = 0;
+      perch.classList.add("is-animating");
+      showFrame(animation.row, frame);
+      const timer = window.setInterval(() => {
+        frame += 1;
+        if (frame >= animation.frames) {
+          window.clearInterval(timer);
+          perch.classList.remove("is-animating");
+          showFrame(2, 0);
+          schedule();
+          return;
+        }
+        showFrame(animation.row, frame);
+      }, animation.frameTime);
+    };
+
+    showFrame(2, 0);
+    schedule();
   }
 
   function buildSettingsDrawer() {
@@ -167,12 +219,14 @@
             <label for="drawer-phone">Mobile number</label>
             <input type="tel" id="drawer-phone" autocomplete="tel" placeholder="+1 555 123 4567">
             <p class="hint">Include the country code. Message and data rates may apply.</p>
+            <button class="btn btn-sm btn-quiet save-phone" type="submit" name="save-target" value="phone">Save your number</button>
           </div>
         </section>
         <div class="drawer-actions">
           <button class="btn btn-beak" type="submit">Save settings</button>
           <button class="btn btn-quiet" type="button" data-start-tutorial><iconify-icon icon="pixelarticons:play" aria-hidden="true"></iconify-icon>Site guide</button>
         </div>
+        <p class="settings-save-status" data-settings-status role="status" aria-live="polite"></p>
       </form>`;
 
     content.querySelector(".settings-who").textContent = `Notification preferences for ${currentUser.name}.`;
@@ -193,7 +247,9 @@
     texts.addEventListener("change", syncPhone);
     syncPhone();
 
-    content.querySelector("#settings-form").addEventListener("submit", async (event) => {
+    const form = content.querySelector("#settings-form");
+    const saveStatus = content.querySelector("[data-settings-status]");
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const digits = phone.value.replace(/\D/g, "");
       if (texts.checked && (!phone.value.trim().startsWith("+") || digits.length < 10 || digits.length > 15)) {
@@ -201,8 +257,9 @@
         phone.focus();
         return;
       }
-      const submit = event.submitter;
+      const submit = event.submitter || form.querySelector('button[type="submit"]');
       submit.disabled = true;
+      saveStatus.textContent = "Saving...";
       try {
         currentUser = await api.updatePrefs({
           weekly_digest: digest.checked,
@@ -210,8 +267,13 @@
           text_notifications: texts.checked,
           phone_number: texts.checked ? `+${digits}` : null,
         });
-        toast("Notification settings saved.", "beak");
+        phone.value = currentUser.phone_number || "";
+        saveStatus.textContent = submit.value === "phone"
+          ? "Your mobile number is saved."
+          : "Your settings are saved.";
+        toast(saveStatus.textContent, "beak");
       } catch (error) {
+        saveStatus.textContent = "Settings were not saved. Please try again.";
         toast(error.message, "error");
       } finally {
         submit.disabled = false;
@@ -398,6 +460,7 @@
   document.addEventListener("DOMContentLoaded", async () => {
     const user = await renderNav();
     renderFooter();
+    initPixelBird();
     initSettings();
     initFloatFollow();
     document.body.classList.add("ready");
