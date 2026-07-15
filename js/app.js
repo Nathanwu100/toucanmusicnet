@@ -81,7 +81,10 @@
     footer.innerHTML = `
       <div class="footer-inner">
         <div class="footer-brand">
-          <a class="brand" href="index.html"><span class="brand-beak"></span>Toucan Music</a>
+          <div class="footer-brand-row">
+            <a class="brand" href="index.html"><span class="brand-beak"></span>Toucan Music</a>
+            <span class="pixel-bird-perch" data-pixel-bird role="img" aria-label="Blue-and-yellow pixel bird mascot"><span class="pixel-bird"></span></span>
+          </div>
           <p>Free neighborhood music education, instruments, and performance space.</p>
         </div>
         <div class="footer-links" aria-label="Organization">
@@ -105,16 +108,10 @@
   }
 
   function initPixelBird() {
-    if (document.querySelector("[data-pixel-bird]")) return;
-    const perch = document.createElement("div");
-    perch.className = "pixel-bird-perch";
-    perch.dataset.pixelBird = "";
-    perch.setAttribute("role", "img");
-    perch.setAttribute("aria-label", "Blue-and-yellow pixel bird mascot");
-    const sprite = document.createElement("span");
-    sprite.className = "pixel-bird";
-    perch.appendChild(sprite);
-    document.body.appendChild(perch);
+    const perch = document.querySelector("[data-pixel-bird]");
+    const sprite = perch?.querySelector(".pixel-bird");
+    if (!perch || !sprite || perch.dataset.birdReady) return;
+    perch.dataset.birdReady = "true";
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const frameWidth = 96;
@@ -257,7 +254,7 @@
         phone.focus();
         return;
       }
-      const submit = event.submitter || form.querySelector('button[type="submit"]');
+      const submit = event.submitter || form.querySelector('.drawer-actions button[type="submit"]');
       submit.disabled = true;
       saveStatus.textContent = "Saving...";
       try {

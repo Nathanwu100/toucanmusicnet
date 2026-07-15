@@ -140,9 +140,6 @@ create policy "create own profile" on public.profiles
   );
 
 drop policy if exists "update own prefs" on public.profiles;
-create policy "update own prefs" on public.profiles
-  for update to authenticated using (auth.uid() = id)
-  with check (auth.uid() = id and role = (select role from public.profiles where id = auth.uid()));
 
 -- Update only notification fields through a narrow RPC. Keeping the function
 -- server-side prevents a client from including role or identity fields.
