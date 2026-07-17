@@ -408,13 +408,19 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .mission-link { display: inline-block; margin-top: 0.9rem; color: var(--beak); font-weight: 700; }
 
 .site-footer { position: relative; z-index: 2; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
-.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(260px, 1.6fr) repeat(2, minmax(160px, 0.7fr)); gap: 2rem; }
+.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.25fr) minmax(120px, 0.55fr) minmax(180px, 0.8fr) minmax(230px, 1fr); gap: 2rem; }
 .footer-brand p { max-width: 38ch; margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.9rem; }
 .footer-brand-row { display: flex; align-items: center; gap: 1rem; }
 .footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; }
 .footer-links strong { margin-bottom: 0.2rem; font-family: var(--font-display); }
 .footer-links a, .footer-links button { padding: 0; border: 0; background: transparent; color: var(--ink-soft); font: 0.9rem var(--font-body); text-decoration: none; cursor: pointer; }
 .footer-links a:hover, .footer-links button:hover { color: var(--coral-strong); }
+.footer-sponsors { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+.footer-sponsors > strong { font-family: var(--font-display); }
+.footer-sponsor-logos { width: 100%; display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.footer-sponsor-logo { display: block; width: auto; object-fit: contain; }
+.footer-sponsor-logo-think { max-width: 76px; max-height: 56px; }
+.footer-sponsor-logo-palo-alto { max-width: 155px; max-height: 44px; }
 .footer-base { padding: 1rem clamp(1rem, 4vw, 3rem); display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-soft); font-size: 0.78rem; }
 .footer-base a { color: inherit; }
 .footer-credits { display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -875,6 +881,7 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .mission-band, .about-band { grid-template-columns: 1fr; }
   .about-band img { max-height: 520px; }
   .mission-contact { align-items: flex-start; flex-direction: column; }
+  .footer-inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {

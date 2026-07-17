@@ -96,6 +96,13 @@
           <a href="mailto:hello@toucanmusic.org">hello@toucanmusic.org</a>
           <button type="button" data-open-settings>Notification settings</button>
         </div>
+        <div class="footer-sponsors" aria-label="Sponsors">
+          <strong>Powered by:</strong>
+          <div class="footer-sponsor-logos">
+            <img class="footer-sponsor-logo footer-sponsor-logo-think" src="assets/sponsors/think-fund.png" alt="Think Fund" loading="lazy" decoding="async" />
+            <img class="footer-sponsor-logo footer-sponsor-logo-palo-alto" src="assets/sponsors/city-of-palo-alto.png" alt="City of Palo Alto" loading="lazy" decoding="async" />
+          </div>
+        </div>
       </div>
       <div class="footer-base">
         <span>&copy; 2026 Toucan Music, a 501(c)(3) nonprofit</span>
