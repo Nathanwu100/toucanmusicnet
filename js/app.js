@@ -105,7 +105,7 @@
         </div>
       </div>
       <div class="footer-base">
-        <span>&copy; 2026 Toucan Music, a 501(c)(3) nonprofit</span>
+        <span>&copy; 2026 Toucan Music</span>
         <span class="footer-credits">
           <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Photography: Pexels</a>
           <a href="https://opengameart.org/content/bird-2" target="_blank" rel="noreferrer">CC0 pixel bird: rmazanek</a>
