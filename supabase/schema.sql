@@ -1,4 +1,4 @@
--- Toucan Music Project — database schema
+-- Toucan Music Project - database schema
 -- Run this in the Supabase SQL editor (or `supabase db push`).
 -- Safe to re-run: everything is idempotent.
 
@@ -24,14 +24,14 @@ alter table public.profiles add column if not exists phone_number text;
 update public.profiles
 set phone_number = null
 where phone_number is not null
-  and phone_number !~ '^\+[1-9][0-9]{9,14}$';
+  and phone_number !~ '^[+][1-9][0-9]{9,14}$';
 update public.profiles
 set text_notifications = false
 where text_notifications and phone_number is null;
 
 alter table public.profiles drop constraint if exists profiles_phone_number_format;
 alter table public.profiles add constraint profiles_phone_number_format check (
-  phone_number is null or phone_number ~ '^\+[1-9][0-9]{9,14}$'
+  phone_number is null or phone_number ~ '^[+][1-9][0-9]{9,14}$'
 );
 alter table public.profiles drop constraint if exists profiles_text_notification_phone;
 alter table public.profiles add constraint profiles_text_notification_phone check (
@@ -204,7 +204,7 @@ create policy "admin deletes events" on public.events
   for delete to authenticated
   using ((select public.is_admin()));
 
--- Spot counts are for volunteers and the admin only — students can't
+-- Spot counts are for volunteers and the admin only - students can't
 -- read the signups table at all.
 drop policy if exists "volunteers and admin read signups" on public.volunteer_signups;
 create policy "volunteers and admin read signups" on public.volunteer_signups
