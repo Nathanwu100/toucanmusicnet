@@ -16,6 +16,19 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists text_notifications boolean not null default false;
 alter table public.profiles add column if not exists phone_number text;
+
+-- Repair legacy rows before installing the checks below: phone numbers that
+-- do not match the required +countrycode format are cleared, and text
+-- notifications without a phone number on file are switched off. Affected
+-- users re-enter their number in Settings.
+update public.profiles
+set phone_number = null
+where phone_number is not null
+  and phone_number !~ '^\+[1-9][0-9]{9,14}$';
+update public.profiles
+set text_notifications = false
+where text_notifications and phone_number is null;
+
 alter table public.profiles drop constraint if exists profiles_phone_number_format;
 alter table public.profiles add constraint profiles_phone_number_format check (
   phone_number is null or phone_number ~ '^\+[1-9][0-9]{9,14}$'
@@ -282,6 +295,13 @@ alter table public.events add constraint events_student_capacity_check check (
   (event_type = 'class' and student_capacity > 0)
   or (event_type = 'event' and student_capacity >= 0)
 );
+-- Legacy rows with an end time at or before the start become open-ended so
+-- the check below can be installed; the site already treats a null end as a
+-- one-hour default.
+update public.events
+set ends_at = null
+where ends_at is not null and ends_at <= starts_at;
+
 alter table public.events drop constraint if exists events_end_after_start;
 alter table public.events add constraint events_end_after_start check (
   ends_at is null or ends_at > starts_at

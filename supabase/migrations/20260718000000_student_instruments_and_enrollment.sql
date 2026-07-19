@@ -60,6 +60,13 @@ alter table public.events add constraint events_student_capacity_check check (
   (event_type = 'class' and student_capacity > 0)
   or (event_type = 'event' and student_capacity >= 0)
 );
+-- Legacy rows with an end time at or before the start become open-ended so
+-- the check below can be installed; the site already treats a null end as a
+-- one-hour default.
+update public.events
+set ends_at = null
+where ends_at is not null and ends_at <= starts_at;
+
 alter table public.events drop constraint if exists events_end_after_start;
 alter table public.events add constraint events_end_after_start check (
   ends_at is null or ends_at > starts_at
