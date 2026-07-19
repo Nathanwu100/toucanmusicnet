@@ -21,17 +21,30 @@ alter table public.profiles add column if not exists phone_number text;
 -- do not match the required +countrycode format are cleared, and text
 -- notifications without a phone number on file are switched off. Affected
 -- users re-enter their number in Settings.
+-- The format rule is written without a regex because the SQL editor's
+-- statement splitter mishandles a dollar sign inside a quoted string:
+-- a leading +, a nonzero first digit, digits only, 10-15 digits total.
 update public.profiles
 set phone_number = null
 where phone_number is not null
-  and phone_number !~ '^[+][1-9][0-9]{9,14}$';
+  and not (
+    left(phone_number, 1) = '+'
+    and substr(phone_number, 2, 1) <> '0'
+    and translate(substr(phone_number, 2), '0123456789', '') = ''
+    and length(phone_number) between 11 and 16
+  );
 update public.profiles
 set text_notifications = false
 where text_notifications and phone_number is null;
 
 alter table public.profiles drop constraint if exists profiles_phone_number_format;
 alter table public.profiles add constraint profiles_phone_number_format check (
-  phone_number is null or phone_number ~ '^[+][1-9][0-9]{9,14}$'
+  phone_number is null or (
+    left(phone_number, 1) = '+'
+    and substr(phone_number, 2, 1) <> '0'
+    and translate(substr(phone_number, 2), '0123456789', '') = ''
+    and length(phone_number) between 11 and 16
+  )
 );
 alter table public.profiles drop constraint if exists profiles_text_notification_phone;
 alter table public.profiles add constraint profiles_text_notification_phone check (
@@ -239,7 +252,10 @@ create policy "volunteers withdraw their own spot" on public.volunteer_signups
 -- cello), percussion, and voice. Keeping them in a lookup table gives signup
 -- and admin forms one canonical, database-validated source of truth.
 create table if not exists public.instruments (
-  slug text primary key check (slug ~ '^[a-z][a-z0-9-]*$'),
+  slug text primary key check (
+    slug ~ '^[a-z]'
+    and translate(slug, 'abcdefghijklmnopqrstuvwxyz0123456789-', '') = ''
+  ),
   name text not null unique,
   description text,
   sort_order int not null default 0,

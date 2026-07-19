@@ -4,7 +4,10 @@ begin;
 -- cello), percussion, and voice. Keeping them in a lookup table gives signup
 -- and admin forms one canonical, database-validated source of truth.
 create table if not exists public.instruments (
-  slug text primary key check (slug ~ '^[a-z][a-z0-9-]*$'),
+  slug text primary key check (
+    slug ~ '^[a-z]'
+    and translate(slug, 'abcdefghijklmnopqrstuvwxyz0123456789-', '') = ''
+  ),
   name text not null unique,
   description text,
   sort_order int not null default 0,
