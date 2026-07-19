@@ -17,14 +17,13 @@ python3 -m http.server 8080
 
 On localhost, the site runs in **demo mode**: accounts, events, student
 enrollments, and volunteer signups live in your browser's localStorage. The
-seed data includes Strings, Percussion, and Voice schedules with student and
-volunteer capacities; Violin, Piano, and Viola are also in the instrument
-catalog for the admin to schedule.
+seed data includes Piano, Violin, and Viola schedules — the only three
+instruments Toucan supports — with student and volunteer capacities.
 
 - **Demo admin login:** name `admin`, password `toucan2026` (on the login page)
 - **Volunteer login:** `maya@example.com`, `jordan@example.com`, or
   `sam@example.com`, password `toucan2026`
-- **Student login:** `ari@example.com`, password `toucan2026` (Strings)
+- **Student login:** `ari@example.com`, password `toucan2026` (Violin)
 - Sign up as a **volunteer** to claim spots on events; as a **student** to
   choose one instrument, see only that instrument's schedule, and join a
   class with space remaining.
@@ -56,8 +55,8 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    apply `supabase/migrations/20260718000000_student_instruments_and_enrollment.sql`
    (or run `supabase db push`). The current schema includes:
 
-   - `instruments` with the supported Strings, Percussion, Voice, Violin,
-     Piano, and Viola tracks;
+   - `instruments` with the supported Piano, Violin, and Viola tracks (any
+     older tracks such as Strings, Percussion, or Voice are deactivated);
    - `profiles.instrument` and instrument/time-slot/capacity fields on `events`;
    - `student_enrollments`, with one student/class row and active/cancelled status;
    - `join_class` and `leave_class` RPCs that lock the class row, prevent
@@ -69,9 +68,12 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
      reductions that would invalidate active student enrollments.
 
    Legacy schedule rows are backfilled by existing title/description keywords;
-   unmatched legacy rows are assigned to Strings and should be reviewed by an
-   admin. Existing students without an instrument get no schedule and are
-   prompted to choose one in Settings at their next login.
+   unmatched legacy rows are assigned to Violin and should be reviewed by an
+   admin. Events and profiles still on a retired track are moved to a supported
+   instrument where safe — classes with active enrollments and their enrolled
+   students are left for an admin to migrate by hand. Existing students without
+   an instrument get no schedule and are prompted to choose one in Settings at
+   their next login.
 
 3. **Create and confirm the admin account**: in Dashboard → Authentication →
    Users → *Add user*, create `admin@toucanmusic.org` with a unique password

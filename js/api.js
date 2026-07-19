@@ -16,18 +16,15 @@
     !window.supabase;
 
   const INSTRUMENTS = [
-    { slug: "strings", name: "Strings", description: "Violin and cello classes", sort_order: 10 },
-    { slug: "percussion", name: "Percussion", description: "Rhythm, drums, and hand percussion", sort_order: 20 },
-    { slug: "voice", name: "Voice", description: "Singing and chorus classes", sort_order: 30 },
-    { slug: "violin", name: "Violin", description: "Dedicated violin technique and repertoire", sort_order: 40 },
-    { slug: "piano", name: "Piano", description: "Piano and keyboard classes", sort_order: 50 },
-    { slug: "viola", name: "Viola", description: "Dedicated viola technique and ensemble playing", sort_order: 60 },
+    { slug: "piano", name: "Piano", description: "Piano and keyboard classes", sort_order: 10 },
+    { slug: "violin", name: "Violin", description: "Violin technique and repertoire", sort_order: 20 },
+    { slug: "viola", name: "Viola", description: "Viola technique and ensemble playing", sort_order: 30 },
   ];
 
-  // A new key intentionally resets older demo data that has no instrument,
-  // student-capacity, time-slot, or enrollment information.
-  const DB_KEY = "toucan_db_v3";
-  const SESSION_KEY = "toucan_session_v3";
+  // A new key intentionally resets older demo data that still carries the
+  // retired strings, percussion, and voice tracks.
+  const DB_KEY = "toucan_db_v4";
+  const SESSION_KEY = "toucan_session_v4";
 
   function seedDb() {
     const now = new Date();
@@ -60,52 +57,52 @@
         },
         {
           id: "student-1", name: "Ari Chen", email: "ari@example.com",
-          password: "toucan2026", role: "student", instrument: "strings",
+          password: "toucan2026", role: "student", instrument: "violin",
           weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
         },
       ],
       events: [
         {
-          id: "ev-1", time_slot_id: "slot-1", title: "Beginner strings ensemble",
-          description: "Violin and cello basics for ages 8-12. Instruments are provided by the lending library.",
-          event_type: "class", instrument: "strings", starts_at: day(1, 16, 0), ends_at: day(1, 17, 30),
+          id: "ev-1", time_slot_id: "slot-1", title: "Beginner violin ensemble",
+          description: "Violin basics for ages 8-12. Posture, bowing, and first songs played together.",
+          event_type: "class", instrument: "violin", starts_at: day(1, 16, 0), ends_at: day(1, 17, 30),
           location: "Room A - Community Center", volunteer_capacity: 3,
           student_capacity: 8, enrollment_open: true,
         },
         {
-          id: "ev-2", time_slot_id: "slot-2", title: "Rhythm & percussion workshop",
-          description: "Hand drums, shakers, and body percussion. High energy, with extra volunteer hands welcome.",
-          event_type: "class", instrument: "percussion", starts_at: day(3, 15, 30), ends_at: day(3, 17, 0),
+          id: "ev-2", time_slot_id: "slot-2", title: "Piano foundations workshop",
+          description: "Keyboard skills, rhythm, and first chords. High energy, with extra volunteer hands welcome.",
+          event_type: "class", instrument: "piano", starts_at: day(3, 15, 30), ends_at: day(3, 17, 0),
           location: "Main Hall", volunteer_capacity: 4, student_capacity: 10, enrollment_open: true,
         },
         {
-          id: "ev-3", time_slot_id: "slot-3", title: "Voice and chorus rehearsal",
-          description: "A small-group singing class focused on confidence, breathing, and learning one showcase song.",
-          event_type: "class", instrument: "voice", starts_at: day(4, 16, 30), ends_at: day(4, 17, 45),
+          id: "ev-3", time_slot_id: "slot-3", title: "Viola ensemble rehearsal",
+          description: "A small-group viola class focused on tone, listening, and learning one showcase piece.",
+          event_type: "class", instrument: "viola", starts_at: day(4, 16, 30), ends_at: day(4, 17, 45),
           location: "Music Room B", volunteer_capacity: 2, student_capacity: 6, enrollment_open: true,
         },
         {
-          id: "ev-4", time_slot_id: "slot-4", title: "Instrument lending library check-out",
-          description: "Students pick up season instruments. Volunteers help tune, label, and fit cases before families head home.",
-          event_type: "event", instrument: "strings", starts_at: day(5, 13, 0), ends_at: day(5, 15, 0),
+          id: "ev-4", time_slot_id: "slot-4", title: "Violin open practice afternoon",
+          description: "Practice rooms are open for violin students. Volunteers help set up stands and keep sessions on track.",
+          event_type: "event", instrument: "violin", starts_at: day(5, 13, 0), ends_at: day(5, 15, 0),
           location: "Library Annex", volunteer_capacity: 5, student_capacity: 0, enrollment_open: false,
         },
         {
           id: "ev-5", time_slot_id: "slot-5", title: "Family showcase night",
-          description: "Voice students perform what they have been working on this month. Open to families and friends.",
-          event_type: "event", instrument: "voice", starts_at: day(6, 18, 0), ends_at: day(6, 20, 0),
+          description: "Piano students perform what they have been working on this month. Open to families and friends.",
+          event_type: "event", instrument: "piano", starts_at: day(6, 18, 0), ends_at: day(6, 20, 0),
           location: "Main Hall", volunteer_capacity: 6, student_capacity: 0, enrollment_open: false,
         },
         {
-          id: "ev-6", time_slot_id: "slot-6", title: "Percussion volunteer orientation",
-          description: "New volunteers learn how room support works for the percussion program.",
-          event_type: "event", instrument: "percussion", starts_at: day(8, 17, 30), ends_at: day(8, 18, 30),
+          id: "ev-6", time_slot_id: "slot-6", title: "Viola volunteer orientation",
+          description: "New volunteers learn how room support works for the viola program.",
+          event_type: "event", instrument: "viola", starts_at: day(8, 17, 30), ends_at: day(8, 18, 30),
           location: "Welcome Desk", volunteer_capacity: 2, student_capacity: 0, enrollment_open: false,
         },
         {
-          id: "ev-7", time_slot_id: "slot-7", title: "Strings repair and retune night",
-          description: "Donated string instruments get cleaned, repaired, and tuned before returning to students.",
-          event_type: "event", instrument: "strings", starts_at: day(10, 18, 0), ends_at: day(10, 20, 30),
+          id: "ev-7", time_slot_id: "slot-7", title: "Showcase stage setup night",
+          description: "Volunteers prepare the hall, chairs, and stands before the next violin student showcase.",
+          event_type: "event", instrument: "violin", starts_at: day(10, 18, 0), ends_at: day(10, 20, 30),
           location: "Workshop", volunteer_capacity: 4, student_capacity: 0, enrollment_open: false,
         },
       ],

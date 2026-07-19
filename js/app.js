@@ -85,7 +85,7 @@
           <div class="footer-brand-row">
             <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
           </div>
-          <p>Free neighborhood music education, instruments, and performance space.</p>
+          <p>Free neighborhood piano, violin, and viola classes and performance space.</p>
         </div>
         <div class="footer-links" aria-label="Organization">
           <strong>Organization</strong>
@@ -426,8 +426,7 @@
   }
 
   const galleryImages = [
-    { src: "assets/events/music-room.jpg", alt: "Young musicians exploring records and guitar in a music room" },
-    { src: "assets/events/percussion.jpg", alt: "Young musicians singing and playing drums" },
+    { src: "assets/events/music-room.jpg", alt: "Young musicians exploring records together in a music room" },
     { src: "assets/events/ensemble.jpg", alt: "A community music teacher leading a group instrument lesson" },
   ];
 

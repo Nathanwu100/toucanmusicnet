@@ -53,11 +53,11 @@ function loadDemoApi(storage = new DemoStorage()) {
 }
 
 function readDemoDb(storage) {
-  return JSON.parse(storage.getItem("toucan_db_v3"));
+  return JSON.parse(storage.getItem("toucan_db_v4"));
 }
 
 function writeDemoDb(storage, db) {
-  storage.setItem("toucan_db_v3", JSON.stringify(db));
+  storage.setItem("toucan_db_v4", JSON.stringify(db));
 }
 
 module.exports = { DemoStorage, loadDemoApi, readDemoDb, writeDemoDb };

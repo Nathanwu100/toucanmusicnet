@@ -248,9 +248,9 @@ create policy "volunteers withdraw their own spot" on public.volunteer_signups
 -- This section is also shipped as the incremental migration in
 -- supabase/migrations/20260718000000_student_instruments_and_enrollment.sql.
 
--- Toucan's existing schedule uses three program tracks: strings (violin and
--- cello), percussion, and voice. Keeping them in a lookup table gives signup
--- and admin forms one canonical, database-validated source of truth.
+-- Toucan teaches exactly three instruments: piano, violin, and viola. Keeping
+-- them in a lookup table gives signup and admin forms one canonical,
+-- database-validated source of truth.
 create table if not exists public.instruments (
   slug text primary key check (
     slug ~ '^[a-z]'
@@ -265,16 +265,21 @@ create table if not exists public.instruments (
 
 insert into public.instruments (slug, name, description, sort_order)
 values
-  ('strings', 'Strings', 'Violin and cello classes', 10),
-  ('percussion', 'Percussion', 'Rhythm, drums, and hand percussion', 20),
-  ('voice', 'Voice', 'Singing and chorus classes', 30),
-  ('violin', 'Violin', 'Dedicated violin technique and repertoire', 40),
-  ('piano', 'Piano', 'Piano and keyboard classes', 50),
-  ('viola', 'Viola', 'Dedicated viola technique and ensemble playing', 60)
+  ('piano', 'Piano', 'Piano and keyboard classes', 10),
+  ('violin', 'Violin', 'Violin technique and repertoire', 20),
+  ('viola', 'Viola', 'Viola technique and ensemble playing', 30)
 on conflict (slug) do update set
   name = excluded.name,
   description = excluded.description,
-  sort_order = excluded.sort_order;
+  sort_order = excluded.sort_order,
+  active = true;
+
+-- Any other track (strings, percussion, and voice on older databases) is
+-- retired: the rows stay so existing records keep valid references, but
+-- inactive instruments never appear as signup, settings, or admin options.
+update public.instruments
+set active = false
+where slug not in ('piano', 'violin', 'viola');
 
 alter table public.profiles
   add column if not exists instrument text references public.instruments (slug);
@@ -290,13 +295,13 @@ alter table public.events
 
 -- Legacy records did not have an instrument. Match the program language that
 -- was already used by the site. Unmatched general events are assigned to the
--- Strings track so no row is left publicly unscoped; admins should review
+-- Violin track so no row is left publicly unscoped; admins should review
 -- those records after applying the migration.
 update public.events
 set instrument = case
-  when concat_ws(' ', title, description) ~* '(percussion|rhythm|drum)' then 'percussion'
-  when concat_ws(' ', title, description) ~* '(voice|chorus|sing)' then 'voice'
-  else 'strings'
+  when concat_ws(' ', title, description) ~* 'viola' then 'viola'
+  when concat_ws(' ', title, description) ~* '(piano|keyboard)' then 'piano'
+  else 'violin'
 end
 where instrument is null;
 
@@ -354,6 +359,31 @@ create index if not exists student_enrollments_instrument_idx
   on public.student_enrollments (instrument);
 create index if not exists student_enrollments_time_slot_idx
   on public.student_enrollments (time_slot_id);
+
+-- Older databases may still have events and student profiles on retired
+-- tracks. Move them onto supported instruments where that is safe. Classes
+-- with active enrollments keep their instrument frozen by the enrollment
+-- guard, and enrolled students keep their profile instrument, so those rows
+-- are left for an admin to migrate by hand.
+update public.events e
+set instrument = case
+  when concat_ws(' ', e.title, e.description) ~* 'viola' then 'viola'
+  when concat_ws(' ', e.title, e.description) ~* '(piano|keyboard)' then 'piano'
+  else 'violin'
+end
+where e.instrument in (select slug from public.instruments where not active)
+  and not exists (
+    select 1 from public.student_enrollments se
+    where se.class_id = e.id and se.status = 'active'
+  );
+
+update public.profiles p
+set instrument = null
+where p.instrument in (select slug from public.instruments where not active)
+  and not exists (
+    select 1 from public.student_enrollments se
+    where se.student_id = p.id and se.status = 'active'
+  );
 
 create or replace function public.current_profile_role()
 returns text
