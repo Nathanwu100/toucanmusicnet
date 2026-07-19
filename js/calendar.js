@@ -148,8 +148,11 @@
     parent.appendChild(row);
   }
 
+  // Every logged-in account sees the live student spot count; only students
+  // get join/leave controls and only the admin sees the roster (capacity
+  // itself is set in the admin editor).
   async function addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId) {
-    if (event.event_type !== "class" || (!isStudent && !isAdmin)) return;
+    if (event.event_type !== "class" || !user) return;
     const left = Math.max(0, Number(event.spots_left) || 0);
     const capacity = Math.max(0, Number(event.student_capacity) || 0);
     const capacityRow = element("div", "day-enrollment-row");
@@ -344,16 +347,18 @@
     $("#f-student-capacity").required = isClass;
   }
 
-  function openEditor(event) {
+  function openEditor(event, defaultType = "class") {
     editingId = event ? event.id : null;
+    const type = event?.event_type || defaultType;
+    const kind = type === "class" ? "class" : "event";
     const defaultStart = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 16, 0);
     const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
     $("#e-title").textContent = event
-      ? "Edit event"
-      : `New event for ${selectedDate.toLocaleDateString([], { month: "long", day: "numeric" })}`;
+      ? `Edit ${kind}`
+      : `New ${kind} for ${selectedDate.toLocaleDateString([], { month: "long", day: "numeric" })}`;
     $("#e-error").classList.remove("show");
     $("#f-title").value = event?.title || "";
-    $("#f-type").value = event?.event_type || "class";
+    $("#f-type").value = type;
     $("#f-instrument").value = event?.instrument || instruments[0]?.slug || "";
     $("#f-start").value = event ? toLocalInput(event.starts_at) : toLocalInput(defaultStart);
     $("#f-end").value = event?.ends_at ? toLocalInput(event.ends_at) : toLocalInput(defaultEnd);
@@ -451,8 +456,10 @@
 
   $("#prev").addEventListener("click", () => selectDate(new Date(current.getFullYear(), current.getMonth() - 1, 1)));
   $("#next").addEventListener("click", () => selectDate(new Date(current.getFullYear(), current.getMonth() + 1, 1)));
-  $("#new-event").addEventListener("click", () => openEditor(null));
-  $("#day-new-event").addEventListener("click", () => openEditor(null));
+  $("#new-class").addEventListener("click", () => openEditor(null, "class"));
+  $("#new-event").addEventListener("click", () => openEditor(null, "event"));
+  $("#day-new-class").addEventListener("click", () => openEditor(null, "class"));
+  $("#day-new-event").addEventListener("click", () => openEditor(null, "event"));
   $("#f-type").addEventListener("change", syncClassFields);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
 
@@ -478,7 +485,9 @@
       });
     }
     if (user?.role === "admin") {
+      $("#new-class").hidden = false;
       $("#new-event").hidden = false;
+      $("#day-new-class").hidden = false;
       $("#day-new-event").hidden = false;
     }
     try {

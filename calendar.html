@@ -32,7 +32,8 @@
       <button class="btn btn-sm icon-btn" id="prev" aria-label="Previous month" data-tooltip="Previous month"><iconify-icon icon="pixelarticons:chevron-left" aria-hidden="true"></iconify-icon></button>
       <span class="cal-title" id="cal-title"></span>
       <button class="btn btn-sm icon-btn" id="next" aria-label="Next month" data-tooltip="Next month"><iconify-icon icon="pixelarticons:chevron-right" aria-hidden="true"></iconify-icon></button>
-      <button class="btn btn-beak btn-sm" id="new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>New event</button>
+      <button class="btn btn-beak btn-sm" id="new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
+      <button class="btn btn-beak btn-sm" id="new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
     </div>
 
     <div class="calendar-context rise" id="calendar-context" role="status" aria-live="polite">
@@ -64,6 +65,7 @@
         </div>
         <div class="day-panel-toolbar">
           <p id="selected-day-summary"></p>
+          <button class="btn btn-beak btn-sm" id="day-new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
           <button class="btn btn-beak btn-sm" id="day-new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
         </div>
         <div class="day-event-list" id="day-event-list"></div>
@@ -144,6 +146,6 @@
   <script src="js/tutorial.js"></script>
   <script src="js/background.js"></script>
   <script src="js/app.js?v=9"></script>
-  <script src="js/calendar.js?v=6"></script>
+  <script src="js/calendar.js?v=7"></script>
 </body>
 </html>

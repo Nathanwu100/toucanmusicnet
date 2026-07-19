@@ -208,6 +208,31 @@ test("admin can assign a class to the violin, piano, and viola instruments", asy
   assert.ok(!(await api.listEvents()).some((event) => event.id === created.id));
 });
 
+test("volunteer accounts also receive the student spots-left counts", async () => {
+  const { api } = loadDemoApi();
+  await api.login("maya@example.com", "toucan2026");
+  const visible = await api.listEvents();
+  const classRow = visible.find((event) => event.id === "ev-1");
+  assert.equal(classRow.spots_left, 8);
+  assert.equal(classRow.student_capacity, 8);
+});
+
+test("admin can schedule concurrent classes for different instruments", async () => {
+  const { api } = loadDemoApi();
+  await api.login("admin", "toucan2026");
+  const starts = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const shared = {
+    event_type: "class", starts_at: starts.toISOString(),
+    ends_at: new Date(starts.getTime() + 3600000).toISOString(),
+    volunteer_capacity: 1, student_capacity: 6, enrollment_open: true,
+  };
+  const piano = await api.createEvent({ ...shared, title: "Piano basics", instrument: "piano", location: "Room A" });
+  const violin = await api.createEvent({ ...shared, title: "Violin basics", instrument: "violin", location: "Room B" });
+  const all = await api.listEvents();
+  assert.ok(all.some((event) => event.id === piano.id));
+  assert.ok(all.some((event) => event.id === violin.id));
+});
+
 test("stored demo databases gain newly added catalog instruments without losing data", async () => {
   const { api, storage } = loadDemoApi();
   await api.listInstruments();
