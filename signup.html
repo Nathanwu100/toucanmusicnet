@@ -9,14 +9,14 @@
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
   <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
-  <link rel="stylesheet" href="css/style.css?v=8" />
+  <link rel="stylesheet" href="css/style.css?v=9" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
     <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
     <div class="nav-links">
       <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
-      <a class="nav-icon-link" href="calendar.html?v=2" aria-label="Calendar" data-tooltip="Calendar"><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
+      <a class="nav-icon-link" href="calendar.html?v=3" aria-label="Calendar" data-tooltip="Calendar"><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
       <span class="nav-auth" data-nav-auth>
         <button class="nav-icon-button" type="button" data-open-settings aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
         <a class="nav-icon-link" href="login.html" aria-label="Log in" data-tooltip="Log in"><iconify-icon icon="pixelarticons:login" aria-hidden="true"></iconify-icon></a>
@@ -46,6 +46,13 @@
             <span>Claim open volunteer spots on classes and events, and see how many are left.</span>
           </label>
         </fieldset>
+        <div class="field instrument-signup-field" id="student-instrument-field" hidden>
+          <label for="instrument">Select instrument</label>
+          <select id="instrument" aria-describedby="instrument-hint">
+            <option value="">Loading instruments…</option>
+          </select>
+          <p class="hint" id="instrument-hint">Your choice sets the classes and events shown on your calendar. You can change it later in Settings when you are not enrolled in a class.</p>
+        </div>
         <div class="field">
           <label for="name">Full name</label>
           <input type="text" id="name" autocomplete="name" required />
@@ -70,11 +77,47 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js?v=2"></script>
-  <script src="js/api.js?v=6"></script>
+  <script src="js/api.js?v=7"></script>
   <script src="js/tutorial.js"></script>
   <script src="js/background.js"></script>
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=9"></script>
   <script>
+    const instrumentField = document.getElementById("student-instrument-field");
+    const instrumentSelect = document.getElementById("instrument");
+
+    async function loadSignupInstruments() {
+      try {
+        const instruments = await ToucanAPI.listInstruments();
+        instrumentSelect.innerHTML = '<option value="">Choose an instrument</option>';
+        instruments.forEach((instrument) => {
+          const option = document.createElement("option");
+          option.value = instrument.slug;
+          option.textContent = instrument.description
+            ? `${instrument.name} — ${instrument.description}`
+            : instrument.name;
+          instrumentSelect.appendChild(option);
+        });
+      } catch (error) {
+        instrumentSelect.innerHTML = '<option value="">Instruments unavailable</option>';
+        const err = document.getElementById("error");
+        err.textContent = "We could not load the instrument list. Please refresh and try again.";
+        err.classList.add("show");
+      }
+    }
+
+    function syncInstrumentField() {
+      const role = document.querySelector('input[name="role"]:checked')?.value;
+      const isStudent = role === "student";
+      instrumentField.hidden = !isStudent;
+      instrumentSelect.required = isStudent;
+      if (!isStudent) instrumentSelect.value = "";
+    }
+
+    document.querySelectorAll('input[name="role"]').forEach((input) => {
+      input.addEventListener("change", syncInstrumentField);
+    });
+    loadSignupInstruments();
+
     document.getElementById("signup-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const err = document.getElementById("error");
@@ -86,6 +129,12 @@
         err.classList.add("show");
         return;
       }
+      if (role.value === "student" && !instrumentSelect.value) {
+        err.textContent = "Select an instrument to finish creating your student account.";
+        err.classList.add("show");
+        instrumentSelect.focus();
+        return;
+      }
       btn.disabled = true;
       btn.textContent = "Creating account…";
       try {
@@ -94,11 +143,12 @@
           email: document.getElementById("email").value.trim(),
           password: document.getElementById("password").value,
           role: role.value,
+          instrument: role.value === "student" ? instrumentSelect.value : null,
         });
         ToucanTour.queueFirstVisit(user);
         btn.textContent = "Account created";
         await musicNoteConfetti(btn);
-        window.location.href = "calendar.html?v=2";
+        window.location.href = "calendar.html?v=3";
       } catch (ex) {
         err.textContent = ex.message;
         err.classList.add("show");

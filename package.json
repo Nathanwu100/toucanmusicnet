@@ -1,0 +1,8 @@
+{
+  "name": "toucan-music",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check js/api.js && node --check js/app.js && node --check js/calendar.js"
+  }
+}

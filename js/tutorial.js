@@ -12,7 +12,7 @@
   function replay(user) {
     if (!user) return;
     sessionStorage.setItem(PENDING_KEY, user.id);
-    window.location.href = "calendar.html?v=2";
+    window.location.href = "calendar.html?v=3";
   }
 
   function waitForCalendar(attempt = 0) {

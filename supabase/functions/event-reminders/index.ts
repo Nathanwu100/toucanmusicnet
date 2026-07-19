@@ -75,7 +75,7 @@ Deno.serve(async () => {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, class_reminders, text_notifications, phone_number")
+    .select("id, full_name, role, instrument, class_reminders, text_notifications, phone_number")
     .or("class_reminders.eq.true,text_notifications.eq.true");
 
   const { data: userList } = await supabase.auth.admin.listUsers({ perPage: 1000 });
@@ -95,6 +95,7 @@ Deno.serve(async () => {
     });
 
     for (const p of profiles ?? []) {
+      if (p.role === "student" && (!p.instrument || p.instrument !== ev.instrument)) continue;
       const email = emailById.get(p.id);
 
       async function deliver(channel: "email" | "sms", send: () => Promise<{ ok: boolean; error?: string }>) {

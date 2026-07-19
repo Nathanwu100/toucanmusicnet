@@ -512,6 +512,11 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .cal-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
 .cal-head h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); margin-right: auto; }
 .cal-title { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; min-width: 11ch; text-align: center; }
+.calendar-context { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; padding: 0.8rem 1rem; border-left: 4px solid var(--sky-strong); border-radius: 5px; background: var(--wash); color: var(--ink-soft); font-size: 0.9rem; }
+.calendar-context a { color: var(--ink); font-weight: 700; }
+.admin-instrument-filter { display: flex; align-items: center; gap: 0.55rem; flex: 0 0 auto; }
+.admin-instrument-filter label { font-size: 0.78rem; font-weight: 700; }
+.admin-instrument-filter select { min-width: 150px; padding: 0.42rem 0.6rem; border: 1px solid var(--line); border-radius: 5px; background: var(--paper-raise); color: var(--ink); font: inherit; }
 
 .calendar-layout {
   display: grid;
@@ -613,17 +618,24 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .day-event-item[open] { box-shadow: var(--shadow-1); }
 .day-event-summary { padding: 1rem; cursor: pointer; }
 .day-event-summary::marker { color: var(--ink-soft); }
-.day-event-summary-inner { display: inline-grid; width: calc(100% - 1.4rem); grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 0.65rem; vertical-align: top; }
+.day-event-summary-inner { display: inline-grid; width: calc(100% - 1.4rem); grid-template-columns: minmax(0, 1fr); align-items: start; gap: 0.65rem; vertical-align: top; }
+.event-badges { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
 .day-event-summary-copy { display: grid; min-width: 0; gap: 0.18rem; }
 .day-event-summary-copy strong { font-family: var(--font-display); font-size: 1.05rem; line-height: 1.25; }
 .day-event-summary-time { color: var(--ink-soft); font-size: 0.8rem; }
 .day-event-body { padding: 0 1rem 1rem; }
 .event-type { flex: 0 0 auto; margin-top: 0.1rem; padding: 0.15rem 0.4rem; border-left: 3px solid var(--ink); background: var(--wash); color: var(--ink-soft); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
 .event-type.class { border-left-color: var(--beak-deep); background: rgba(233, 169, 120, 0.22); }
+.instrument-badge, .enrolled-badge { padding: 0.15rem 0.4rem; border-radius: 4px; background: #e1ece8; color: var(--leaf-strong); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+.enrolled-badge { background: #fff0cf; color: #81521f; }
+.day-event-item.is-enrolled { border-color: var(--beak-deep); box-shadow: inset 4px 0 0 var(--beak); }
+.chip.enrolled { box-shadow: inset 0 0 0 1px var(--beak-deep); }
 .day-event-meta { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.7rem; color: var(--ink-soft); font-size: 0.86rem; }
 .day-event-meta iconify-icon { flex: 0 0 auto; font-size: 17px; color: var(--ink); }
 .day-event-description { margin-top: 0.8rem; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.5; }
 .day-volunteer-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-top: 0.9rem; flex-wrap: wrap; }
+.day-enrollment-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.enrollment-linked { margin-top: 0.65rem; color: var(--leaf-strong); font-size: 0.82rem; font-weight: 700; }
 .day-roster { margin-top: 0.65rem; color: var(--ink-soft); font-size: 0.82rem; }
 .day-event-actions { display: flex; gap: 0.55rem; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
 .day-empty { min-height: 180px; display: grid; place-content: center; justify-items: center; gap: 0.7rem; padding: 1.5rem; color: var(--ink-soft); text-align: center; border: 1px dashed var(--line); border-radius: 6px; }
@@ -658,6 +670,11 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .modal .when { color: var(--beak-deep); font-weight: 600; margin-bottom: 0.8rem; }
 .modal .meta { color: var(--ink-soft); font-size: 0.95rem; margin-bottom: 1rem; }
 .modal-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1.4rem; }
+.class-enrollment-fields { margin: 0.2rem 0 1rem; padding: 1rem; border-left: 3px solid var(--beak-deep); background: #fff9ec; }
+.checkbox-row { display: flex; align-items: flex-start; gap: 0.7rem; cursor: pointer; }
+.checkbox-row input { width: 18px; height: 18px; margin-top: 0.15rem; accent-color: var(--beak-deep); }
+.checkbox-row strong, .checkbox-row small { display: block; }
+.checkbox-row small { margin-top: 0.15rem; color: var(--ink-soft); }
 
 .spots {
   display: inline-flex;
@@ -764,11 +781,14 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .settings-drawer-body { padding: 1.3rem; }
 .settings-who { margin-bottom: 1rem; color: var(--ink-soft); font-size: 0.88rem; }
 .settings-drawer .settings-group { margin-top: 0; padding-top: 0; border-top: 0; }
+.settings-drawer .settings-group + .settings-group { margin-top: 1.3rem; padding-top: 1.3rem; border-top: 1px solid var(--line); }
 .settings-drawer .settings-group-head h3 { font-size: 1.15rem; }
 .settings-drawer .toggle-row { padding: 0.85rem; }
 .settings-drawer .toggle-row p { font-size: 0.82rem; }
 .phone-field { margin: 1rem 0 0; padding: 1rem; border-left: 3px solid var(--sky); background: var(--wash); }
 .phone-field[hidden] { display: none; }
+.instrument-setting-field { margin: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.instrument-change-warning { margin-top: 0.65rem; padding: 0.65rem 0.75rem; border-left: 3px solid var(--coral-strong); background: #fdeee9; color: #783724; font-size: 0.8rem; line-height: 1.45; }
 .save-phone { margin-top: 0.8rem; }
 .drawer-actions { display: flex; align-items: center; gap: 0.7rem; margin-top: 1.2rem; flex-wrap: wrap; }
 .settings-save-status { min-height: 1.5em; margin-top: 0.8rem; color: var(--leaf-strong); font-size: 0.86rem; font-weight: 600; }
@@ -929,6 +949,9 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .chip-more { margin-top: 2px; font-size: 0.64rem; }
   .cal-head h1 { width: 100%; }
   .cal-title { min-width: 9.5ch; font-size: 1.08rem; }
+  .calendar-context { align-items: stretch; flex-direction: column; }
+  .admin-instrument-filter { align-items: stretch; flex-direction: column; }
+  .admin-instrument-filter select { width: 100%; }
   .day-panel { padding: 1rem; }
   .day-panel-toolbar { align-items: flex-start; }
   .footer-inner { grid-template-columns: 1fr; padding-block: 2.5rem; }

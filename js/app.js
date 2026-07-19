@@ -58,7 +58,7 @@
       <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
       <div class="nav-links">
         <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"${homeCurrent}><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
-        <a class="nav-icon-link" href="calendar.html?v=2" aria-label="Calendar" data-tooltip="Calendar"${calendarCurrent}><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
+        <a class="nav-icon-link" href="calendar.html?v=3" aria-label="Calendar" data-tooltip="Calendar"${calendarCurrent}><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
         <span class="nav-auth" data-nav-auth>${authMarkup}</span>
       </div>`;
 
@@ -67,6 +67,7 @@
       window.location.href = "index.html";
     });
     document.body.dataset.role = currentUser ? currentUser.role : "guest";
+    document.body.dataset.instrument = currentUser?.instrument || "";
     return currentUser;
   }
 
@@ -195,9 +196,29 @@
       return;
     }
 
+    const fallbackInstrumentOptions = api.instruments
+      .map((instrument) => `<option value="${escapeHtml(instrument.slug)}">${escapeHtml(instrument.name)}</option>`)
+      .join("");
+    const instrumentSection = currentUser.role === "student" ? `
+        <section class="settings-group instrument-settings-group" aria-labelledby="instrument-title">
+          <div class="settings-group-head">
+            <span class="settings-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:music"></iconify-icon></span>
+            <div><h3 id="instrument-title">Instrument</h3><p>This controls which classes and events you can access.</p></div>
+          </div>
+          <div class="field instrument-setting-field">
+            <label for="drawer-instrument">Selected instrument</label>
+            <select id="drawer-instrument" required>
+              <option value="">Choose an instrument</option>
+              ${fallbackInstrumentOptions}
+            </select>
+            <p class="instrument-change-warning">If you are enrolled in a class, leave or transfer that class before changing instruments. Your enrollment will never be deleted automatically.</p>
+          </div>
+        </section>` : "";
+
     content.innerHTML = `
       <p class="settings-who"></p>
       <form id="settings-form">
+        ${instrumentSection}
         <section class="settings-group" aria-labelledby="notification-title">
           <div class="settings-group-head">
             <span class="settings-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:bell"></iconify-icon></span>
@@ -232,16 +253,34 @@
         <p class="settings-save-status" data-settings-status role="status" aria-live="polite"></p>
       </form>`;
 
-    content.querySelector(".settings-who").textContent = `Notification preferences for ${currentUser.name}.`;
+    content.querySelector(".settings-who").textContent = `Account settings for ${currentUser.name}.`;
     const digest = content.querySelector("#drawer-pref-digest");
     const reminders = content.querySelector("#drawer-pref-reminders");
     const texts = content.querySelector("#drawer-pref-texts");
     const phone = content.querySelector("#drawer-phone");
     const phoneField = content.querySelector("[data-phone-field]");
+    const instrument = content.querySelector("#drawer-instrument");
     digest.checked = currentUser.weekly_digest !== false;
     reminders.checked = currentUser.class_reminders !== false;
     texts.checked = currentUser.text_notifications === true;
     phone.value = currentUser.phone_number || "";
+    if (instrument) {
+      instrument.value = currentUser.instrument || "";
+      instrument.dataset.savedValue = currentUser.instrument || "";
+      api.listInstruments().then((instruments) => {
+        const selected = instrument.value;
+        instrument.innerHTML = '<option value="">Choose an instrument</option>';
+        instruments.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.slug;
+          option.textContent = item.description ? `${item.name} — ${item.description}` : item.name;
+          instrument.appendChild(option);
+        });
+        instrument.value = selected;
+      }).catch(() => {
+        toast("The supported instrument list could not be refreshed.", "error");
+      });
+    }
 
     const syncPhone = () => {
       phoneField.hidden = !texts.checked;
@@ -255,6 +294,11 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const digits = phone.value.replace(/\D/g, "");
+      if (instrument && !instrument.value) {
+        toast("Choose an instrument before saving student settings.", "error");
+        instrument.focus();
+        return;
+      }
       if (texts.checked && (!phone.value.trim().startsWith("+") || digits.length < 10 || digits.length > 15)) {
         toast("Enter a valid mobile number beginning with + and its country code.", "error");
         phone.focus();
@@ -264,6 +308,16 @@
       submit.disabled = true;
       saveStatus.textContent = "Saving...";
       try {
+        const instrumentChanged = instrument && instrument.value !== instrument.dataset.savedValue;
+        if (instrumentChanged) {
+          saveStatus.textContent = "Checking your current enrollment...";
+          currentUser = await api.updateInstrument(instrument.value);
+          instrument.dataset.savedValue = currentUser.instrument;
+          document.body.dataset.instrument = currentUser.instrument;
+          window.dispatchEvent(new CustomEvent("toucan:instrument-changed", {
+            detail: { instrument: currentUser.instrument, user: currentUser },
+          }));
+        }
         currentUser = await api.updatePrefs({
           weekly_digest: digest.checked,
           class_reminders: reminders.checked,
@@ -271,7 +325,9 @@
           phone_number: texts.checked ? `+${digits}` : null,
         });
         phone.value = currentUser.phone_number || "";
-        saveStatus.textContent = submit.value === "phone"
+        saveStatus.textContent = instrumentChanged
+          ? `Instrument changed to ${currentUser.instrument_name}. Your schedule has been refreshed.`
+          : submit.value === "phone"
           ? "Your mobile number is saved."
           : "Your settings are saved.";
         toast(saveStatus.textContent, "beak");
@@ -321,7 +377,14 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && settingsDrawer.classList.contains("open")) closeSettings();
     });
-    if (new URLSearchParams(window.location.search).get("settings") === "open") openSettings();
+    const shouldOpen = new URLSearchParams(window.location.search).get("settings") === "open";
+    if (shouldOpen || (currentUser?.role === "student" && currentUser.needs_instrument)) {
+      openSettings();
+      if (currentUser?.needs_instrument) {
+        toast("Choose an instrument to unlock your student calendar.", "error");
+        settingsDrawer.querySelector("#drawer-instrument")?.focus();
+      }
+    }
   }
 
   function initFloatFollow(root = document) {
@@ -382,7 +445,7 @@
         const link = document.createElement("a");
         const date = new Date(event.starts_at);
         link.className = "event-gallery-card float-follow";
-        link.href = "calendar.html?v=2";
+        link.href = "calendar.html?v=3";
         link.innerHTML = `
           <img src="${image.src}" alt="${image.alt}" ${index ? 'loading="lazy"' : ""}>
           <div class="event-gallery-copy">
@@ -407,7 +470,7 @@
         const date = new Date(event.starts_at);
         const row = document.createElement("a");
         row.className = "notification-item";
-        row.href = "calendar.html?v=2";
+        row.href = "calendar.html?v=3";
         const when = document.createElement("span");
         const name = document.createElement("strong");
         when.textContent = date.toLocaleDateString([], { month: "short", day: "numeric" }) +
@@ -471,6 +534,10 @@
     window.ToucanTour?.maybeAutoStart(user);
     checkReminders(user);
     setInterval(() => checkReminders(user), 5 * 60 * 1000);
+
+    window.addEventListener("toucan:instrument-changed", () => {
+      initHomeSchedule();
+    });
 
     if (api.demoMode && !sessionStorage.getItem("toucan_demo_notice")) {
       sessionStorage.setItem("toucan_demo_notice", "1");

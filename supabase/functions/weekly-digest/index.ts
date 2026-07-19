@@ -58,7 +58,7 @@ Deno.serve(async () => {
 
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, full_name, weekly_digest")
+    .select("id, full_name, role, instrument, weekly_digest")
     .eq("weekly_digest", true);
   if (pErr) return new Response(pErr.message, { status: 500 });
 
@@ -66,8 +66,7 @@ Deno.serve(async () => {
   const { data: userList } = await supabase.auth.admin.listUsers({ perPage: 1000 });
   const emailById = new Map(userList.users.map((u) => [u.id, u.email]));
 
-  const rows = events
-    .map((ev) => {
+  const scheduleRows = (visibleEvents: any[]) => visibleEvents.map((ev) => {
       const when = new Date(ev.starts_at).toLocaleString("en-US", {
         weekday: "long",
         month: "short",
@@ -77,12 +76,12 @@ Deno.serve(async () => {
       });
       return `<tr>
         <td style="padding:8px 12px;border-bottom:1px solid #e9f1ef"><strong>${ev.title}</strong><br>
-          <span style="color:#46595e">${when}${ev.location ? " · " + ev.location : ""}</span></td>
+          <span style="color:#46595e">${when}${ev.location ? " · " + ev.location : ""} · ${ev.instrument}</span></td>
       </tr>`;
     })
     .join("");
 
-  const html = (name: string) => `
+  const html = (name: string, rows: string) => `
     <div style="font-family:Helvetica,Arial,sans-serif;color:#16282d;max-width:560px">
       <h2 style="margin-bottom:4px">This week at Toucan Music</h2>
       <p style="color:#46595e">Hi ${name} — here's what's coming up in the next seven days.</p>
@@ -96,12 +95,16 @@ Deno.serve(async () => {
   let sent = 0;
   const failures: { email: string; error: string }[] = [];
   for (const p of profiles ?? []) {
+    const visibleEvents = p.role === "student"
+      ? events.filter((event) => p.instrument && event.instrument === p.instrument)
+      : events;
+    if (!visibleEvents.length) continue;
     const email = emailById.get(p.id);
     if (!email) continue;
     const result = await sendEmail(
       email,
       "Your Toucan week: upcoming classes & events",
-      html(p.full_name)
+      html(p.full_name, scheduleRows(visibleEvents))
     );
     if (result.ok) sent++;
     else failures.push({ email, error: result.error! });
