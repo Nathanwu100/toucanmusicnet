@@ -11,3 +11,5 @@
 # Local deployment-tool state
 .wrangler/
 supabase/.temp/
+
+.dev.vars*
