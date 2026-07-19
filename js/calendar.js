@@ -151,8 +151,11 @@
   async function addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId) {
     if (event.event_type !== "class" || (!isStudent && !isAdmin)) return;
     const left = Math.max(0, Number(event.spots_left) || 0);
+    const capacity = Math.max(0, Number(event.student_capacity) || 0);
     const capacityRow = element("div", "day-enrollment-row");
-    const spotText = left === 0 ? "Class full" : `${left} spot${left === 1 ? "" : "s"} left`;
+    const spotText = left === 0
+      ? `Class full (0/${capacity} student spots)`
+      : `${left}/${capacity} student spot${capacity === 1 ? "" : "s"} left`;
     const spots = element("span", `spots${left === 0 ? " full" : ""}`, spotText);
     capacityRow.appendChild(spots);
 

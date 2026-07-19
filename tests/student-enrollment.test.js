@@ -176,6 +176,52 @@ test("two student sessions racing for one demo spot produce one enrollment", asy
   assert.equal(readDemoDb(first.storage).studentEnrollments.filter((row) => row.class_id === "ev-1" && row.status === "active").length, 1);
 });
 
+test("admin can assign a class to the violin, piano, and viola instruments", async () => {
+  const { api } = loadDemoApi();
+  const catalog = await api.listInstruments();
+  for (const slug of ["violin", "piano", "viola"]) {
+    assert.ok(catalog.some((instrument) => instrument.slug === slug), `${slug} is a supported instrument`);
+  }
+
+  await api.login("admin", "toucan2026");
+  const starts = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const created = await api.createEvent({
+    title: "Beginner viola", event_type: "class", instrument: "viola",
+    starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 3600000).toISOString(),
+    location: "Room C", volunteer_capacity: 1, student_capacity: 4, enrollment_open: true,
+  });
+  await api.logout();
+
+  const violaStudent = await api.signup({
+    name: "Viola Student", email: "viola@example.com", password: "password1",
+    role: "student", instrument: "viola",
+  });
+  assert.equal(violaStudent.instrument, "viola");
+  const visible = await api.listEvents();
+  assert.deepEqual(visible.map((event) => event.id), [created.id]);
+  assert.equal(visible[0].spots_left, 4);
+  const joined = await api.joinClass(created.id);
+  assert.equal(joined.spots_left, 3);
+  await api.logout();
+
+  await api.login(student.email, student.password);
+  assert.ok(!(await api.listEvents()).some((event) => event.id === created.id));
+});
+
+test("stored demo databases gain newly added catalog instruments without losing data", async () => {
+  const { api, storage } = loadDemoApi();
+  await api.listInstruments();
+  const db = readDemoDb(storage);
+  db.instruments = db.instruments.filter((instrument) => !["violin", "piano", "viola"].includes(instrument.slug));
+  writeDemoDb(storage, db);
+
+  const catalog = await api.listInstruments();
+  for (const slug of ["strings", "percussion", "voice", "violin", "piano", "viola"]) {
+    assert.ok(catalog.some((instrument) => instrument.slug === slug), `${slug} survives the upgrade`);
+  }
+  assert.ok(readDemoDb(storage).users.some((user) => user.email === student.email));
+});
+
 test("migration contains server-side RLS and atomic overbooking defenses", () => {
   const sql = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20260718000000_student_instruments_and_enrollment.sql"), "utf8");
   assert.match(sql, /where id = target_class_id for update/i);
@@ -185,4 +231,7 @@ test("migration contains server-side RLS and atomic overbooking defenses", () =>
   assert.match(sql, /instrument = \(select public\.current_instrument\(\)\)/i);
   assert.match(sql, /revoke insert, update, delete on public\.student_enrollments/i);
   assert.match(sql, /guard_enrolled_class_changes/i);
+  assert.match(sql, /ensure_current_profile/i);
+  assert.match(sql, /auth_created_at >= catalog_created_at/i);
+  assert.match(sql, /role = 'student'\s+and instrument is not null/i);
 });

@@ -25,10 +25,10 @@ alter table public.profiles add constraint profiles_text_notification_phone chec
   not text_notifications or phone_number is not null
 );
 
--- Profiles are created by the site on first login (Supabase no longer
--- allows user-defined triggers on auth.users). The insert policy below
--- clamps self-created roles to student/volunteer, so nobody can make
--- themselves admin; the admin profile is inserted manually (see README).
+-- Profiles are created by the narrow ensure_current_profile RPC defined
+-- below (Supabase no longer allows user-defined triggers on auth.users).
+-- The final insert policy still clamps direct self-creation so nobody can
+-- make themselves admin; the admin profile is inserted manually (README).
 
 -- Clean up the old trigger approach if a previous version ran.
 drop trigger if exists on_auth_user_created on auth.users;
@@ -131,13 +131,8 @@ drop policy if exists "read own profile" on public.profiles;
 create policy "read own profile" on public.profiles
   for select to authenticated using (auth.uid() = id or (select public.is_admin()));
 
--- First-login profile creation; role is clamped so nobody self-registers
--- as admin.
+-- The final first-login creation policy is defined after instruments below.
 drop policy if exists "create own profile" on public.profiles;
-create policy "create own profile" on public.profiles
-  for insert to authenticated with check (
-    auth.uid() = id and role in ('student', 'volunteer')
-  );
 
 drop policy if exists "update own prefs" on public.profiles;
 
@@ -180,8 +175,7 @@ revoke execute on function public.update_notification_preferences(boolean, boole
 grant execute on function public.update_notification_preferences(boolean, boolean, boolean, text) to authenticated;
 
 drop policy if exists "events readable by everyone" on public.events;
-create policy "events readable by everyone" on public.events
-  for select to anon, authenticated using (true);
+-- The final role/instrument-scoped select policy is defined below.
 drop policy if exists "admin manages events" on public.events;
 drop policy if exists "admin creates events" on public.events;
 create policy "admin creates events" on public.events
@@ -244,7 +238,10 @@ insert into public.instruments (slug, name, description, sort_order)
 values
   ('strings', 'Strings', 'Violin and cello classes', 10),
   ('percussion', 'Percussion', 'Rhythm, drums, and hand percussion', 20),
-  ('voice', 'Voice', 'Singing and chorus classes', 30)
+  ('voice', 'Voice', 'Singing and chorus classes', 30),
+  ('violin', 'Violin', 'Dedicated violin technique and repertoire', 40),
+  ('piano', 'Piano', 'Piano and keyboard classes', 50),
+  ('viola', 'Viola', 'Dedicated viola technique and ensemble playing', 60)
 on conflict (slug) do update set
   name = excluded.name,
   description = excluded.description,
@@ -340,6 +337,69 @@ revoke execute on function public.current_role() from public, anon;
 revoke execute on function public.current_instrument() from public, anon;
 grant execute on function public.current_role() to authenticated;
 grant execute on function public.current_instrument() to authenticated;
+
+-- Create a missing profile from trusted auth metadata. New accounts (created
+-- after the instrument catalog was installed) must carry a valid student
+-- instrument. Older auth users may be created with a null instrument so the
+-- Settings requirement can repair them safely at next login.
+create or replace function public.ensure_current_profile()
+returns public.profiles
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  existing_profile public.profiles%rowtype;
+  auth_metadata jsonb;
+  auth_created_at timestamptz;
+  catalog_created_at timestamptz;
+  requested_role text;
+  requested_instrument text;
+begin
+  if auth.uid() is null then
+    raise exception 'Log in to create a profile.';
+  end if;
+  select * into existing_profile from public.profiles where id = auth.uid();
+  if existing_profile.id is not null then
+    return existing_profile;
+  end if;
+
+  select raw_user_meta_data, created_at
+  into auth_metadata, auth_created_at
+  from auth.users
+  where id = auth.uid();
+  if auth_created_at is null then
+    raise exception 'Authenticated user not found.';
+  end if;
+
+  select min(created_at) into catalog_created_at from public.instruments;
+  requested_role := case when auth_metadata ->> 'role' = 'volunteer' then 'volunteer' else 'student' end;
+  requested_instrument := case when requested_role = 'student' then auth_metadata ->> 'instrument' else null end;
+
+  if requested_role = 'student' and not exists (
+    select 1 from public.instruments
+    where slug = requested_instrument and active
+  ) then
+    if auth_created_at >= catalog_created_at then
+      raise exception 'Select an instrument to finish creating your student account.';
+    end if;
+    requested_instrument := null;
+  end if;
+
+  insert into public.profiles (id, full_name, role, instrument)
+  values (
+    auth.uid(),
+    coalesce(nullif(auth_metadata ->> 'full_name', ''), 'Member'),
+    requested_role,
+    requested_instrument
+  )
+  returning * into existing_profile;
+  return existing_profile;
+end;
+$$;
+
+revoke execute on function public.ensure_current_profile() from public, anon;
+grant execute on function public.ensure_current_profile() to authenticated;
 
 -- Students cannot change instruments while an active class enrollment still
 -- snapshots their old instrument and time slot. They must leave (or use a
@@ -653,12 +713,10 @@ create policy "create own profile" on public.profiles
     and (
       (
         role = 'student'
-        and (
-          instrument is null
-          or exists (
-            select 1 from public.instruments i
-            where i.slug = instrument and i.active
-          )
+        and instrument is not null
+        and exists (
+          select 1 from public.instruments i
+          where i.slug = instrument and i.active
         )
       )
       or (role = 'volunteer' and instrument is null)

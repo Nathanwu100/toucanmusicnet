@@ -19,6 +19,9 @@
     { slug: "strings", name: "Strings", description: "Violin and cello classes", sort_order: 10 },
     { slug: "percussion", name: "Percussion", description: "Rhythm, drums, and hand percussion", sort_order: 20 },
     { slug: "voice", name: "Voice", description: "Singing and chorus classes", sort_order: 30 },
+    { slug: "violin", name: "Violin", description: "Dedicated violin technique and repertoire", sort_order: 40 },
+    { slug: "piano", name: "Piano", description: "Piano and keyboard classes", sort_order: 50 },
+    { slug: "viola", name: "Viola", description: "Dedicated viola technique and ensemble playing", sort_order: 60 },
   ];
 
   // A new key intentionally resets older demo data that has no instrument,
@@ -117,10 +120,22 @@
     };
   }
 
+  // Stored demo databases created before an instrument was added to the
+  // catalog gain the new entries without losing accounts or enrollments.
+  function withCatalogInstruments(db) {
+    const known = new Set((db.instruments || []).map((item) => item.slug));
+    const missing = INSTRUMENTS.filter((item) => !known.has(item.slug));
+    if (missing.length) {
+      db.instruments = [...(db.instruments || []), ...missing.map((item) => ({ ...item, active: true }))];
+      saveDb(db);
+    }
+    return db;
+  }
+
   function loadDb() {
     try {
       const raw = localStorage.getItem(DB_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) return withCatalogInstruments(JSON.parse(raw));
     } catch (error) {
       // A fresh demo database is safe when storage is unavailable or corrupt.
     }
@@ -203,17 +218,9 @@
     if (error) throw error;
     if (data) return data;
 
-    const meta = authUser.user_metadata || {};
-    const role = meta.role === "volunteer" ? "volunteer" : "student";
-    const profile = {
-      id: authUser.id,
-      full_name: meta.full_name || "Member",
-      role,
-      instrument: role === "student" && meta.instrument ? meta.instrument : null,
-    };
-    const { data: created, error: insertError } = await sb.from("profiles").insert(profile).select().single();
-    if (insertError) throw insertError;
-    return created;
+    const { data: created, error: createError } = await sb.rpc("ensure_current_profile");
+    if (createError) throw createError;
+    return Array.isArray(created) ? created[0] : created;
   }
 
   function loginEmail(identifier) {

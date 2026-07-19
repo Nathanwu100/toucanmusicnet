@@ -1,9 +1,9 @@
 # Toucan Music
 
 A classic HTML/CSS/JS site for a music nonprofit teaching underprivileged
-children — landing page, login/signup (student or volunteer), an editable
-calendar with volunteer capacity, notification settings, and Supabase-backed
-weekly digest + class-reminder emails.
+children — landing page, instrument-aware student signup, an editable class
+calendar, transaction-safe student enrollment, volunteer capacity,
+notification settings, and Supabase-backed weekly digest + reminders.
 
 ## Try it right now (demo mode)
 
@@ -15,18 +15,21 @@ python3 -m http.server 8080
 # open http://localhost:8080
 ```
 
-On localhost, the site runs in **demo mode**: accounts, events, and volunteer
-signups live in your browser's localStorage. The seed data includes example
-classes, showcase/lending-library events, and a few claimed volunteer spots.
+On localhost, the site runs in **demo mode**: accounts, events, student
+enrollments, and volunteer signups live in your browser's localStorage. The
+seed data includes Strings, Percussion, and Voice schedules with student and
+volunteer capacities; Violin, Piano, and Viola are also in the instrument
+catalog for the admin to schedule.
 
 - **Demo admin login:** name `admin`, password `toucan2026` (on the login page)
 - **Volunteer login:** `maya@example.com`, `jordan@example.com`, or
   `sam@example.com`, password `toucan2026`
-- **Student login:** `ari@example.com`, password `toucan2026`
+- **Student login:** `ari@example.com`, password `toucan2026` (Strings)
 - Sign up as a **volunteer** to claim spots on events; as a **student** to
-  just see the schedule.
-- The admin can create/edit/delete events and set the number of volunteer
-  spots per event.
+  choose one instrument, see only that instrument's schedule, and join a
+  class with space remaining.
+- The admin sees every instrument, can filter the calendar, inspect student
+  and volunteer rosters, and set both student and volunteer capacity.
 
 Demo credentials and localStorage are for local testing only. They are not a
 production security boundary. A deployed site uses Supabase Auth and the
@@ -38,9 +41,9 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 | --- | --- |
 | `index.html` | Landing page — mission, programs, how volunteering works |
 | `login.html` | Log in with email (the admin logs in with the name `admin`) |
-| `signup.html` | Create an account; choose **student** or **volunteer** |
-| `calendar.html` | Selectable month calendar with a full day-details panel. Everyone sees events; volunteers see spots left and can sign up; the admin creates, edits, and deletes events and sees who signed up |
-| Settings drawer | Available from every page: weekly email, class reminders, text notifications, and the site guide |
+| `signup.html` | Create a student or volunteer account; students must choose a supported instrument |
+| `calendar.html` | Instrument-scoped student schedule with live class capacity and join/leave controls; all-instrument volunteer/admin views; admin filtering, editing, and rosters |
+| Settings drawer | Student instrument changes with enrollment protection, notification preferences, and the site guide |
 | `mission.html` | Mission statement, organization background, and community values; linked from the homepage and footer rather than the top navigation |
 
 ## Going live with Supabase
@@ -48,10 +51,27 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 1. **Create a project** at [supabase.com](https://supabase.com), then put your
    Project URL and anon key into `js/config.js`.
 
-2. **Run the schema**: paste `supabase/schema.sql` into the SQL editor and run
-   it. It creates `profiles`, `events`, `volunteer_signups`, `reminders_sent`,
-   row-level security, and a trigger that enforces volunteer capacity
-   server-side (so the spot limit holds even against a modified client).
+2. **Run the database changes**. For a new project, paste
+   `supabase/schema.sql` into the SQL editor. For an existing Toucan database,
+   apply `supabase/migrations/20260718000000_student_instruments_and_enrollment.sql`
+   (or run `supabase db push`). The current schema includes:
+
+   - `instruments` with the supported Strings, Percussion, Voice, Violin,
+     Piano, and Viola tracks;
+   - `profiles.instrument` and instrument/time-slot/capacity fields on `events`;
+   - `student_enrollments`, with one student/class row and active/cancelled status;
+   - `join_class` and `leave_class` RPCs that lock the class row, prevent
+     duplicates, conflicts, and overbooking, and return the new spots-left count;
+   - RLS that lets students read only events matching their profile instrument,
+     keeps other students' enrollments private, preserves volunteer access, and
+     gives admins the all-instrument view; and
+   - database guards that reject instrument/time changes, deletion, or capacity
+     reductions that would invalidate active student enrollments.
+
+   Legacy schedule rows are backfilled by existing title/description keywords;
+   unmatched legacy rows are assigned to Strings and should be reviewed by an
+   admin. Existing students without an instrument get no schedule and are
+   prompted to choose one in Settings at their next login.
 
 3. **Create and confirm the admin account**: in Dashboard → Authentication →
    Users → *Add user*, create `admin@toucanmusic.org` with a unique password
@@ -141,11 +161,31 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
   two nudges — one at 60 minutes and one at 30 minutes before start. To make
   it a single 90-minute reminder instead, change `OFFSETS_MINUTES` in
   `supabase/functions/event-reminders/index.ts` to `[90]`.
-- **Who sees spot counts**: only volunteers and the admin — enforced by RLS
-  on `volunteer_signups`, not just hidden in the UI.
-- **Capacity**: enforced by a locking trigger in Postgres; two volunteers
-  racing for the last spot can't both get it.
+- **Schedule privacy**: guests receive no schedule; students receive only the
+  event rows matching `profiles.instrument`; volunteers and admins retain the
+  all-instrument schedule. The edge functions apply the same student filter to
+  weekly emails and reminders.
+- **Student capacity**: spots left are always `student_capacity - active
+  enrollments`. Canceled enrollments are ignored. The locking `join_class` RPC
+  makes two students racing for the last spot serialize safely.
+- **Instrument changes**: a student with an active enrollment must explicitly
+  leave or transfer before changing instruments. Enrollment instrument and time
+  slot are stored as snapshots and are never silently moved.
+- **Volunteer capacity**: the existing locking trigger still prevents two
+  volunteers from claiming the same final volunteer spot.
 - Email and text delivery honor the per-user notification settings
   (`weekly_digest`, `class_reminders`, `text_notifications`). Text reminders
   require the Twilio secrets above; phone numbers and opt-in state are stored
   on the user's protected profile row.
+
+## Tests
+
+The test suite exercises signup requirements, login persistence, student/admin
+visibility, direct filter-bypass attempts, eligible/full/duplicate/conflicting
+enrollment, spots after join/leave, a two-session final-spot race, instrument
+changes, legacy profiles, admin schedule guards, and SQL security contracts.
+
+```sh
+npm test
+npm run check
+```

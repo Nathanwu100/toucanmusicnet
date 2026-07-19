@@ -42,7 +42,12 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
+  /* Column flex plus margin-top:auto on the footer keeps the footer at the
+     bottom of every page, including short ones like login and signup. */
+  display: flex;
+  flex-direction: column;
 }
+body > main { width: 100%; flex: 1 0 auto; }
 
 :focus-visible {
   outline: 3px solid var(--focus);
@@ -407,7 +412,7 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .cta-band .btn { white-space: nowrap; }
 .mission-link { display: inline-block; margin-top: 0.9rem; color: var(--beak); font-weight: 700; }
 
-.site-footer { position: relative; z-index: 2; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
+.site-footer { position: relative; z-index: 2; margin-top: auto; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
 .footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.25fr) minmax(120px, 0.55fr) minmax(180px, 0.8fr) minmax(230px, 1fr); gap: 2rem; }
 .footer-brand p { max-width: 38ch; margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.9rem; }
 .footer-brand-row { display: flex; align-items: center; gap: 1rem; }
