@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Illustration of a concert hall stage with a grand piano under warm lights">
+  <!-- Toucan Music palette: petrol ink, coral curtains, beak-gold light -->
+  <rect width="1600" height="900" fill="#14282c"/>
+
+  <!-- back wall arch -->
+  <path d="M200 900 L200 420 Q200 180 800 180 Q1400 180 1400 420 L1400 900 Z" fill="#1d3a3f"/>
+  <path d="M280 900 L280 460 Q280 250 800 250 Q1320 250 1320 460 L1320 900 Z" fill="#234449"/>
+
+  <!-- spotlight beams -->
+  <polygon points="640,190 560,660 900,660" fill="#f0c86f" opacity="0.10"/>
+  <polygon points="960,190 820,660 1180,660" fill="#f0c86f" opacity="0.08"/>
+
+  <!-- stage glow and floor -->
+  <ellipse cx="800" cy="700" rx="620" ry="150" fill="#e6b75d" opacity="0.16"/>
+  <path d="M240 660 L1360 660 L1480 900 L120 900 Z" fill="#2a4348"/>
+  <path d="M240 660 L1360 660 L1372 684 L228 684 Z" fill="#1a3236"/>
+
+  <!-- proscenium valance -->
+  <path d="M160 120 L1440 120 L1440 200 Q1360 240 1280 200 Q1200 240 1120 200 Q1040 240 960 200 Q880 240 800 200 Q720 240 640 200 Q560 240 480 200 Q400 240 320 200 Q240 240 160 200 Z" fill="#93412f"/>
+  <rect x="160" y="100" width="1280" height="34" fill="#bd5643"/>
+
+  <!-- curtains -->
+  <g fill="#bd5643">
+    <path d="M160 120 L360 120 Q330 400 380 900 L160 900 Z"/>
+    <path d="M1440 120 L1240 120 Q1270 400 1220 900 L1440 900 Z"/>
+  </g>
+  <g fill="#93412f">
+    <path d="M210 130 Q200 500 230 900 L262 900 Q240 500 252 130 Z"/>
+    <path d="M300 130 Q294 500 320 900 L348 900 Q330 500 338 130 Z"/>
+    <path d="M1390 130 Q1400 500 1370 900 L1338 900 Q1360 500 1348 130 Z"/>
+    <path d="M1300 130 Q1306 500 1280 900 L1252 900 Q1270 500 1262 130 Z"/>
+  </g>
+
+  <!-- grand piano silhouette -->
+  <g fill="#0e1e21">
+    <!-- open lid -->
+    <path d="M700 380 L1058 330 L1064 348 L706 442 Z"/>
+    <path d="M706 442 L1064 348 L1064 470 Q900 512 706 500 Z" fill="#e6b75d" opacity="0.18"/>
+    <!-- body -->
+    <path d="M660 470 L1070 470 Q1100 470 1100 500 L1100 560 Q1100 585 1070 585 L900 585 Q800 620 700 585 L660 585 Z"/>
+    <!-- lid prop -->
+    <rect x="1008" y="352" width="10" height="120" transform="rotate(14 1013 412)"/>
+    <!-- keyboard -->
+    <rect x="620" y="492" width="52" height="26" fill="#e4eeee"/>
+    <rect x="620" y="492" width="52" height="12" fill="#0e1e21" opacity="0.35"/>
+    <!-- legs -->
+    <rect x="700" y="585" width="16" height="105"/>
+    <rect x="1044" y="585" width="16" height="105"/>
+    <rect x="866" y="585" width="16" height="105"/>
+  </g>
+
+  <!-- music stands for violin and viola players -->
+  <g stroke="#0e1e21" stroke-width="10" fill="#0e1e21">
+    <path d="M480 505 L536 505 L528 460 L488 460 Z" stroke="none"/>
+    <line x1="508" y1="505" x2="508" y2="620"/>
+    <line x1="508" y1="620" x2="480" y2="662"/>
+    <line x1="508" y1="620" x2="536" y2="662"/>
+  </g>
+  <g stroke="#0e1e21" stroke-width="10" fill="#0e1e21">
+    <path d="M356 535 L412 535 L404 490 L364 490 Z" stroke="none"/>
+    <line x1="384" y1="535" x2="384" y2="648"/>
+    <line x1="384" y1="648" x2="356" y2="690"/>
+    <line x1="384" y1="648" x2="412" y2="690"/>
+  </g>
+
+  <!-- audience seat rows -->
+  <g fill="#0b181b">
+    <path d="M60 900 L60 860 Q100 830 140 860 L140 900 Z"/>
+    <path d="M180 900 L180 860 Q220 830 260 860 L260 900 Z"/>
+    <path d="M300 900 L300 860 Q340 830 380 860 L380 900 Z"/>
+    <path d="M420 900 L420 860 Q460 830 500 860 L500 900 Z"/>
+    <path d="M540 900 L540 860 Q580 830 620 860 L620 900 Z"/>
+    <path d="M660 900 L660 860 Q700 830 740 860 L740 900 Z"/>
+    <path d="M780 900 L780 860 Q820 830 860 860 L860 900 Z"/>
+    <path d="M900 900 L900 860 Q940 830 980 860 L980 900 Z"/>
+    <path d="M1020 900 L1020 860 Q1060 830 1100 860 L1100 900 Z"/>
+    <path d="M1140 900 L1140 860 Q1180 830 1220 860 L1220 900 Z"/>
+    <path d="M1260 900 L1260 860 Q1300 830 1340 860 L1340 900 Z"/>
+    <path d="M1380 900 L1380 860 Q1420 830 1460 860 L1460 900 Z"/>
+    <path d="M1500 900 L1500 860 Q1540 830 1580 860 L1580 900 Z"/>
+  </g>
+</svg>

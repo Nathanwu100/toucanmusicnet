@@ -426,8 +426,8 @@
   }
 
   const galleryImages = [
-    { src: "assets/events/music-room.jpg", alt: "Young musicians exploring records together in a music room" },
-    { src: "assets/events/ensemble.jpg", alt: "A community music teacher leading a group instrument lesson" },
+    { src: "assets/art/sheet-music.svg", alt: "Illustration of sheet music pages" },
+    { src: "assets/art/concert-hall.svg", alt: "Illustration of a concert hall stage with a grand piano" },
   ];
 
   function renderHomeSchedule(events) {

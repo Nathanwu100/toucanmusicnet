@@ -426,6 +426,9 @@
     async createEvent(event) {
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("admin");
+        if (!db.instruments.some((item) => item.slug === event.instrument && item.active)) {
+          throw new Error("Choose a supported instrument.");
+        }
         const row = { id: uid(), time_slot_id: uid(), ...event, created_by: currentUser.id };
         db.events.push(row);
         saveDb(db);
@@ -443,6 +446,10 @@
         const index = db.events.findIndex((candidate) => candidate.id === id);
         if (index < 0) throw new Error("Event not found.");
         const previous = db.events[index];
+        if (previous.instrument !== event.instrument &&
+            !db.instruments.some((item) => item.slug === event.instrument && item.active)) {
+          throw new Error("Choose a supported instrument.");
+        }
         const activeCount = activeStudentEnrollments(db, id).length;
         const scheduleChanged = previous.instrument !== event.instrument || previous.starts_at !== event.starts_at ||
           previous.ends_at !== event.ends_at || previous.event_type !== event.event_type;

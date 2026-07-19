@@ -55,8 +55,10 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    apply `supabase/migrations/20260718000000_student_instruments_and_enrollment.sql`
    (or run `supabase db push`). The current schema includes:
 
-   - `instruments` with the supported Piano, Violin, and Viola tracks (any
-     older tracks such as Strings, Percussion, or Voice are deactivated);
+   - `instruments` with exactly the supported Piano, Violin, and Viola tracks
+     (older tracks such as Strings, Percussion, or Voice are deleted, or kept
+     deactivated only while a legacy record still references them), plus a
+     trigger so events can never be created on an unsupported instrument;
    - `profiles.instrument` and instrument/time-slot/capacity fields on `events`;
    - `student_enrollments`, with one student/class row and active/cancelled status;
    - `join_class` and `leave_class` RPCs that lock the class row, prevent

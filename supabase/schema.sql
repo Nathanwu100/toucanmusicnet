@@ -275,8 +275,8 @@ on conflict (slug) do update set
   active = true;
 
 -- Any other track (strings, percussion, and voice on older databases) is
--- retired: the rows stay so existing records keep valid references, but
--- inactive instruments never appear as signup, settings, or admin options.
+-- retired: rows still referenced by old records are kept but deactivated so
+-- they never appear as options, and unreferenced rows are deleted below.
 update public.instruments
 set active = false
 where slug not in ('piano', 'violin', 'viola');
@@ -384,6 +384,22 @@ where p.instrument in (select slug from public.instruments where not active)
     select 1 from public.student_enrollments se
     where se.student_id = p.id and se.status = 'active'
   );
+
+-- Enrollment snapshots follow their class so retired slugs drop out of use.
+update public.student_enrollments se
+set instrument = e.instrument
+from public.events e
+where e.id = se.class_id
+  and se.instrument is distinct from e.instrument;
+
+-- Remove retired instruments outright once nothing references them. A retired
+-- slug still referenced by a frozen enrolled class stays inactive until an
+-- admin migrates that class, and is deleted the next time this script runs.
+delete from public.instruments i
+where not i.active
+  and not exists (select 1 from public.events e where e.instrument = i.slug)
+  and not exists (select 1 from public.profiles p where p.instrument = i.slug)
+  and not exists (select 1 from public.student_enrollments se where se.instrument = i.slug);
 
 create or replace function public.current_profile_role()
 returns text
@@ -763,6 +779,32 @@ drop trigger if exists guard_enrolled_class_changes on public.events;
 create trigger guard_enrolled_class_changes
   before update or delete on public.events
   for each row execute function public.guard_enrolled_class_changes();
+
+-- Events can only be created on, or moved to, an actively supported
+-- instrument (piano, violin, viola) — even by admins writing to the table
+-- directly. Non-instrument edits to a frozen legacy class remain possible.
+create or replace function public.enforce_supported_instrument()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' or new.instrument is distinct from old.instrument then
+    if not exists (
+      select 1 from public.instruments where slug = new.instrument and active
+    ) then
+      raise exception 'Choose a supported instrument.';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_supported_instrument on public.events;
+create trigger enforce_supported_instrument
+  before insert or update on public.events
+  for each row execute function public.enforce_supported_instrument();
 
 -- --------------------------------------------------------------------- RLS
 alter table public.instruments enable row level security;

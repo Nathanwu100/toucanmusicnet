@@ -218,6 +218,25 @@ test("volunteer accounts also receive the student spots-left counts", async () =
   assert.equal(classRow.student_capacity, 8);
 });
 
+test("classes cannot be created on or moved to an unsupported instrument", async () => {
+  const { api } = loadDemoApi();
+  await api.login("admin", "toucan2026");
+  const starts = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await assert.rejects(
+    api.createEvent({
+      title: "Guitar basics", event_type: "class", instrument: "guitar",
+      starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 3600000).toISOString(),
+      location: "Room A", volunteer_capacity: 1, student_capacity: 4, enrollment_open: true,
+    }),
+    /supported instrument/
+  );
+  const existing = (await api.listEvents()).find((event) => event.id === "ev-1");
+  await assert.rejects(
+    api.updateEvent("ev-1", { ...existing, instrument: "strings" }),
+    /supported instrument/
+  );
+});
+
 test("admin can schedule concurrent classes for different instruments", async () => {
   const { api } = loadDemoApi();
   await api.login("admin", "toucan2026");
@@ -257,6 +276,7 @@ test("migration contains server-side RLS and atomic overbooking defenses", () =>
   assert.match(sql, /instrument = \(select public\.current_instrument\(\)\)/i);
   assert.match(sql, /revoke insert, update, delete on public\.student_enrollments/i);
   assert.match(sql, /guard_enrolled_class_changes/i);
+  assert.match(sql, /enforce_supported_instrument/i);
   assert.match(sql, /ensure_current_profile/i);
   assert.match(sql, /auth_created_at >= catalog_created_at/i);
   assert.match(sql, /role = 'student'\s+and instrument is not null/i);
