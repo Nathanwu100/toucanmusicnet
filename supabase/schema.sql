@@ -221,7 +221,7 @@ create policy "volunteers withdraw their own spot" on public.volunteer_signups
 -- ================================================= student instruments/classes
 -- This section is also shipped as the incremental migration in
 -- supabase/migrations/20260718000000_student_instruments_and_enrollment.sql.
-+
+
 -- Toucan's existing schedule uses three program tracks: strings (violin and
 -- cello), percussion, and voice. Keeping them in a lookup table gives signup
 -- and admin forms one canonical, database-validated source of truth.
@@ -319,7 +319,7 @@ create index if not exists student_enrollments_instrument_idx
 create index if not exists student_enrollments_time_slot_idx
   on public.student_enrollments (time_slot_id);
 
-create or replace function public.current_role()
+create or replace function public.current_profile_role()
 returns text
 language sql stable security definer set search_path = public
 as $$
@@ -333,9 +333,9 @@ as $$
   select instrument from public.profiles where id = auth.uid();
 $$;
 
-revoke execute on function public.current_role() from public, anon;
+revoke execute on function public.current_profile_role() from public, anon;
 revoke execute on function public.current_instrument() from public, anon;
-grant execute on function public.current_role() to authenticated;
+grant execute on function public.current_profile_role() to authenticated;
 grant execute on function public.current_instrument() to authenticated;
 
 -- Create a missing profile from trusted auth metadata. New accounts (created
@@ -728,9 +728,9 @@ drop policy if exists "role and instrument scoped events" on public.events;
 create policy "role and instrument scoped events" on public.events
   for select to authenticated using (
     (select public.is_admin())
-    or (select public.current_role()) = 'volunteer'
+    or (select public.current_profile_role()) = 'volunteer'
     or (
-      (select public.current_role()) = 'student'
+      (select public.current_profile_role()) = 'student'
       and (select public.current_instrument()) is not null
       and instrument = (select public.current_instrument())
     )
