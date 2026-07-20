@@ -810,9 +810,15 @@ create trigger enforce_supported_instrument
 alter table public.instruments enable row level security;
 alter table public.student_enrollments enable row level security;
 
+-- anon cannot execute is_admin(), so the admin check must live in a separate
+-- authenticated-only policy or anonymous signup reads fail outright.
 drop policy if exists "supported instruments are readable" on public.instruments;
 create policy "supported instruments are readable" on public.instruments
-  for select to anon, authenticated using (active or (select public.is_admin()));
+  for select to anon, authenticated using (active);
+
+drop policy if exists "admins read retired instruments" on public.instruments;
+create policy "admins read retired instruments" on public.instruments
+  for select to authenticated using ((select public.is_admin()));
 
 drop policy if exists "create own profile" on public.profiles;
 create policy "create own profile" on public.profiles
