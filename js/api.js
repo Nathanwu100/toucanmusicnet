@@ -250,7 +250,12 @@
         .eq("active", true)
         .order("sort_order");
       if (error) throw new Error(error.message);
-      return data;
+      // The live table may still carry retired rows (voice, percussion,
+      // strings) marked active from before the catalog was trimmed down.
+      // Enforce the canonical three here so the UI is correct regardless of
+      // whether that cleanup has been applied to the database yet.
+      const supportedSlugs = new Set(INSTRUMENTS.map((item) => item.slug));
+      return data.filter((item) => supportedSlugs.has(item.slug));
     },
 
     async getSession() {
