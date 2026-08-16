@@ -43,6 +43,7 @@
 
     const file = window.location.pathname.split("/").pop() || "index.html";
     const homeCurrent = file === "index.html" ? ' aria-current="page"' : "";
+    const aboutCurrent = file === "about.html" ? ' aria-current="page"' : "";
     const calendarCurrent = file === "calendar.html" ? ' aria-current="page"' : "";
     const loginCurrent = file === "login.html" ? ' aria-current="page"' : "";
     const signupCurrent = file === "signup.html" ? ' aria-current="page"' : "";
@@ -58,7 +59,7 @@
       <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
       <div class="nav-links">
         <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"${homeCurrent}><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
-        <button class="nav-icon-button" type="button" data-open-team aria-haspopup="dialog" aria-label="About us" data-tooltip="About us"><iconify-icon icon="pixelarticons:users" aria-hidden="true"></iconify-icon></button>
+        <a class="nav-icon-link" href="about.html" aria-label="About us" data-tooltip="About us"${aboutCurrent}><iconify-icon icon="pixelarticons:users" aria-hidden="true"></iconify-icon></a>
         <a class="nav-icon-link" href="calendar.html?v=3" aria-label="Calendar" data-tooltip="Calendar"${calendarCurrent}><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
         <span class="nav-auth" data-nav-auth>${authMarkup}</span>
       </div>`;
@@ -91,7 +92,7 @@
         <div class="footer-links" aria-label="Organization">
           <strong>Organization</strong>
           <a href="mission.html">Our mission</a>
-          <button type="button" data-open-team aria-haspopup="dialog">About us</button>
+          <a href="about.html">About us</a>
         </div>
         <div class="footer-links" aria-label="Contact">
           <strong>Contact</strong>

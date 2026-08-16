@@ -354,7 +354,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    despite very different aspect ratios (1.39 against 4.43). */
 .powered-by-logos li:first-child img { max-height: 78px; max-width: 108px; }
 .powered-by-logos li:last-child img { max-height: 58px; max-width: 258px; }
-.powered-by-note { color: var(--ink-soft); font-size: 0.9rem; }
 
 @media (max-width: 620px) {
   .powered-by { justify-items: stretch; }
@@ -832,65 +831,25 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .switch input:focus-visible + .track { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* ----------------------------------------------------------- team overlay */
-.team-open { overflow: hidden; }
-
-.team-overlay { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: clamp(0.75rem, 3vw, 2.5rem); }
-.team-scrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(18, 42, 45, 0.44);
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  opacity: 0;
-  transition: opacity 0.42s ease;
-}
-.team-overlay.open .team-scrim { opacity: 1; }
-
-.team-panel {
-  position: relative;
-  z-index: 1;
-  width: min(1060px, 100%);
-  max-height: min(88dvh, 940px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  padding: clamp(1.6rem, 4vw, 3rem);
-  border-radius: 14px;
-  background: var(--paper-raise);
-  box-shadow: var(--shadow-2);
-  opacity: 0;
-  /* Entrance reads as the panel arriving from behind the page: a little
-     depth, a little scale, and a blur that resolves as it lands. */
-  transform: perspective(1200px) translate3d(0, 26px, -90px) scale(0.96);
-  filter: blur(7px);
-  transition:
-    opacity 0.44s ease,
-    transform 0.52s cubic-bezier(0.22, 0.78, 0.24, 1),
-    filter 0.44s ease;
-}
-.team-overlay.open .team-panel { opacity: 1; transform: none; filter: none; }
-
-.team-close { position: absolute; top: clamp(0.75rem, 2vw, 1.2rem); right: clamp(0.75rem, 2vw, 1.2rem); border-color: var(--line); box-shadow: none; background: var(--paper-raise); }
-
-.team-intro { max-width: 62ch; padding-right: 3rem; }
-.team-intro h2 { margin-top: 0.4rem; font-size: clamp(1.9rem, 4vw, 3rem); }
+.team-section { max-width: 1180px; margin: 0 auto; padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 3rem) clamp(3rem, 7vw, 5rem); border-top: 1px solid var(--line); }
+.team-intro { max-width: 62ch; }
+.team-intro h2 { margin-top: 0.4rem; font-size: clamp(2rem, 4.5vw, 3.4rem); }
 .team-intro-body { margin-top: 0.9rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.7; }
 
-.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.1rem; margin: clamp(1.6rem, 4vw, 2.4rem) 0; }
+/* Fixed three across rather than auto-fit: six people then fall into two
+   even rows instead of a ragged 4 + 2. */
+.team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; margin: clamp(1.6rem, 4vw, 2.4rem) 0 0; }
 .team-card {
   padding: 1.3rem;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--paper);
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.22, 0.78, 0.24, 1);
-  /* Cards trail the panel so the roster resolves person by person. */
-  transition-delay: calc(140ms + var(--card-index) * 55ms);
+  background: var(--paper-raise);
 }
-.team-overlay.open .team-card { opacity: 1; transform: none; }
 .team-card h3 { margin-top: 0.9rem; font-size: 1.15rem; }
 .team-role { margin-top: 0.15rem; color: var(--coral-strong); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
 .team-blurb { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.6; }
+
+@media (max-width: 900px) { .team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .team-avatar { display: grid; place-items: center; width: 62px; height: 62px; overflow: hidden; border-radius: 50%; }
 .team-avatar-photo { width: 100%; height: 100%; object-fit: cover; }
@@ -905,16 +864,9 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .team-outro-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
 
 @media (max-width: 620px) {
-  .team-panel { max-height: 92dvh; border-radius: 12px; }
-  .team-intro { padding-right: 2.5rem; }
   .team-grid { grid-template-columns: 1fr; }
   .team-outro-actions { width: 100%; }
   .team-outro-actions .btn { flex: 1 1 auto; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .team-scrim, .team-panel, .team-card { transition: none; }
-  .team-panel { transform: none; filter: none; }
 }
 
 /* -------------------------------------------------------- settings drawer */

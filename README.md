@@ -44,7 +44,7 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 | `calendar.html` | Instrument-scoped student schedule with live class capacity and join/leave controls; all-instrument volunteer/admin views; admin filtering, editing, and rosters |
 | Settings drawer | Student instrument changes with enrollment protection, notification preferences, and the site guide |
 | `mission.html` | Mission statement and community values; linked from the homepage and footer rather than the top navigation |
-| About us overlay | Team roster shown in a dialog over the current page from the About us tab and the footer; roster data lives in `js/team.js` |
+| `about.html` | Who runs the program and the team roster; reached from the About us tab and the footer. Roster data lives in `js/team.js` |
 
 ## Going live with Supabase
 
