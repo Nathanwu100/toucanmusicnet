@@ -357,7 +357,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    grid centring cannot be used here because browsers clamp an oversized
    grid item to the start edge instead of overflowing both ways. */
 .hero-prop-city {
-  --city-width: 152vw;
+  --city-width: 124vw;
   z-index: 0;
   left: 0;
   right: 0;
@@ -380,7 +380,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   z-index: 1;
   right: 5%;
   top: 2%;
-  width: clamp(180px, 21vw, 320px);
+  width: clamp(150px, 17vw, 260px);
   opacity: 0.6;
 }
 .hero-prop-think img { width: 100%; }
@@ -388,15 +388,17 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 @media (max-width: 900px) {
   /* Recomposed rather than shrunk: the city drops to a base band under the
      stacked content and think fund moves out of the headline's way. */
-  .hero-prop-city { --city-width: 190vw; top: auto; bottom: 5%; opacity: 0.11; }
-  /* Once the hero stacks to one column the top-right corner belongs to the
-     eyebrow, so think fund moves down beside the headline and bleeds off the
-     edge as a watermark instead of a badge in the corner. */
-  .hero-prop-think { right: -10%; left: auto; top: 15%; width: clamp(150px, 40vw, 290px); opacity: 0.34; }
+  /* Once the hero stacks to one column both marks come down to a size the
+     column can actually hold: wide enough to still read as a backdrop, but
+     no longer several screens across. */
+  .hero-prop-city { --city-width: 118vw; top: auto; bottom: 5%; opacity: 0.11; }
+  /* The top-right corner belongs to the eyebrow here, so think fund sits
+     beside the headline rather than in the corner. */
+  .hero-prop-think { right: 6%; left: auto; top: 14%; width: clamp(110px, 21vw, 170px); opacity: 0.34; }
 }
 @media (max-width: 620px) {
-  .hero-prop-city { --city-width: 230vw; }
-  .hero-prop-think { right: -14%; top: 13%; width: clamp(140px, 46vw, 230px); opacity: 0.3; }
+  .hero-prop-city { --city-width: 132vw; bottom: 4%; }
+  .hero-prop-think { right: 8%; top: 12%; width: clamp(84px, 22vw, 124px); opacity: 0.3; }
 }
 
 /* staged page-load rise */
@@ -1157,6 +1159,19 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 19px; }
   .brand { font-size: 0.82rem; }
   .nav-join { padding: 0.35rem 0.42rem; font-size: 0.72rem; }
+}
+
+@media (max-width: 380px) {
+  .nav-icon-link, .nav-icon-button { width: 28px; height: 28px; flex-basis: 28px; }
+  .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 18px; }
+  .nav-join { padding: 0.32rem 0.38rem; font-size: 0.7rem; }
+}
+
+/* Below this the wordmark cannot share the bar with six controls. Collapsing
+   the type leaves the bird as the home link; the name stays in the
+   accessibility tree because the text node is still there. */
+@media (max-width: 340px) {
+  .brand { font-size: 0; gap: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
