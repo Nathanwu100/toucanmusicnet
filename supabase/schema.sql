@@ -263,11 +263,15 @@ create table if not exists public.instruments (
   created_at timestamptz not null default now()
 );
 
+-- The catalog name is the whole option label in the signup and Settings
+-- dropdowns, so no descriptive text is seeded next to it. Re-running this
+-- clears the blurbs older databases stored, because description is assigned
+-- from excluded below.
 insert into public.instruments (slug, name, description, sort_order)
 values
-  ('piano', 'Piano', 'Piano and keyboard classes', 10),
-  ('violin', 'Violin', 'Violin technique and repertoire', 20),
-  ('viola', 'Viola', 'Viola technique and ensemble playing', 30)
+  ('piano', 'Piano', null, 10),
+  ('violin', 'Violin', null, 20),
+  ('viola', 'Viola', null, 30)
 on conflict (slug) do update set
   name = excluded.name,
   description = excluded.description,
@@ -781,7 +785,7 @@ create trigger guard_enrolled_class_changes
   for each row execute function public.guard_enrolled_class_changes();
 
 -- Events can only be created on, or moved to, an actively supported
--- instrument (piano, violin, viola) — even by admins writing to the table
+-- instrument (piano, violin, viola) - even by admins writing to the table
 -- directly. Non-instrument edits to a frozen legacy class remain possible.
 create or replace function public.enforce_supported_instrument()
 returns trigger
@@ -790,12 +794,16 @@ security definer
 set search_path = public
 as $$
 begin
-  if tg_op = 'INSERT' or new.instrument is distinct from old.instrument then
-    if not exists (
-      select 1 from public.instruments where slug = new.instrument and active
-    ) then
-      raise exception 'Choose a supported instrument.';
-    end if;
+  -- OLD is not a row on INSERT, and SQL's OR does not promise to leave the
+  -- second operand unevaluated, so the comparison gets its own UPDATE-only
+  -- branch instead of riding on a short circuit.
+  if tg_op = 'UPDATE' and new.instrument is not distinct from old.instrument then
+    return new;
+  end if;
+  if not exists (
+    select 1 from public.instruments where slug = new.instrument and active
+  ) then
+    raise exception 'Choose a supported instrument.';
   end if;
   return new;
 end;
