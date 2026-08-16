@@ -319,6 +319,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .hero-scene .hero-copy { transform-style: preserve-3d; }
 .hero-layer { min-width: 0; transform-style: preserve-3d; }
 .hero-layer-gallery { grid-column: 1 / -1; }
+.hero-layer-powered { grid-column: 1 / -1; }
 /* The panels moved inside depth wrappers, so they are no longer the nth
    child of .hero that the staged delays below keyed on. */
 .hero-layer-board .rise { animation-delay: 0.08s; }
@@ -329,13 +330,10 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    oversized background art, so they read as an intentional acknowledgement
    and the hero keeps its focus on the copy. */
 .powered-by {
-  /* body is a column flex container and the auto side margins suppress
-     stretch, so without an explicit width this box would shrink to the width
-     of the logos instead of lining up with the sections around it. */
+  /* Sized for the hero grid row it sits in, which already supplies the page
+     gutters and the spacing to the row below. */
   width: 100%;
-  max-width: 1180px;
-  margin: 0 auto clamp(3rem, 7vw, 5rem);
-  padding: clamp(1.6rem, 4vw, 2.4rem) clamp(1.4rem, 4vw, 3rem);
+  padding: clamp(1.4rem, 3vw, 2rem) clamp(1.4rem, 4vw, 2.4rem);
   border: 1px solid var(--line);
   border-left: 6px solid var(--leaf);
   border-radius: 6px;
@@ -360,9 +358,19 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 @media (max-width: 620px) {
   .powered-by { justify-items: stretch; }
-  .powered-by-logos { gap: 1.5rem; }
+  /* The hero gutters leave ~322px inside the box at 390px wide; the two marks
+     total 293px, so the gap has to stay under about 1.75rem to keep them on
+     one line. */
+  .powered-by-logos { gap: 1rem; }
   .powered-by-logos li:first-child img { max-height: 62px; max-width: 86px; }
   .powered-by-logos li:last-child img { max-height: 46px; max-width: 200px; }
+}
+
+@media (max-width: 380px) {
+  /* Under ~283px of usable width the two marks cannot share a line at a
+     legible size, so they stack deliberately instead of shrinking further
+     or wrapping at whatever width happens to tip them over. */
+  .powered-by-logos { flex-direction: column; align-items: flex-start; gap: 1.1rem; }
 }
 
 /* staged page-load rise */
