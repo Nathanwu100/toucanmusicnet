@@ -262,15 +262,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   max-width: 12ch;
   margin: 0.6rem 0 1.2rem;
 }
-.hero-name {
-  display: block;
-  margin-bottom: 0.9rem;
-  color: var(--ink-soft);
-  font-size: 0.25em;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
 .hero p { max-width: 52ch; font-size: 1.15rem; color: var(--ink-soft); }
 .hero p strong { font-weight: 700; }
 .accent-coral { color: var(--coral-strong); }
@@ -333,72 +324,45 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .hero-layer-board .rise { animation-delay: 0.08s; }
 .hero-layer-gallery .rise { animation-delay: 0.16s; }
 
-/* Sponsor planes. Sized off the content column so they stay art-directed
-   against the type rather than drifting with the viewport. */
-.hero-props {
-  position: absolute;
-  inset: 0;
+/* -------------------------------------------------- powered by (sponsors) */
+/* The sponsor marks live in one contained credit block rather than as
+   oversized background art, so they read as an intentional acknowledgement
+   and the hero keeps its focus on the copy. */
+.powered-by {
+  /* body is a column flex container and the auto side margins suppress
+     stretch, so without an explicit width this box would shrink to the width
+     of the logos instead of lining up with the sections around it. */
+  width: 100%;
   max-width: 1180px;
-  margin: 0 auto;
-  transform-style: preserve-3d;
-  pointer-events: none;
+  margin: 0 auto clamp(3rem, 7vw, 5rem);
+  padding: clamp(1.6rem, 4vw, 2.4rem) clamp(1.4rem, 4vw, 3rem);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--leaf);
+  border-radius: 6px;
+  background: var(--paper-raise);
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
 }
-/* The plane and the artwork are separate: the wrapper is what the engine
-   transforms, the image inside carries the size. An <img> with width:auto
-   falls back to its intrinsic width, so left/right alone cannot stretch it. */
-.hero-prop {
-  position: absolute;
-  will-change: transform;
+.powered-by-logos {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.5rem, 5vw, 3.5rem);
+  flex-wrap: wrap;
+  list-style: none;
 }
-.hero-prop img { display: block; max-width: none; height: auto; }
+.powered-by-logos img { display: block; width: auto; object-fit: contain; }
+/* Capped on height so the two marks sit on a shared optical baseline
+   despite very different aspect ratios (1.39 against 4.43). */
+.powered-by-logos li:first-child img { max-height: 78px; max-width: 108px; }
+.powered-by-logos li:last-child img { max-height: 58px; max-width: 258px; }
+.powered-by-note { color: var(--ink-soft); font-size: 0.9rem; }
 
-/* Far horizon band. The wrapper is a zero-height anchor line and the image
-   hangs off its centre, so the bleed is symmetrical at every viewport —
-   grid centring cannot be used here because browsers clamp an oversized
-   grid item to the start edge instead of overflowing both ways. */
-.hero-prop-city {
-  --city-width: 124vw;
-  z-index: 0;
-  left: 0;
-  right: 0;
-  top: 36%;
-  height: 0;
-  opacity: 0.15;
-}
-.hero-prop-city img {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: var(--city-width);
-  margin-left: calc(var(--city-width) / -2);
-}
-
-/* Nearer supporting mark, in the empty upper-right of the grid above the
-   notification board. The inset allows for perspective pushing a near layer
-   outward from the perspective origin. */
-.hero-prop-think {
-  z-index: 1;
-  right: 5%;
-  top: 2%;
-  width: clamp(150px, 17vw, 260px);
-  opacity: 0.6;
-}
-.hero-prop-think img { width: 100%; }
-
-@media (max-width: 900px) {
-  /* Recomposed rather than shrunk: the city drops to a base band under the
-     stacked content and think fund moves out of the headline's way. */
-  /* Once the hero stacks to one column both marks come down to a size the
-     column can actually hold: wide enough to still read as a backdrop, but
-     no longer several screens across. */
-  .hero-prop-city { --city-width: 118vw; top: auto; bottom: 5%; opacity: 0.11; }
-  /* The top-right corner belongs to the eyebrow here, so think fund sits
-     beside the headline rather than in the corner. */
-  .hero-prop-think { right: 6%; left: auto; top: 14%; width: clamp(110px, 21vw, 170px); opacity: 0.34; }
-}
 @media (max-width: 620px) {
-  .hero-prop-city { --city-width: 132vw; bottom: 4%; }
-  .hero-prop-think { right: 8%; top: 12%; width: clamp(84px, 22vw, 124px); opacity: 0.3; }
+  .powered-by { justify-items: stretch; }
+  .powered-by-logos { gap: 1.5rem; }
+  .powered-by-logos li:first-child img { max-height: 62px; max-width: 86px; }
+  .powered-by-logos li:last-child img { max-height: 46px; max-width: 200px; }
 }
 
 /* staged page-load rise */
@@ -504,21 +468,13 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .mission-link { display: inline-block; margin-top: 0.9rem; color: var(--beak); font-weight: 700; }
 
 .site-footer { position: relative; z-index: 2; margin-top: auto; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
-.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.15fr) minmax(120px, 0.5fr) minmax(180px, 0.75fr) minmax(280px, 1.3fr); gap: 2rem; }
+.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.4fr) minmax(140px, 0.7fr) minmax(200px, 0.9fr); gap: 2rem; }
 .footer-brand p { max-width: 38ch; margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.9rem; }
 .footer-brand-row { display: flex; align-items: center; gap: 1rem; }
 .footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; }
 .footer-links strong { margin-bottom: 0.2rem; font-family: var(--font-display); }
 .footer-links a, .footer-links button { padding: 0; border: 0; background: transparent; color: var(--ink-soft); font: 0.9rem var(--font-body); text-decoration: none; cursor: pointer; }
 .footer-links a:hover, .footer-links button:hover { color: var(--coral-strong); }
-.footer-sponsors { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
-.footer-sponsors > strong { font-family: var(--font-display); }
-.footer-sponsor-logos { width: 100%; display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; }
-.footer-sponsor-logo { display: block; width: auto; object-fit: contain; }
-/* Caps are width-bound for both files (think-fund is 190x137, palo-alto is
-   1080x244), so the heights below are the resulting drawn heights. */
-.footer-sponsor-logo-think { max-width: 124px; max-height: 92px; }
-.footer-sponsor-logo-palo-alto { max-width: 252px; max-height: 68px; }
 .footer-base { padding: 1rem clamp(1rem, 4vw, 3rem); display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-soft); font-size: 0.78rem; }
 .footer-base a { color: inherit; }
 .footer-credits { display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -1101,7 +1057,6 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .nav-join { min-height: 34px; padding: 0.35rem 0.5rem; gap: 0.25rem; font-size: 0.75rem; white-space: nowrap; }
   .hero { padding: 3rem 1rem 3.5rem; gap: 2.5rem; }
   .hero h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
-  .hero-name { font-size: 0.23em; }
   .hero-cta { display: grid; width: 100%; }
   .hero-cta .btn { width: 100%; }
   .notification-board { width: 100%; }
