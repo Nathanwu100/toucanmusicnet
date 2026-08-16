@@ -63,25 +63,27 @@
     .map((part) => part[0].toUpperCase())
     .join("");
 
-  function avatarMarkup(member) {
+  function photoMarkup(member) {
     if (member.photo) {
-      return `<img class="team-avatar-photo" src="${escape(member.photo)}" alt="" loading="lazy" decoding="async" />`;
+      return `<img src="${escape(member.photo)}" alt="" loading="lazy" decoding="async" />`;
     }
-    return `<span class="team-avatar-monogram" aria-hidden="true">${escape(initials(member.name))}</span>`;
+    return `<span class="team-photo-monogram" aria-hidden="true">${escape(initials(member.name))}</span>`;
   }
 
-  function cardMarkup(member) {
+  function memberMarkup(member) {
     return `
-      <article class="team-card">
-        <span class="team-avatar team-avatar-${escape(member.accent || "leaf")}">${avatarMarkup(member)}</span>
-        <h3>${escape(member.name)}</h3>
-        <p class="team-role">${escape(member.role)}</p>
-        ${member.blurb ? `<p class="team-blurb">${escape(member.blurb)}</p>` : ""}
-      </article>`;
+      <li class="team-member">
+        <span class="team-photo team-photo-${escape(member.accent || "leaf")}">${photoMarkup(member)}</span>
+        <div>
+          <h2>${escape(member.name)}</h2>
+          <p class="team-role">${escape(member.role)}</p>
+          ${member.blurb ? `<p class="team-blurb">${escape(member.blurb)}</p>` : ""}
+        </div>
+      </li>`;
   }
 
-  const grid = document.querySelector("[data-team-grid]");
-  if (grid) grid.innerHTML = TEAM.map(cardMarkup).join("");
+  const list = document.querySelector("[data-team-list]");
+  if (list) list.innerHTML = TEAM.map(memberMarkup).join("");
 
   window.ToucanTeam = { members: TEAM };
 })();

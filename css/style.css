@@ -830,43 +830,50 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .switch input:checked + .track::after { transform: translateX(22px); }
 .switch input:focus-visible + .track { outline: 3px solid var(--focus); outline-offset: 2px; }
 
-/* ----------------------------------------------------------- team overlay */
-.team-section { max-width: 1180px; margin: 0 auto; padding: clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 3rem) clamp(3rem, 7vw, 5rem); border-top: 1px solid var(--line); }
-.team-intro { max-width: 62ch; }
-.team-intro h2 { margin-top: 0.4rem; font-size: clamp(2rem, 4.5vw, 3.4rem); }
-.team-intro-body { margin-top: 0.9rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.7; }
-
-/* Fixed three across rather than auto-fit: six people then fall into two
-   even rows instead of a ragged 4 + 2. */
-.team-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.1rem; margin: clamp(1.6rem, 4vw, 2.4rem) 0 0; }
-.team-card {
-  padding: 1.3rem;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper-raise);
+/* -------------------------------------------------------------- team page */
+/* A plain vertical list: portrait left, name and bio right. No cards, no
+   dividers, no section chrome -- spacing alone separates the people. */
+.team-page {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1rem, 4vw, 3rem) clamp(4rem, 8vw, 6rem);
 }
-.team-card h3 { margin-top: 0.9rem; font-size: 1.15rem; }
-.team-role { margin-top: 0.15rem; color: var(--coral-strong); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
-.team-blurb { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.6; }
+.team-page-title { font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: clamp(2rem, 5vw, 3rem); }
 
-@media (max-width: 900px) { .team-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.team-list { list-style: none; display: grid; gap: clamp(2.2rem, 5vw, 3.4rem); }
+.team-member {
+  display: grid;
+  grid-template-columns: clamp(88px, 13vw, 124px) minmax(0, 1fr);
+  gap: clamp(1.2rem, 3vw, 2.2rem);
+  align-items: start;
+}
+.team-photo {
+  aspect-ratio: 1;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+.team-photo img { width: 100%; height: 100%; object-fit: cover; }
+.team-photo-monogram {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  font-weight: 700;
+  color: var(--paper-raise);
+}
+.team-photo-coral { background: var(--coral); }
+.team-photo-beak { background: var(--beak-deep); }
+.team-photo-sky { background: var(--sky-strong); }
+.team-photo-leaf { background: var(--leaf-strong); }
 
-.team-avatar { display: grid; place-items: center; width: 62px; height: 62px; overflow: hidden; border-radius: 50%; }
-.team-avatar-photo { width: 100%; height: 100%; object-fit: cover; }
-.team-avatar-monogram { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--paper-raise); }
-.team-avatar-coral { background: var(--coral); }
-.team-avatar-beak { background: var(--beak-deep); }
-.team-avatar-sky { background: var(--sky-strong); }
-.team-avatar-leaf { background: var(--leaf-strong); }
+.team-member h2 { font-size: clamp(1.2rem, 2.4vw, 1.6rem); }
+.team-role { margin-top: 0.2rem; color: var(--coral-strong); font-size: 0.85rem; font-weight: 700; letter-spacing: 0.02em; }
+.team-blurb { margin-top: 0.7rem; color: var(--ink-soft); line-height: 1.7; }
 
-.team-outro { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
-.team-outro p { max-width: 54ch; color: var(--ink-soft); font-size: 0.92rem; }
-.team-outro-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
-
-@media (max-width: 620px) {
-  .team-grid { grid-template-columns: 1fr; }
-  .team-outro-actions { width: 100%; }
-  .team-outro-actions .btn { flex: 1 1 auto; }
+@media (max-width: 520px) {
+  .team-member { grid-template-columns: 68px minmax(0, 1fr); gap: 1rem; }
 }
 
 /* -------------------------------------------------------- settings drawer */
