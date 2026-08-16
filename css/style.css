@@ -310,6 +310,95 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .home-summary > div > p:last-child { max-width: 62ch; margin-top: 1rem; color: var(--ink-soft); font-size: 1.04rem; }
 .home-summary-actions { display: flex; justify-content: flex-end; gap: 0.8rem; flex-wrap: wrap; }
 
+/* ----------------------------------------------- home hero 3D parallax */
+/* Perspective sits on the scene; everything inside keeps preserve-3d so the
+   layers' translateZ survives instead of being flattened at the first
+   ancestor. overflow-x: clip lets the far sponsor plane bleed past the
+   viewport without turning the header into a scroll container.
+
+   Paint order is set with z-index rather than depth so text is never at the
+   mercy of 3D sorting: city (0) → think fund (1) → hero content (2). */
+.hero-scene {
+  position: relative;
+  perspective: 1400px;
+  perspective-origin: 50% 42%;
+  overflow-x: clip;
+}
+.hero-scene .hero { position: relative; z-index: 2; transform-style: preserve-3d; }
+.hero-scene .hero-copy { transform-style: preserve-3d; }
+.hero-layer { min-width: 0; transform-style: preserve-3d; }
+.hero-layer-gallery { grid-column: 1 / -1; }
+/* The panels moved inside depth wrappers, so they are no longer the nth
+   child of .hero that the staged delays below keyed on. */
+.hero-layer-board .rise { animation-delay: 0.08s; }
+.hero-layer-gallery .rise { animation-delay: 0.16s; }
+
+/* Sponsor planes. Sized off the content column so they stay art-directed
+   against the type rather than drifting with the viewport. */
+.hero-props {
+  position: absolute;
+  inset: 0;
+  max-width: 1180px;
+  margin: 0 auto;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+/* The plane and the artwork are separate: the wrapper is what the engine
+   transforms, the image inside carries the size. An <img> with width:auto
+   falls back to its intrinsic width, so left/right alone cannot stretch it. */
+.hero-prop {
+  position: absolute;
+  will-change: transform;
+}
+.hero-prop img { display: block; max-width: none; height: auto; }
+
+/* Far horizon band. The wrapper is a zero-height anchor line and the image
+   hangs off its centre, so the bleed is symmetrical at every viewport —
+   grid centring cannot be used here because browsers clamp an oversized
+   grid item to the start edge instead of overflowing both ways. */
+.hero-prop-city {
+  --city-width: 152vw;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  top: 36%;
+  height: 0;
+  opacity: 0.15;
+}
+.hero-prop-city img {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--city-width);
+  margin-left: calc(var(--city-width) / -2);
+}
+
+/* Nearer supporting mark, in the empty upper-right of the grid above the
+   notification board. The inset allows for perspective pushing a near layer
+   outward from the perspective origin. */
+.hero-prop-think {
+  z-index: 1;
+  right: 5%;
+  top: 2%;
+  width: clamp(180px, 21vw, 320px);
+  opacity: 0.6;
+}
+.hero-prop-think img { width: 100%; }
+
+@media (max-width: 900px) {
+  /* Recomposed rather than shrunk: the city drops to a base band under the
+     stacked content and think fund moves out of the headline's way. */
+  .hero-prop-city { --city-width: 190vw; top: auto; bottom: 5%; opacity: 0.11; }
+  /* Once the hero stacks to one column the top-right corner belongs to the
+     eyebrow, so think fund moves down beside the headline and bleeds off the
+     edge as a watermark instead of a badge in the corner. */
+  .hero-prop-think { right: -10%; left: auto; top: 15%; width: clamp(150px, 40vw, 290px); opacity: 0.34; }
+}
+@media (max-width: 620px) {
+  .hero-prop-city { --city-width: 230vw; }
+  .hero-prop-think { right: -14%; top: 13%; width: clamp(140px, 46vw, 230px); opacity: 0.3; }
+}
+
 /* staged page-load rise */
 body.ready .rise {
   animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -413,7 +502,7 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .mission-link { display: inline-block; margin-top: 0.9rem; color: var(--beak); font-weight: 700; }
 
 .site-footer { position: relative; z-index: 2; margin-top: auto; background: color-mix(in srgb, var(--paper-raise) 94%, transparent); }
-.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.25fr) minmax(120px, 0.55fr) minmax(180px, 0.8fr) minmax(230px, 1fr); gap: 2rem; }
+.footer-inner { max-width: 1180px; margin: 0 auto; padding: 3rem clamp(1rem, 4vw, 3rem); display: grid; grid-template-columns: minmax(240px, 1.15fr) minmax(120px, 0.5fr) minmax(180px, 0.75fr) minmax(280px, 1.3fr); gap: 2rem; }
 .footer-brand p { max-width: 38ch; margin-top: 0.9rem; color: var(--ink-soft); font-size: 0.9rem; }
 .footer-brand-row { display: flex; align-items: center; gap: 1rem; }
 .footer-links { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; }
@@ -422,10 +511,12 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .footer-links a:hover, .footer-links button:hover { color: var(--coral-strong); }
 .footer-sponsors { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
 .footer-sponsors > strong { font-family: var(--font-display); }
-.footer-sponsor-logos { width: 100%; display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.footer-sponsor-logos { width: 100%; display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; }
 .footer-sponsor-logo { display: block; width: auto; object-fit: contain; }
-.footer-sponsor-logo-think { max-width: 76px; max-height: 56px; }
-.footer-sponsor-logo-palo-alto { max-width: 155px; max-height: 44px; }
+/* Caps are width-bound for both files (think-fund is 190x137, palo-alto is
+   1080x244), so the heights below are the resulting drawn heights. */
+.footer-sponsor-logo-think { max-width: 124px; max-height: 92px; }
+.footer-sponsor-logo-palo-alto { max-width: 252px; max-height: 68px; }
 .footer-base { padding: 1rem clamp(1rem, 4vw, 3rem); display: flex; justify-content: space-between; gap: 1rem; color: var(--ink-soft); font-size: 0.78rem; }
 .footer-base a { color: inherit; }
 .footer-credits { display: flex; gap: 1rem; flex-wrap: wrap; }
@@ -774,6 +865,92 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
 .switch input:checked + .track::after { transform: translateX(22px); }
 .switch input:focus-visible + .track { outline: 3px solid var(--focus); outline-offset: 2px; }
 
+/* ----------------------------------------------------------- team overlay */
+.team-open { overflow: hidden; }
+
+.team-overlay { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; padding: clamp(0.75rem, 3vw, 2.5rem); }
+.team-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(18, 42, 45, 0.44);
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  opacity: 0;
+  transition: opacity 0.42s ease;
+}
+.team-overlay.open .team-scrim { opacity: 1; }
+
+.team-panel {
+  position: relative;
+  z-index: 1;
+  width: min(1060px, 100%);
+  max-height: min(88dvh, 940px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(1.6rem, 4vw, 3rem);
+  border-radius: 14px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-2);
+  opacity: 0;
+  /* Entrance reads as the panel arriving from behind the page: a little
+     depth, a little scale, and a blur that resolves as it lands. */
+  transform: perspective(1200px) translate3d(0, 26px, -90px) scale(0.96);
+  filter: blur(7px);
+  transition:
+    opacity 0.44s ease,
+    transform 0.52s cubic-bezier(0.22, 0.78, 0.24, 1),
+    filter 0.44s ease;
+}
+.team-overlay.open .team-panel { opacity: 1; transform: none; filter: none; }
+
+.team-close { position: absolute; top: clamp(0.75rem, 2vw, 1.2rem); right: clamp(0.75rem, 2vw, 1.2rem); border-color: var(--line); box-shadow: none; background: var(--paper-raise); }
+
+.team-intro { max-width: 62ch; padding-right: 3rem; }
+.team-intro h2 { margin-top: 0.4rem; font-size: clamp(1.9rem, 4vw, 3rem); }
+.team-intro-body { margin-top: 0.9rem; color: var(--ink-soft); font-size: 1.02rem; line-height: 1.7; }
+
+.team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.1rem; margin: clamp(1.6rem, 4vw, 2.4rem) 0; }
+.team-card {
+  padding: 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.4s ease, transform 0.45s cubic-bezier(0.22, 0.78, 0.24, 1);
+  /* Cards trail the panel so the roster resolves person by person. */
+  transition-delay: calc(140ms + var(--card-index) * 55ms);
+}
+.team-overlay.open .team-card { opacity: 1; transform: none; }
+.team-card h3 { margin-top: 0.9rem; font-size: 1.15rem; }
+.team-role { margin-top: 0.15rem; color: var(--coral-strong); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
+.team-blurb { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.9rem; line-height: 1.6; }
+
+.team-avatar { display: grid; place-items: center; width: 62px; height: 62px; overflow: hidden; border-radius: 50%; }
+.team-avatar-photo { width: 100%; height: 100%; object-fit: cover; }
+.team-avatar-monogram { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--paper-raise); }
+.team-avatar-coral { background: var(--coral); }
+.team-avatar-beak { background: var(--beak-deep); }
+.team-avatar-sky { background: var(--sky-strong); }
+.team-avatar-leaf { background: var(--leaf-strong); }
+
+.team-outro { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-top: 1.4rem; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.team-outro p { max-width: 54ch; color: var(--ink-soft); font-size: 0.92rem; }
+.team-outro-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+
+@media (max-width: 620px) {
+  .team-panel { max-height: 92dvh; border-radius: 12px; }
+  .team-intro { padding-right: 2.5rem; }
+  .team-grid { grid-template-columns: 1fr; }
+  .team-outro-actions { width: 100%; }
+  .team-outro-actions .btn { flex: 1 1 auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-scrim, .team-panel, .team-card { transition: none; }
+  .team-panel { transform: none; filter: none; }
+}
+
 /* -------------------------------------------------------- settings drawer */
 .settings-scrim { position: fixed; inset: 0; z-index: 89; background: rgba(22, 40, 45, 0.28); backdrop-filter: blur(2px); }
 .settings-drawer { position: fixed; z-index: 90; top: 0; right: 0; width: min(440px, 100%); height: 100dvh; overflow: auto; background: var(--paper-raise); border-left: 1px solid var(--line); box-shadow: -18px 0 48px rgba(22, 40, 45, 0.16); transform: translateX(102%); transition: transform 0.34s cubic-bezier(0.22, 0.72, 0.25, 1); }
@@ -969,6 +1146,17 @@ body.ready .rise:nth-child(4) { animation-delay: 0.24s; }
   .mission-values { grid-template-columns: 1fr; gap: 2rem; }
   .mission-contact-actions { width: 100%; flex-direction: column; }
   .mission-contact-actions .btn { width: 100%; }
+}
+
+/* The bar carries one more item since About us joined it, which overran the
+   narrowest phones. Tightening the icon buttons keeps Join us on the line. */
+@media (max-width: 440px) {
+  .nav { gap: 0.25rem; padding: 0.5rem 0.5rem; }
+  .nav-links, .nav-auth { gap: 0.15rem; }
+  .nav-icon-link, .nav-icon-button { width: 30px; height: 30px; flex-basis: 30px; }
+  .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 19px; }
+  .brand { font-size: 0.82rem; }
+  .nav-join { padding: 0.35rem 0.42rem; font-size: 0.72rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

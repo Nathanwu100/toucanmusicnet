@@ -58,6 +58,7 @@
       <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
       <div class="nav-links">
         <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"${homeCurrent}><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
+        <button class="nav-icon-button" type="button" data-open-team aria-haspopup="dialog" aria-label="About us" data-tooltip="About us"><iconify-icon icon="pixelarticons:users" aria-hidden="true"></iconify-icon></button>
         <a class="nav-icon-link" href="calendar.html?v=3" aria-label="Calendar" data-tooltip="Calendar"${calendarCurrent}><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
         <span class="nav-auth" data-nav-auth>${authMarkup}</span>
       </div>`;
@@ -90,7 +91,7 @@
         <div class="footer-links" aria-label="Organization">
           <strong>Organization</strong>
           <a href="mission.html">Our mission</a>
-          <a href="mission.html#about">About us</a>
+          <button type="button" data-open-team aria-haspopup="dialog">About us</button>
         </div>
         <div class="footer-links" aria-label="Contact">
           <strong>Contact</strong>
@@ -273,7 +274,7 @@
         instruments.forEach((item) => {
           const option = document.createElement("option");
           option.value = item.slug;
-          option.textContent = item.description ? `${item.name} — ${item.description}` : item.name;
+          option.textContent = item.name;
           instrument.appendChild(option);
         });
         instrument.value = selected;

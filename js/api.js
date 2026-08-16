@@ -15,10 +15,12 @@
     cfg.SUPABASE_URL.includes("YOUR-PROJECT") ||
     !window.supabase;
 
+  // Dropdowns label each option with the name alone, so the catalog carries
+  // no descriptive text; schema.sql seeds a null description to match.
   const INSTRUMENTS = [
-    { slug: "piano", name: "Piano", description: "Piano and keyboard classes", sort_order: 10 },
-    { slug: "violin", name: "Violin", description: "Violin technique and repertoire", sort_order: 20 },
-    { slug: "viola", name: "Viola", description: "Viola technique and ensemble playing", sort_order: 30 },
+    { slug: "piano", name: "Piano", description: null, sort_order: 10 },
+    { slug: "violin", name: "Violin", description: null, sort_order: 20 },
+    { slug: "viola", name: "Viola", description: null, sort_order: 30 },
   ];
 
   // A new key intentionally resets older demo data that still carries the

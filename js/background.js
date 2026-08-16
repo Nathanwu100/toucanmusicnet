@@ -1,6 +1,9 @@
 // Three broad, solid-color ribbons create a softly folded silk backdrop.
-// CSS handles the slow breathing motion; scroll and pointer add mild parallax.
-// Fully disabled for prefers-reduced-motion.
+// CSS handles the slow breathing motion; the shared parallax engine gives
+// each ribbon its own depth so pointer and scroll separate them.
+//
+// These are the furthest planes in the scene, so their travel is the
+// smallest of any layer on the page.
 
 (function () {
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -30,38 +33,22 @@
     return `<svg viewBox="0 0 1680 1200" preserveAspectRatio="none"><path class="silk-ribbon" d="${paths[i]}"/><path class="silk-fold" d="${folds[i]}"/></svg>`;
   };
 
-  layers.forEach((l, i) => {
+  const built = layers.map((l, i) => {
     const el = document.createElement("div");
     el.className = l.cls + (reduce ? " still" : "");
-    el.dataset.depth = l.depth;
     el.innerHTML = ribbon(i);
     host.appendChild(el);
+    return { el, depth: l.depth };
   });
 
   document.body.prepend(host);
-  if (reduce) return;
+  if (reduce || !window.ToucanParallax) return;
 
-  let px = 0, py = 0, targetX = 0, targetY = 0, raf = null;
-
-  function apply() {
-    raf = null;
-    px += (targetX - px) * 0.06;
-    py += (targetY - py) * 0.06;
-    const scroll = window.scrollY;
-    host.querySelectorAll(".silk-layer").forEach((el) => {
-      const d = parseFloat(el.dataset.depth);
-      el.style.transform = `translate3d(${px * 38 * d}px, ${py * 24 * d - scroll * d * 0.17}px, 0)`;
+  built.forEach(({ el, depth }) => {
+    window.ToucanParallax.register(el, {
+      px: 24 * depth,
+      py: 15 * depth,
+      scroll: -0.17 * depth,
     });
-    if (Math.abs(targetX - px) > 0.001 || Math.abs(targetY - py) > 0.001) queue();
-  }
-  function queue() {
-    if (!raf) raf = requestAnimationFrame(apply);
-  }
-
-  window.addEventListener("pointermove", (e) => {
-    targetX = e.clientX / window.innerWidth - 0.5;
-    targetY = e.clientY / window.innerHeight - 0.5;
-    queue();
-  }, { passive: true });
-  window.addEventListener("scroll", queue, { passive: true });
+  });
 })();
