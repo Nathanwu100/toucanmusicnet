@@ -1,0 +1,10 @@
+# Maps historical author names onto their canonical identity.
+#
+# The first 36 commits were recorded under the GitHub handle rather than a
+# real name, on the same address. Git tooling and GitHub's contributor graph
+# read this file, so the whole history reads as one person without rewriting
+# a single commit.
+#
+# Format: Canonical Name <canonical@email>  Old Name <old@email>
+
+Bryan Wang <briprowang@gmail.com> PointBlanked <briprowang@gmail.com>
