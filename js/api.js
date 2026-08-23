@@ -400,13 +400,11 @@
     async listEvents(requestedInstrument = null) {
       if (DEMO) {
         const db = loadDb();
+        // The schedule is public, so every caller sees every class and event.
+        // The viewer only decides whether is_enrolled can be true.
         const viewer = demoSessionUser(db);
-        if (!viewer) return [];
         let rows = db.events;
-        if (viewer.role === "student") {
-          if (!viewer.instrument) return [];
-          rows = rows.filter((event) => event.instrument === viewer.instrument);
-        } else if (requestedInstrument) {
+        if (requestedInstrument) {
           rows = rows.filter((event) => event.instrument === requestedInstrument);
         }
         return rows.map((event) => {
@@ -416,13 +414,13 @@
             instrument_name: instrumentName(event.instrument, db),
             active_enrollments: active.length,
             spots_left: Math.max(0, event.student_capacity - active.length),
-            is_enrolled: viewer.role === "student" && active.some((row) => row.student_id === viewer.id),
+            is_enrolled: viewer?.role === "student" && active.some((row) => row.student_id === viewer.id),
           };
         }).sort((left, right) => left.starts_at.localeCompare(right.starts_at));
       }
 
-      const { data: authData } = await sb.auth.getSession();
-      if (!authData.session) return [];
+      // Reading the calendar needs no session: list_visible_events is granted to
+      // anon and reports is_enrolled false when nobody is logged in.
       const { data, error } = await sb.rpc("list_visible_events", {
         requested_instrument: requestedInstrument || null,
       });

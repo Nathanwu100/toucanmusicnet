@@ -45,16 +45,66 @@ test("volunteer signup does not require or retain a student instrument", async (
   assert.equal(volunteer.instrument, null);
 });
 
-test("student schedule is always scoped to the profile instrument", async () => {
+test("the schedule is unscoped for students, but joining still is not", async () => {
   const { api } = loadDemoApi();
   await api.login(student.email, student.password);
   const visible = await api.listEvents();
-  assert.ok(visible.length > 0);
-  assert.deepEqual(new Set(visible.map((event) => event.instrument)), new Set(["violin"]));
+  assert.deepEqual(
+    new Set(visible.map((event) => event.instrument)),
+    new Set(["piano", "violin", "viola"]),
+    "a violin student browses every instrument"
+  );
 
-  const bypassAttempt = await api.listEvents("piano");
-  assert.deepEqual(new Set(bypassAttempt.map((event) => event.instrument)), new Set(["violin"]));
+  // The instrument argument is now a filter anyone may use, not a cage the
+  // server puts students in.
+  const pianoOnly = await api.listEvents("piano");
+  assert.ok(pianoOnly.length > 0);
+  assert.ok(pianoOnly.every((event) => event.instrument === "piano"));
+
+  // Seeing a class is not permission to join it.
   await assert.rejects(api.joinClass("ev-2"), /does not match/);
+});
+
+test("signed-out visitors read the whole schedule but cannot act on it", async () => {
+  const { api } = loadDemoApi();
+  const visible = await api.listEvents();
+  assert.ok(visible.length > 0, "the calendar is readable with no session");
+  assert.deepEqual(
+    new Set(visible.map((event) => event.instrument)),
+    new Set(["piano", "violin", "viola"])
+  );
+  assert.ok(visible.every((event) => event.is_enrolled === false),
+    "is_enrolled is a real false, never undefined, for anonymous callers");
+  assert.ok(visible.every((event) => typeof event.spots_left === "number"),
+    "capacity is public so visitors can see how full a class is");
+
+  const pianoOnly = await api.listEvents("piano");
+  assert.ok(pianoOnly.every((event) => event.instrument === "piano"),
+    "the instrument filter works without a session");
+
+  await assert.rejects(api.joinClass("ev-1"), /Log in|logged in|session/i);
+});
+
+test("past events stay in the listing so the calendar can look backwards", async () => {
+  const { api, storage } = loadDemoApi();
+  await api.listInstruments();
+  const db = readDemoDb(storage);
+  const started = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000);
+  db.events.push({
+    id: "ev-past", time_slot_id: "slot-past", title: "Finished recital rehearsal",
+    description: "Already over.", event_type: "class", instrument: "violin",
+    starts_at: started.toISOString(),
+    ends_at: new Date(started.getTime() + 3600000).toISOString(),
+    location: "Community Hall", volunteer_capacity: 2,
+    student_capacity: 12, enrollment_open: false,
+  });
+  writeDemoDb(storage, db);
+
+  const visible = await api.listEvents();
+  const past = visible.find((event) => event.id === "ev-past");
+  assert.ok(past, "a finished class is still returned to an anonymous caller");
+  assert.ok(new Date(past.starts_at).getTime() < Date.now());
+  assert.equal(visible[0].id, "ev-past", "listings stay sorted oldest first");
 });
 
 test("admin sees all instruments and can filter explicitly", async () => {
@@ -126,15 +176,19 @@ test("instrument changes are blocked by enrollment and refresh visibility after 
   await api.login(student.email, student.password);
   await api.joinClass("ev-1");
   await assert.rejects(api.updateInstrument("piano"), /Leave or transfer/);
-  assert.ok((await api.listEvents()).every((event) => event.instrument === "violin"));
 
   await api.leaveClass("ev-1");
   const updated = await api.updateInstrument("piano");
   assert.equal(updated.instrument, "piano");
-  assert.ok((await api.listEvents()).every((event) => event.instrument === "piano"));
+
+  // Visibility never depended on the instrument, so it does not change here.
+  // What changes is what the student may join.
+  await assert.rejects(api.joinClass("ev-1"), /does not match/);
+  const joined = await api.joinClass("ev-2");
+  assert.ok(joined.spots_left >= 0);
 });
 
-test("legacy students without an instrument see no schedule until choosing one", async () => {
+test("legacy students without an instrument can browse but not join", async () => {
   const { api, storage } = loadDemoApi();
   await api.listInstruments();
   const db = readDemoDb(storage);
@@ -142,9 +196,12 @@ test("legacy students without an instrument see no schedule until choosing one",
   writeDemoDb(storage, db);
   const user = await api.login(student.email, student.password);
   assert.equal(user.needs_instrument, true);
-  assert.equal((await api.listEvents()).length, 0);
+  assert.ok((await api.listEvents()).length > 0, "an unset instrument no longer empties the calendar");
+  await assert.rejects(api.joinClass("ev-1"), /instrument/i);
+
   await api.updateInstrument("viola");
-  assert.ok((await api.listEvents()).every((event) => event.instrument === "viola"));
+  const joined = await api.joinClass("ev-3");
+  assert.ok(joined.spots_left >= 0, "choosing an instrument unlocks joining, not seeing");
 });
 
 test("admin cannot invalidate an active student's instrument or time slot", async () => {
@@ -198,15 +255,18 @@ test("admin can assign a class to the violin, piano, and viola instruments", asy
   });
   assert.equal(violaStudent.instrument, "viola");
   const visible = await api.listEvents();
-  assert.ok(visible.every((event) => event.instrument === "viola"));
   const createdRow = visible.find((event) => event.id === created.id);
+  assert.ok(createdRow, "the new viola class shows up in the shared listing");
   assert.equal(createdRow.spots_left, 4);
   const joined = await api.joinClass(created.id);
   assert.equal(joined.spots_left, 3);
   await api.logout();
 
+  // The violin student sees the viola class -- the calendar is shared -- but
+  // the instrument rule still stops them at the door.
   await api.login(student.email, student.password);
-  assert.ok(!(await api.listEvents()).some((event) => event.id === created.id));
+  assert.ok((await api.listEvents()).some((event) => event.id === created.id));
+  await assert.rejects(api.joinClass(created.id), /does not match/);
 });
 
 test("volunteer accounts also receive the student spots-left counts", async () => {
