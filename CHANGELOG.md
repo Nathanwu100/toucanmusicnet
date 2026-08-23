@@ -19,6 +19,33 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.2.0] - 2026-08-23
+
+The team roster gets its real content.
+
+### Added
+- **Nathan** joins the roster as Founder and Piano Tutor, from a photo that
+  arrived as `IMG_5881.jpeg`: rotated upright (it carried EXIF orientation 6,
+  so the rotation is now baked in rather than left to the viewer), scaled to
+  match the other portraits, and converted to WebP -- 979 KB down to 26 KB.
+- **Names, roles, and bios for all seven** team members.
+
+### Changed
+- **Cards reveal instead of flipping.** Name and role now sit permanently at
+  the bottom of each portrait, and the bio unrolls above them on hover or
+  keyboard focus. The click-to-flip interaction, its 3D machinery, and the
+  corner turn-over mark are gone.
+- Cards are focusable, so the bio opens for keyboard users too, and every bio
+  is pinned open under `(hover: none)` -- a touch device is never left with
+  content behind an interaction it cannot perform.
+- Roster is ordered by role: founder, then co-founders, then tutors.
+
+### Notes
+- Two people appeared twice in the source copy with conflicting details, and
+  one title was left blank. Resolved with the owner rather than guessed:
+  Carrie is the 7-years-violin version, Sameer's two roles are one person, and
+  Aiden is Co-Head of Technology alongside Sean's Head of Technology.
+
 ## [1.1.0] - 2026-08-23
 
 Brings back pointer-driven depth, narrowly.
