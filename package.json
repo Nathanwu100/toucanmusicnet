@@ -1,10 +1,10 @@
 {
   "name": "toucan-music",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "test": "node --test",
-    "check": "node --check js/api.js && node --check js/app.js && node --check js/calendar.js && node --check js/config.js && node --check js/team.js && node --check js/tutorial.js && node --check js/background.js",
+    "check": "node --check js/api.js && node --check js/app.js && node --check js/calendar.js && node --check js/config.js && node --check js/parallax.js && node --check js/team.js && node --check js/tutorial.js && node --check js/background.js",
     "verify": "npm run check && npm test"
   }
 }

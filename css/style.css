@@ -121,23 +121,29 @@ a { color: inherit; }
 iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 /* -------------------------------------------------- canopy layers */
-/* Three broad leaf bands over the page gradient.
+/* Three broad leaf bands that drift on pointer and scroll -- the only
+   parallax left on the site.
 
-   These are positioned ABSOLUTE, not fixed. Fixed was the bug behind the
-   footer looking like it scrolled at a different rate: the footer sits on
-   a slightly translucent white, so a viewport-pinned backdrop stayed put
-   while the footer moved over it. Anchored to the document instead, the
-   backdrop and everything on it scroll as one piece. */
+   The plate is viewport-fixed so each band's travel is bounded and clipped;
+   the page gradient underneath lives on <body> and scrolls with the
+   document, so a band that drifts never exposes a hard edge, only more
+   gradient.
+
+   Fixed positioning here is what made the footer look like it scrolled at a
+   different rate, but only because the footer sat on 94%-opaque white and
+   the backdrop showed through it. Every surface that sits over this plate
+   is opaque now, which is the real fix -- keep it that way. */
 .silk-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: 100%;
   z-index: -1;
   pointer-events: none;
   overflow: clip;
+  contain: strict;
 }
+.silk-layer { will-change: transform; }
 .silk-layer {
   position: absolute;
   inset: 0;
@@ -320,6 +326,14 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
    Guarded by @supports because the effect needs background-clip: text; if
    that is unavailable the plain accent colour above stands. */
+/* Transforms do not apply to a plain inline box, so the phrase becomes an
+   inline-block to take the pointer tilt. That also stops it breaking across
+   lines mid-phrase, which is why the headline now wraps before it. */
+.hero h1 .hl-accent {
+  display: inline-block;
+  will-change: transform;
+}
+
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .hero h1 .hl-accent {
     background-image: linear-gradient(100deg,
@@ -387,11 +401,15 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .home-summary-actions { display: flex; justify-content: flex-end; gap: 0.8rem; flex-wrap: wrap; }
 
 /* ------------------------------------------------------------- home hero */
-/* This was a 3D parallax scene. The depth planes and their perspective are
-   gone; the wrappers stay because they still carry the grid placement. */
+/* Two elements follow the pointer in 3D: the "a soundtrack" phrase and the
+   reminder panel. Perspective is applied to each one's own parent rather
+   than to the whole scene, so nothing else inherits a 3D plane. */
 .hero-scene { position: relative; }
 .hero-scene .hero { position: relative; z-index: 2; }
 .hero-layer { min-width: 0; }
+.hero h1 { perspective: 800px; }
+.hero-layer-board { perspective: 1100px; }
+.hero-layer-board .notification-board { will-change: transform; }
 .hero-layer-gallery { grid-column: 1 / -1; }
 .hero-layer-powered { grid-column: 1 / -1; }
 
@@ -729,7 +747,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   padding: 1.25rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--paper-raise) 95%, transparent);
+  background: var(--paper-raise);
   box-shadow: var(--shadow-1);
 }
 .day-panel-head { display: flex; align-items: flex-start; gap: 0.85rem; }

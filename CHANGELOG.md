@@ -19,6 +19,30 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.1.0] - 2026-08-23
+
+Brings back pointer-driven depth, narrowly.
+
+### Added
+- **Background parallax.** The three canopy bands drift on pointer and
+  scroll again, each at its own depth. This is the only parallax on the
+  site; no content element rides the engine except the two below.
+- **Pointer-follow 3D** on exactly two things: the "a soundtrack" phrase in
+  the home headline, and the reminder panel beside it. Perspective is
+  applied to each element's own parent rather than to the hero as a whole,
+  so nothing else inherits a 3D plane.
+- `js/parallax.js` is back, and back in `npm run check`.
+
+### Changed
+- The canopy plate is viewport-fixed again, which is what bounds and clips
+  each band's travel. The footer bug this originally caused stays fixed by
+  the opaque surfaces, not by the positioning — see the note in the
+  stylesheet before changing either.
+- `.day-panel` on the calendar is now opaque; it was the last surface still
+  translucent over the backdrop.
+- The "a soundtrack" phrase is an inline-block so it can take a transform,
+  so the headline wraps before it rather than mid-phrase.
+
 ## [1.0.0] - 2026-08-22
 
 The first tagged release. Opens the calendar to the public, rebuilds the About
