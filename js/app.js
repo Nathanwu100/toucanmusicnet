@@ -53,7 +53,7 @@
          <button class="nav-icon-button" type="button" data-logout aria-label="Log out" data-tooltip="Log out"><iconify-icon icon="pixelarticons:logout" aria-hidden="true"></iconify-icon></button>`
       : `<button class="nav-icon-button" type="button" data-open-settings data-tour="nav-settings" aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
          <a class="nav-icon-link" href="login.html" aria-label="Log in" data-tooltip="Log in"${loginCurrent}><iconify-icon icon="pixelarticons:login" aria-hidden="true"></iconify-icon></a>
-         <a class="btn btn-beak btn-sm nav-join" href="signup.html"${signupCurrent}><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>`;
+         <a class="btn btn-primary btn-sm nav-join" href="signup.html"${signupCurrent}><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>`;
 
     nav.innerHTML = `
       <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
@@ -96,7 +96,7 @@
         </div>
         <div class="footer-links" aria-label="Contact">
           <strong>Contact</strong>
-          <a href="mailto:hello@toucanmusic.org">hello@toucanmusic.org</a>
+          <a href="mailto:toucanexec@gmail.com">toucanexec@gmail.com</a>
           <button type="button" data-open-settings>Notification settings</button>
         </div>
       </div>
@@ -109,11 +109,14 @@
       </div>`;
   }
 
+  // The one piece of motion left outside the notification board: the bird
+  // idles on its own short cycle. Kept deliberately frequent -- it is the
+  // site's only sign of life now that the ambient animation is gone.
   function initBirdLogos() {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const idleAnimations = [
-      { row: 1, frames: 9, frameTime: 120 },
-      { row: 3, frames: 8, frameTime: 135 },
+      { row: 1, frames: 9, frameTime: 110 },
+      { row: 3, frames: 8, frameTime: 125 },
     ];
 
     document.querySelectorAll("[data-brand-bird]").forEach((sprite, index) => {
@@ -130,7 +133,7 @@
       if (reducedMotion) return;
 
       const schedule = () => {
-        const delay = 5500 + Math.random() * 7500 + index * 600;
+        const delay = 1400 + Math.random() * 2200 + index * 250;
         window.setTimeout(playIdle, delay);
       };
       const playIdle = () => {
@@ -185,7 +188,7 @@
           <iconify-icon icon="pixelarticons:bell" aria-hidden="true"></iconify-icon>
           <h3>Keep up with classes</h3>
           <p>Log in to manage weekly email, class reminders, and text notifications.</p>
-          <a class="btn btn-beak" href="login.html">Log in</a>
+          <a class="btn btn-primary" href="login.html">Log in</a>
           <a class="btn btn-quiet" href="signup.html">Create an account</a>
         </div>`;
       return;
@@ -242,7 +245,7 @@
           </div>
         </section>
         <div class="drawer-actions">
-          <button class="btn btn-beak" type="submit">Save settings</button>
+          <button class="btn btn-primary" type="submit">Save settings</button>
           <button class="btn btn-quiet" type="button" data-start-tutorial><iconify-icon icon="pixelarticons:play" aria-hidden="true"></iconify-icon>Site guide</button>
         </div>
         <p class="settings-save-status" data-settings-status role="status" aria-live="polite"></p>
@@ -325,7 +328,7 @@
           : submit.value === "phone"
           ? "Your mobile number is saved."
           : "Your settings are saved.";
-        toast(saveStatus.textContent, "beak");
+        toast(saveStatus.textContent, "success");
       } catch (error) {
         saveStatus.textContent = "Settings were not saved. Please try again.";
         toast(error.message, "error");
@@ -382,47 +385,9 @@
     }
   }
 
-  function initFloatFollow(root = document) {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    root.querySelectorAll(".tilt, .float-follow").forEach((item) => {
-      if (item.dataset.floatReady) return;
-      item.dataset.floatReady = "true";
-      let x = 0;
-      let y = 0;
-      let targetX = 0;
-      let targetY = 0;
-      let frame = null;
-
-      const animate = () => {
-        x += (targetX - x) * 0.1;
-        y += (targetY - y) * 0.1;
-        item.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`;
-        if (Math.abs(targetX - x) > 0.03 || Math.abs(targetY - y) > 0.03) {
-          frame = requestAnimationFrame(animate);
-        } else {
-          frame = null;
-        }
-      };
-      const queue = () => {
-        if (!frame) frame = requestAnimationFrame(animate);
-      };
-      item.addEventListener("pointermove", (event) => {
-        const rect = item.getBoundingClientRect();
-        targetX = ((event.clientX - rect.left) / rect.width - 0.5) * 6;
-        targetY = ((event.clientY - rect.top) / rect.height - 0.5) * 4;
-        queue();
-      });
-      item.addEventListener("pointerleave", () => {
-        targetX = 0;
-        targetY = 0;
-        queue();
-      });
-    });
-  }
-
   const galleryImages = [
-    { src: "assets/art/sheet-music.svg", alt: "Illustration of sheet music pages" },
-    { src: "assets/art/concert-hall.svg", alt: "Illustration of a concert hall stage with a grand piano" },
+    { src: "assets/art/sheet-music.svg?v=2", alt: "Illustration of sheet music pages" },
+    { src: "assets/art/concert-hall.svg?v=2", alt: "Illustration of a concert hall stage with a grand piano" },
   ];
 
   function renderHomeSchedule(events) {
@@ -438,7 +403,7 @@
         const image = galleryImages[index % galleryImages.length];
         const link = document.createElement("a");
         const date = new Date(event.starts_at);
-        link.className = "event-gallery-card float-follow";
+        link.className = "event-gallery-card";
         link.href = "calendar.html?v=3";
         link.innerHTML = `
           <img src="${image.src}" alt="${image.alt}" ${index ? 'loading="lazy"' : ""}>
@@ -455,7 +420,6 @@
         gallery.appendChild(link);
       });
       if (!upcoming.length) gallery.innerHTML = '<p class="schedule-empty">New classes will be posted soon.</p>';
-      initFloatFollow(gallery);
     }
 
     if (notificationList) {
@@ -508,7 +472,7 @@
           toast(
             `Starting soon: "${event.title}" at ` +
               new Date(event.starts_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-            "beak"
+            "success"
           );
           break;
         }
@@ -522,8 +486,6 @@
     renderFooter();
     initBirdLogos();
     initSettings();
-    initFloatFollow();
-    document.body.classList.add("ready");
     initHomeSchedule();
     window.ToucanTour?.maybeAutoStart(user);
     checkReminders(user);

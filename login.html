@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
   <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
-  <link rel="stylesheet" href="css/style.css?v=17" />
+  <link rel="stylesheet" href="css/style.css?v=22" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -21,13 +21,13 @@
       <span class="nav-auth" data-nav-auth>
         <button class="nav-icon-button" type="button" data-open-settings aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
         <a class="nav-icon-link" href="login.html" aria-current="page" aria-label="Log in" data-tooltip="Log in"><iconify-icon icon="pixelarticons:login" aria-hidden="true"></iconify-icon></a>
-        <a class="btn btn-beak btn-sm nav-join" href="signup.html"><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>
+        <a class="btn btn-primary btn-sm nav-join" href="signup.html"><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>
       </span>
     </div>
   </nav>
 
   <main class="auth-wrap">
-    <div class="panel rise">
+    <div class="panel">
       <h1>Welcome back</h1>
       <p class="sub">Log in to see your classes, volunteer spots, and settings.</p>
       <div class="form-error" id="error" role="alert"></div>
@@ -46,7 +46,7 @@
           <label for="password">Password</label>
           <input type="password" id="password" autocomplete="current-password" required />
         </div>
-        <button class="btn btn-beak" type="submit" id="submit" style="width:100%">Log in</button>
+        <button class="btn btn-primary" type="submit" id="submit" style="width:100%">Log in</button>
       </form>
       <p class="hint" style="margin-top:1.2rem">New here? <a href="signup.html">Create an account</a> as a student or a volunteer.</p>
     </div>
@@ -57,10 +57,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js?v=2"></script>
   <script src="js/api.js?v=10"></script>
-  <script src="js/parallax.js?v=2"></script>
   <script src="js/tutorial.js"></script>
-  <script src="js/background.js?v=2"></script>
-  <script src="js/app.js?v=14"></script>
+  <script src="js/background.js?v=3"></script>
+  <script src="js/app.js?v=17"></script>
   <script>
     const loginForm = document.getElementById("login-form");
     const identifier = document.getElementById("identifier");

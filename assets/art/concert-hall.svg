@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Illustration of a concert hall stage with a grand piano under warm lights">
   <!-- Toucan Music palette: petrol ink, coral curtains, beak-gold light -->
-  <rect width="1600" height="900" fill="#14282c"/>
+  <rect width="1600" height="900" fill="#0f2619"/>
 
   <!-- back wall arch -->
-  <path d="M200 900 L200 420 Q200 180 800 180 Q1400 180 1400 420 L1400 900 Z" fill="#1d3a3f"/>
-  <path d="M280 900 L280 460 Q280 250 800 250 Q1320 250 1320 460 L1320 900 Z" fill="#234449"/>
+  <path d="M200 900 L200 420 Q200 180 800 180 Q1400 180 1400 420 L1400 900 Z" fill="#163524"/>
+  <path d="M280 900 L280 460 Q280 250 800 250 Q1320 250 1320 460 L1320 900 Z" fill="#1b3f2b"/>
 
   <!-- spotlight beams -->
   <polygon points="640,190 560,660 900,660" fill="#f0c86f" opacity="0.10"/>
@@ -12,8 +12,8 @@
 
   <!-- stage glow and floor -->
   <ellipse cx="800" cy="700" rx="620" ry="150" fill="#e6b75d" opacity="0.16"/>
-  <path d="M240 660 L1360 660 L1480 900 L120 900 Z" fill="#2a4348"/>
-  <path d="M240 660 L1360 660 L1372 684 L228 684 Z" fill="#1a3236"/>
+  <path d="M240 660 L1360 660 L1480 900 L120 900 Z" fill="#204a32"/>
+  <path d="M240 660 L1360 660 L1372 684 L228 684 Z" fill="#132e1f"/>
 
   <!-- proscenium valance -->
   <path d="M160 120 L1440 120 L1440 200 Q1360 240 1280 200 Q1200 240 1120 200 Q1040 240 960 200 Q880 240 800 200 Q720 240 640 200 Q560 240 480 200 Q400 240 320 200 Q240 240 160 200 Z" fill="#93412f"/>
@@ -32,7 +32,7 @@
   </g>
 
   <!-- grand piano silhouette -->
-  <g fill="#0e1e21">
+  <g fill="#0b1f15">
     <!-- open lid -->
     <path d="M700 380 L1058 330 L1064 348 L706 442 Z"/>
     <path d="M706 442 L1064 348 L1064 470 Q900 512 706 500 Z" fill="#e6b75d" opacity="0.18"/>
@@ -41,8 +41,8 @@
     <!-- lid prop -->
     <rect x="1008" y="352" width="10" height="120" transform="rotate(14 1013 412)"/>
     <!-- keyboard -->
-    <rect x="620" y="492" width="52" height="26" fill="#e4eeee"/>
-    <rect x="620" y="492" width="52" height="12" fill="#0e1e21" opacity="0.35"/>
+    <rect x="620" y="492" width="52" height="26" fill="#e2f0e7"/>
+    <rect x="620" y="492" width="52" height="12" fill="#0b1f15" opacity="0.35"/>
     <!-- legs -->
     <rect x="700" y="585" width="16" height="105"/>
     <rect x="1044" y="585" width="16" height="105"/>
@@ -50,13 +50,13 @@
   </g>
 
   <!-- music stands for violin and viola players -->
-  <g stroke="#0e1e21" stroke-width="10" fill="#0e1e21">
+  <g stroke="#0b1f15" stroke-width="10" fill="#0b1f15">
     <path d="M480 505 L536 505 L528 460 L488 460 Z" stroke="none"/>
     <line x1="508" y1="505" x2="508" y2="620"/>
     <line x1="508" y1="620" x2="480" y2="662"/>
     <line x1="508" y1="620" x2="536" y2="662"/>
   </g>
-  <g stroke="#0e1e21" stroke-width="10" fill="#0e1e21">
+  <g stroke="#0b1f15" stroke-width="10" fill="#0b1f15">
     <path d="M356 535 L412 535 L404 490 L364 490 Z" stroke="none"/>
     <line x1="384" y1="535" x2="384" y2="648"/>
     <line x1="384" y1="648" x2="356" y2="690"/>
@@ -64,7 +64,7 @@
   </g>
 
   <!-- audience seat rows -->
-  <g fill="#0b181b">
+  <g fill="#081a11">
     <path d="M60 900 L60 860 Q100 830 140 860 L140 900 Z"/>
     <path d="M180 900 L180 860 Q220 830 260 860 L260 900 Z"/>
     <path d="M300 900 L300 860 Q340 830 380 860 L380 900 Z"/>

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.7.0/dist/driver.css" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
   <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
-  <link rel="stylesheet" href="css/style.css?v=17" />
+  <link rel="stylesheet" href="css/style.css?v=22" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -22,33 +22,40 @@
       <span class="nav-auth" data-nav-auth>
         <button class="nav-icon-button" type="button" data-open-settings aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
         <a class="nav-icon-link" href="login.html" aria-label="Log in" data-tooltip="Log in"><iconify-icon icon="pixelarticons:login" aria-hidden="true"></iconify-icon></a>
-        <a class="btn btn-beak btn-sm nav-join" href="signup.html"><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>
+        <a class="btn btn-primary btn-sm nav-join" href="signup.html"><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>
       </span>
     </div>
   </nav>
 
   <main class="cal-page">
-    <div class="cal-head rise">
+    <div class="cal-head">
       <h1>Classes &amp; events</h1>
       <button class="btn btn-sm icon-btn" id="prev" aria-label="Previous month" data-tooltip="Previous month"><iconify-icon icon="pixelarticons:chevron-left" aria-hidden="true"></iconify-icon></button>
       <span class="cal-title" id="cal-title"></span>
       <button class="btn btn-sm icon-btn" id="next" aria-label="Next month" data-tooltip="Next month"><iconify-icon icon="pixelarticons:chevron-right" aria-hidden="true"></iconify-icon></button>
-      <button class="btn btn-beak btn-sm" id="new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
-      <button class="btn btn-beak btn-sm" id="new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
+      <button class="btn btn-primary btn-sm" id="new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
+      <button class="btn btn-primary btn-sm" id="new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
     </div>
 
-    <div class="calendar-context rise" id="calendar-context" role="status" aria-live="polite">
-      <p id="calendar-scope">Loading your schedule…</p>
-      <div class="admin-instrument-filter" id="admin-instrument-filter" hidden>
-        <label for="instrument-filter">Filter by instrument</label>
-        <select id="instrument-filter">
-          <option value="">All instruments</option>
-        </select>
+    <div class="calendar-context" id="calendar-context">
+      <p id="calendar-scope" role="status" aria-live="polite">Loading the schedule…</p>
+      <div class="calendar-filters">
+        <div class="time-filter" role="group" aria-label="Show classes from">
+          <button class="time-filter-option" type="button" data-time-filter="upcoming" aria-pressed="false">Upcoming</button>
+          <button class="time-filter-option" type="button" data-time-filter="past" aria-pressed="false">Past</button>
+          <button class="time-filter-option" type="button" data-time-filter="all" aria-pressed="true">All</button>
+        </div>
+        <div class="instrument-filter">
+          <label for="instrument-filter">Instrument</label>
+          <select id="instrument-filter">
+            <option value="">All instruments</option>
+          </select>
+        </div>
       </div>
     </div>
 
     <div class="calendar-layout">
-      <section class="calendar-main rise" aria-label="Monthly calendar">
+      <section class="calendar-main" aria-label="Monthly calendar">
         <div class="cal-grid" id="cal-grid"></div>
         <div class="cal-legend">
           <span class="k-class"><i></i>Class</span>
@@ -56,7 +63,7 @@
         </div>
       </section>
 
-      <aside class="day-panel rise" id="day-panel" aria-live="polite">
+      <aside class="day-panel" id="day-panel" aria-live="polite">
         <div class="day-panel-head">
           <span class="day-panel-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:calendar"></iconify-icon></span>
           <div>
@@ -66,8 +73,8 @@
         </div>
         <div class="day-panel-toolbar">
           <p id="selected-day-summary"></p>
-          <button class="btn btn-beak btn-sm" id="day-new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
-          <button class="btn btn-beak btn-sm" id="day-new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
+          <button class="btn btn-primary btn-sm" id="day-new-class" hidden><iconify-icon icon="pixelarticons:music" aria-hidden="true"></iconify-icon>Add class</button>
+          <button class="btn btn-primary btn-sm" id="day-new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
         </div>
         <div class="day-event-list" id="day-event-list"></div>
       </aside>
@@ -132,7 +139,7 @@
         </div>
         <div class="modal-actions">
           <button class="btn btn-quiet" type="button" data-close>Cancel</button>
-          <button class="btn btn-beak" type="submit" id="f-save">Save event</button>
+          <button class="btn btn-primary" type="submit" id="f-save">Save event</button>
         </div>
       </form>
     </div>
@@ -144,10 +151,9 @@
   <script src="js/config.js?v=2"></script>
   <script src="js/api.js?v=10"></script>
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.7.0/dist/driver.js.iife.js"></script>
-  <script src="js/parallax.js?v=2"></script>
   <script src="js/tutorial.js"></script>
-  <script src="js/background.js?v=2"></script>
-  <script src="js/app.js?v=14"></script>
-  <script src="js/calendar.js?v=7"></script>
+  <script src="js/background.js?v=3"></script>
+  <script src="js/app.js?v=17"></script>
+  <script src="js/calendar.js?v=9"></script>
 </body>
 </html>

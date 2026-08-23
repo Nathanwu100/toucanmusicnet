@@ -4,52 +4,21 @@
 // consistent and adding a person is a one-line change here.
 //
 // -------------------------------------------------------------------------
-// Every name is a placeholder. Replace "Untitled" with the real person, and
-// add a `photo` path to any entry to use a portrait; without one the card
-// falls back to a monogram in the entry's accent colour. The roles and
-// blurbs below are placeholders too.
+// Each card flips on click to show its back. Roles and bios are not written
+// yet: leave `role` and `bio` empty and the back shows a quiet placeholder.
+// Filling either one in is all it takes -- no markup or CSS changes needed.
 // -------------------------------------------------------------------------
 
 (function () {
   "use strict";
 
   const TEAM = [
-    {
-      name: "Untitled",
-      role: "Founder & Program Director",
-      accent: "coral",
-      blurb: "Started Toucan with a borrowed keyboard and one room on loan. Still teaches the Tuesday piano class.",
-    },
-    {
-      name: "Untitled",
-      role: "Lead Piano Teacher",
-      accent: "beak",
-      blurb: "Believes a student should make sound in the first ten minutes of the first lesson, every time.",
-    },
-    {
-      name: "Untitled",
-      role: "Strings Lead — Violin & Viola",
-      accent: "sky",
-      blurb: "Runs the violin and viola tracks, and tunes roughly forty instruments a week without complaint.",
-    },
-    {
-      name: "Untitled",
-      role: "Volunteer Coordinator",
-      accent: "leaf",
-      blurb: "Matches volunteers to classes and makes sure nobody's first evening is a confusing one.",
-    },
-    {
-      name: "Untitled",
-      role: "Performance & Showcase Lead",
-      accent: "coral",
-      blurb: "Books the halls, moves the pianos, and gets every student onto a real stage at least twice a year.",
-    },
-    {
-      name: "Untitled",
-      role: "Family Liaison",
-      accent: "sky",
-      blurb: "First point of contact for families, and the reason the waiting list actually moves.",
-    },
+    { name: "Aiden",  photo: "assets/team/aiden.webp",  role: "", bio: "" },
+    { name: "Bryan",  photo: "assets/team/bryan.webp",  role: "", bio: "" },
+    { name: "Carrie", photo: "assets/team/carrie.jpg",  role: "", bio: "" },
+    { name: "Luke",   photo: "assets/team/luke.webp",   role: "", bio: "" },
+    { name: "Sameer", photo: "assets/team/sameer.webp", role: "", bio: "" },
+    { name: "Sean",   photo: "assets/team/sean.webp",   role: "", bio: "" },
   ];
 
   const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -71,19 +40,38 @@
   }
 
   function memberMarkup(member) {
+    const name = escape(member.name);
+    const role = escape(member.role);
+    const bio = escape(member.bio);
     return `
       <li class="team-member">
-        <span class="team-photo team-photo-${escape(member.accent || "leaf")}">${photoMarkup(member)}</span>
-        <div>
-          <h2>${escape(member.name)}</h2>
-          <p class="team-role">${escape(member.role)}</p>
-          ${member.blurb ? `<p class="team-blurb">${escape(member.blurb)}</p>` : ""}
-        </div>
+        <button class="team-card" type="button" data-team-card aria-pressed="false"
+                aria-label="${name} — flip for bio">
+          <span class="team-card-inner">
+            <span class="team-card-face team-card-front">
+              <span class="team-photo">${photoMarkup(member)}</span>
+              <span class="team-card-name">${name}</span>
+            </span>
+            <span class="team-card-face team-card-back">
+              <span class="team-card-name">${name}</span>
+              ${role ? `<span class="team-role">${role}</span>` : ""}
+              <span class="team-bio${bio ? "" : " team-bio-empty"}">${bio || "Bio coming soon."}</span>
+            </span>
+          </span>
+        </button>
       </li>`;
   }
 
   const list = document.querySelector("[data-team-list]");
-  if (list) list.innerHTML = TEAM.map(memberMarkup).join("");
+  if (list) {
+    list.innerHTML = TEAM.map(memberMarkup).join("");
+    list.addEventListener("click", (event) => {
+      const card = event.target.closest("[data-team-card]");
+      if (!card || !list.contains(card)) return;
+      const flipped = card.getAttribute("aria-pressed") === "true";
+      card.setAttribute("aria-pressed", flipped ? "false" : "true");
+    });
+  }
 
   window.ToucanTeam = { members: TEAM };
 })();

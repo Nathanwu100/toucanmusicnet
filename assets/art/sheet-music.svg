@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of sheet music pages">
   <!-- Toucan Music palette: paper, petrol ink, beak-gold and coral accents -->
-  <rect width="1200" height="900" fill="#e8f1ed"/>
+  <rect width="1200" height="900" fill="#e2f0e7"/>
 
   <!-- back page, slightly rotated -->
   <g transform="rotate(-5 600 450)">
     <rect x="230" y="120" width="700" height="680" rx="6" fill="#ffffff"/>
-    <rect x="230" y="120" width="700" height="680" rx="6" fill="#18373a" opacity="0.05"/>
+    <rect x="230" y="120" width="700" height="680" rx="6" fill="#102a1d" opacity="0.05"/>
   </g>
 
   <!-- front page -->
   <g transform="rotate(2 600 450)">
-    <rect x="260" y="140" width="700" height="680" rx="6" fill="#fbfaf6" stroke="#18373a" stroke-opacity="0.14"/>
+    <rect x="260" y="140" width="700" height="680" rx="6" fill="#f6faf6" stroke="#102a1d" stroke-opacity="0.14"/>
 
     <!-- title rules -->
-    <rect x="470" y="196" width="280" height="14" rx="7" fill="#18373a" opacity="0.7"/>
-    <rect x="540" y="228" width="140" height="9" rx="4.5" fill="#53686a" opacity="0.6"/>
+    <rect x="470" y="196" width="280" height="14" rx="7" fill="#102a1d" opacity="0.7"/>
+    <rect x="540" y="228" width="140" height="9" rx="4.5" fill="#506b5b" opacity="0.6"/>
 
     <!-- staves -->
-    <g stroke="#18373a" stroke-width="3" opacity="0.8">
+    <g stroke="#102a1d" stroke-width="3" opacity="0.8">
       <g>
         <line x1="310" y1="300" x2="910" y2="300"/>
         <line x1="310" y1="316" x2="910" y2="316"/>
@@ -49,12 +49,12 @@
     </g>
 
     <!-- stylized treble clef on first stave -->
-    <g fill="none" stroke="#18373a" stroke-width="8" stroke-linecap="round">
+    <g fill="none" stroke="#102a1d" stroke-width="8" stroke-linecap="round">
       <path d="M346 372 Q322 356 336 336 Q350 318 364 336 Q376 352 352 372 L346 292 Q344 272 358 272 Q370 274 364 292 L352 372"/>
     </g>
 
     <!-- notes: quarter and beamed eighths -->
-    <g fill="#18373a">
+    <g fill="#102a1d">
       <!-- quarter note -->
       <ellipse cx="440" cy="348" rx="13" ry="9.5" transform="rotate(-18 440 348)"/>
       <rect x="450" y="294" width="4.5" height="52"/>
@@ -65,7 +65,7 @@
       <rect x="620" y="276" width="4.5" height="54"/>
       <polygon points="550,262 624.5,276 624.5,290 550,276"/>
       <!-- half note (open head) on second stave -->
-      <ellipse cx="470" cy="472" rx="13" ry="9.5" transform="rotate(-18 470 472)" fill="none" stroke="#18373a" stroke-width="5"/>
+      <ellipse cx="470" cy="472" rx="13" ry="9.5" transform="rotate(-18 470 472)" fill="none" stroke="#102a1d" stroke-width="5"/>
       <rect x="480" y="418" width="4.5" height="52"/>
       <!-- quarter on second stave -->
       <ellipse cx="590" cy="456" rx="13" ry="9.5" transform="rotate(-18 590 456)"/>
@@ -77,10 +77,10 @@
       <rect x="510" y="542" width="4.5" height="52"/>
       <polygon points="440,558 514.5,542 514.5,556 440,572"/>
       <!-- quarter on third stave, gold accent -->
-      <ellipse cx="640" cy="628" rx="13" ry="9.5" transform="rotate(-18 640 628)" fill="#a9682f"/>
-      <rect x="650" y="574" width="4.5" height="52" fill="#a9682f"/>
+      <ellipse cx="640" cy="628" rx="13" ry="9.5" transform="rotate(-18 640 628)" fill="#8f5c0b"/>
+      <rect x="650" y="574" width="4.5" height="52" fill="#8f5c0b"/>
       <!-- final whole note on fourth stave -->
-      <ellipse cx="480" cy="732" rx="14" ry="10" fill="none" stroke="#18373a" stroke-width="5"/>
+      <ellipse cx="480" cy="732" rx="14" ry="10" fill="none" stroke="#102a1d" stroke-width="5"/>
       <!-- bar lines -->
       <rect x="700" y="300" width="4" height="64" opacity="0.8"/>
       <rect x="700" y="440" width="4" height="64" opacity="0.8"/>
@@ -91,6 +91,6 @@
     </g>
 
     <!-- coral bookmark ribbon -->
-    <path d="M872 140 L916 140 L916 236 L894 210 L872 236 Z" fill="#d7775f"/>
+    <path d="M872 140 L916 140 L916 236 L894 210 L872 236 Z" fill="#c2503c"/>
   </g>
 </svg>

@@ -1,23 +1,14 @@
-// Three broad, solid-color ribbons create a softly folded silk backdrop.
-// CSS handles the slow breathing motion; the shared parallax engine gives
-// each ribbon its own depth so pointer and scroll separate them.
+// Three broad, solid-color ribbons create a softly folded backdrop.
 //
-// These are the furthest planes in the scene, so their travel is the
-// smallest of any layer on the page.
+// This used to breathe on a CSS loop and ride the parallax engine for depth.
+// Both are gone: the ribbons are drawn once and never move again.
 
 (function () {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
   const host = document.createElement("div");
   host.className = "silk-bg";
   host.setAttribute("aria-hidden", "true");
 
-  // depth: parallax multiplier (farther layers move less)
-  const layers = [
-    { depth: 0.12, cls: "silk-layer far" },
-    { depth: 0.3, cls: "silk-layer mid" },
-    { depth: 0.52, cls: "silk-layer near" },
-  ];
+  const layers = ["silk-layer far", "silk-layer mid", "silk-layer near"];
 
   const ribbon = (i) => {
     const paths = [
@@ -33,22 +24,12 @@
     return `<svg viewBox="0 0 1680 1200" preserveAspectRatio="none"><path class="silk-ribbon" d="${paths[i]}"/><path class="silk-fold" d="${folds[i]}"/></svg>`;
   };
 
-  const built = layers.map((l, i) => {
+  layers.forEach((className, i) => {
     const el = document.createElement("div");
-    el.className = l.cls + (reduce ? " still" : "");
+    el.className = className;
     el.innerHTML = ribbon(i);
     host.appendChild(el);
-    return { el, depth: l.depth };
   });
 
   document.body.prepend(host);
-  if (reduce || !window.ToucanParallax) return;
-
-  built.forEach(({ el, depth }) => {
-    window.ToucanParallax.register(el, {
-      px: 24 * depth,
-      py: 15 * depth,
-      scroll: -0.17 * depth,
-    });
-  });
 })();

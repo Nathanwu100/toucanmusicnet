@@ -1,5 +1,10 @@
-// Calendar: instrument-scoped student schedule and enrollment, volunteer
-// signup, plus all-instrument admin management.
+// Calendar: the public class and event schedule, plus enrollment,
+// volunteer signup, and admin management for the accounts that have them.
+//
+// Reading the calendar needs no account. Everyone -- signed out included --
+// sees every class and event, past and upcoming, and can filter by
+// instrument or by time. Login only gates *acting*: joining a class,
+// volunteering, and the admin editor.
 
 (function () {
   const api = window.ToucanAPI;
@@ -12,6 +17,9 @@
   let selectedDate = new Date();
   let editingId = null;
   let panelRenderId = 0;
+  // "upcoming" | "past" | "all" -- applies to the grid and the day panel
+  // alike, so what a day cell promises is what opening it delivers.
+  let timeFilter = "all";
 
   const grid = $("#cal-grid");
   const title = $("#cal-title");
@@ -30,7 +38,14 @@
     left.getFullYear() === right.getFullYear() &&
     left.getMonth() === right.getMonth() &&
     left.getDate() === right.getDate();
-  const eventsForDate = (date) => events.filter((event) => sameDay(new Date(event.starts_at), date));
+  // An event counts as past once it has finished, not once it has started,
+  // so a class you are sitting in is still "upcoming".
+  const hasEnded = (event) => new Date(event.ends_at || event.starts_at).getTime() < Date.now();
+  const inTimeFilter = (event) =>
+    timeFilter === "all" || (timeFilter === "past" ? hasEnded(event) : !hasEnded(event));
+  const visibleEvents = () => events.filter(inTimeFilter);
+  const eventsForDate = (date) =>
+    visibleEvents().filter((event) => sameDay(new Date(event.starts_at), date));
   const toLocalInput = (dateOrIso) => {
     const date = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
     const pad = (value) => String(value).padStart(2, "0");
@@ -50,31 +65,56 @@
     render();
   }
 
+  // The scope line says what is on screen. It is never a login wall: the
+  // schedule is public, so the only thing signing in adds is the ability
+  // to join a class.
   function renderScope() {
     const scope = $("#calendar-scope");
-    const filter = $("#admin-instrument-filter");
+    const instrument = $("#instrument-filter").value;
+    const instrumentLabel = instrument
+      ? $("#instrument-filter").selectedOptions[0]?.textContent
+      : "All instruments";
+    const period = { upcoming: "Upcoming", past: "Past", all: "All" }[timeFilter];
+    const shown = visibleEvents().length;
+
+    scope.textContent = "";
+    scope.append(element(
+      "strong", "calendar-scope-summary",
+      `${period} · ${instrumentLabel} · ${shown} item${shown === 1 ? "" : "s"}`
+    ));
+
+    let note = "";
+    if (!user) note = "Anyone can browse the schedule. Sign in to join a class or volunteer.";
+    else if (user.role === "student") {
+      note = user.instrument_name
+        ? `You can join ${user.instrument_name} classes.`
+        : "Choose an instrument in Settings to join classes.";
+    } else if (user.role === "volunteer") note = "You can sign up to volunteer for any event.";
+    else if (user.role === "admin") note = "You can add, edit, and delete anything here.";
+
+    const noteRow = element("span", "calendar-scope-note", note);
     if (!user) {
-      scope.innerHTML = 'Log in to view your instrument schedule. <a href="login.html">Log in</a> or <a href="signup.html">create an account</a>.';
-      filter.hidden = true;
-      return;
+      noteRow.append(document.createTextNode(" "));
+      const link = element("a", "", "Log in");
+      link.href = "login.html";
+      noteRow.append(link);
     }
-    if (user.role === "student") {
-      filter.hidden = true;
-      scope.textContent = user.instrument_name
-        ? `Showing only ${user.instrument_name} classes and events for ${user.name}.`
-        : "Choose an instrument in Settings to unlock your student calendar.";
-      return;
-    }
-    if (user.role === "admin") {
-      filter.hidden = false;
-      const selected = $("#instrument-filter").selectedOptions[0]?.textContent;
-      scope.textContent = $("#instrument-filter").value
-        ? `Admin view: ${selected} classes and events.`
-        : "Admin view: all instruments, classes, and events.";
-      return;
-    }
-    filter.hidden = true;
-    scope.textContent = "Volunteer view: all instruments, classes, and events.";
+    scope.append(noteRow);
+  }
+
+  // Switching to a period the current month has nothing in is a dead end,
+  // so jump to the nearest month that does: the latest past month, or the
+  // soonest upcoming one.
+  function jumpToPeriod() {
+    if (timeFilter === "all" || !events.length) return;
+    const pool = events.filter(inTimeFilter);
+    if (!pool.length || pool.some((event) => {
+      const date = new Date(event.starts_at);
+      return date.getFullYear() === current.getFullYear() && date.getMonth() === current.getMonth();
+    })) return;
+    const target = new Date((timeFilter === "past" ? pool[pool.length - 1] : pool[0]).starts_at);
+    current = new Date(target.getFullYear(), target.getMonth(), 1);
+    selectedDate = new Date(target.getFullYear(), target.getMonth(), target.getDate());
   }
 
   function render() {
@@ -114,10 +154,12 @@
       })}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}`);
       cell.appendChild(element("span", "d", String(day)));
 
+      if (dayEvents.length && dayEvents.every(hasEnded)) cell.classList.add("is-past");
       dayEvents.slice(0, 1).forEach((event) => {
         const chip = element(
           "span",
-          `chip ${event.event_type === "class" ? "class" : "event"}${event.is_enrolled ? " enrolled" : ""}`,
+          `chip ${event.event_type === "class" ? "class" : "event"}` +
+            `${event.is_enrolled ? " enrolled" : ""}${hasEnded(event) ? " is-past" : ""}`,
           `${fmtTime(event.starts_at)} ${event.title}`
         );
         cell.appendChild(chip);
@@ -132,9 +174,9 @@
   }
 
   async function refresh() {
-    $("#calendar-scope").textContent = "Refreshing schedule…";
-    const filter = user?.role === "admin" ? $("#instrument-filter").value || null : null;
-    events = await api.listEvents(filter);
+    $("#calendar-scope").textContent = "Loading the schedule…";
+    events = await api.listEvents($("#instrument-filter").value || null);
+    jumpToPeriod();
     render();
   }
 
@@ -152,25 +194,54 @@
   // get join/leave controls and only the admin sees the roster (capacity
   // itself is set in the admin editor).
   async function addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId) {
-    if (event.event_type !== "class" || !user) return;
+    if (event.event_type !== "class") return;
     const left = Math.max(0, Number(event.spots_left) || 0);
     const capacity = Math.max(0, Number(event.student_capacity) || 0);
+    const past = hasEnded(event);
     const capacityRow = element("div", "day-enrollment-row");
-    const spotText = left === 0
-      ? `Class full (0/${capacity} student spots)`
-      : `${left}/${capacity} student spot${capacity === 1 ? "" : "s"} left`;
-    const spots = element("span", `spots${left === 0 ? " full" : ""}`, spotText);
+    const spotText = past
+      ? `${capacity - left}/${capacity} student spot${capacity === 1 ? "" : "s"} taken`
+      : left === 0
+        ? `Class full (0/${capacity} student spots)`
+        : `${left}/${capacity} student spot${capacity === 1 ? "" : "s"} left`;
+    const spots = element("span", `spots${!past && left === 0 ? " full" : ""}`, spotText);
     capacityRow.appendChild(spots);
+
+    // A finished class is a record, not an offer: it keeps its numbers but
+    // loses every control that would imply you can still get into it.
+    if (past) {
+      body.appendChild(capacityRow);
+      return;
+    }
+
+    // A signed-out visitor still sees how full a class is; the sign-in
+    // prompt stands in for the join button they cannot have yet.
+    if (!user) {
+      const prompt = element("a", "btn btn-sm", "Sign in to join");
+      prompt.href = "login.html";
+      capacityRow.appendChild(prompt);
+      body.appendChild(capacityRow);
+      return;
+    }
 
     if (isStudent) {
       const enrolled = event.is_enrolled === true;
+      // Students now browse every instrument, but can still only join their
+      // own -- join_class enforces this server-side, so the button says so
+      // rather than letting the click fail.
+      const wrongInstrument = Boolean(user.instrument) && event.instrument !== user.instrument;
       const action = element(
         "button",
-        `btn btn-sm ${enrolled ? "btn-quiet" : "btn-beak"}`,
+        `btn btn-sm ${enrolled ? "btn-quiet" : "btn-primary"}`,
         enrolled ? "Leave class" : "Join class"
       );
       const started = new Date(event.starts_at).getTime() <= Date.now();
-      action.disabled = !enrolled && (left === 0 || !event.enrollment_open || started);
+      action.disabled = !enrolled &&
+        (left === 0 || !event.enrollment_open || started || wrongInstrument || !user.instrument);
+      if (!enrolled && !user.instrument) action.title = "Choose an instrument in Settings first.";
+      if (!enrolled && wrongInstrument) {
+        action.title = `You are enrolled in ${user.instrument_name}, so you cannot join a ${event.instrument_name || event.instrument} class.`;
+      }
       if (!enrolled && !event.enrollment_open) action.title = "Enrollment is closed.";
       if (!enrolled && started) action.title = "This class has already started.";
       action.addEventListener("click", async () => {
@@ -181,7 +252,7 @@
             toast(`You left “${event.title}”. The spot is available again.`);
           } else {
             await api.joinClass(event.id);
-            toast(`You joined “${event.title}” at ${fmtRange(event)}.`, "beak");
+            toast(`You joined “${event.title}” at ${fmtRange(event)}.`, "success");
           }
           await refresh();
         } catch (error) {
@@ -231,25 +302,29 @@
       icon.setAttribute("icon", "pixelarticons:calendar");
       icon.setAttribute("aria-hidden", "true");
       let message = "Select another day to see scheduled items.";
-      if (!user) message = "Log in to view your instrument schedule.";
-      else if (user.role === "student" && !user.instrument) message = "Choose an instrument in Settings to view classes.";
-      else if (user.role === "admin") message = "Select another day, change the filter, or add an event here.";
+      if (timeFilter === "upcoming") message = "Nothing upcoming on this day. Switch to Past or All to look back.";
+      else if (timeFilter === "past") message = "Nothing finished on this day. Switch to Upcoming or All.";
+      else if (user?.role === "admin") message = "Select another day, change a filter, or add an event here.";
       empty.append(icon, element("p", "", message));
       list.appendChild(empty);
       return;
     }
 
     for (const event of dayEvents) {
-      const item = element("details", `day-event-item${event.is_enrolled ? " is-enrolled" : ""}`);
+      const past = hasEnded(event);
+      const item = element(
+        "details",
+        `day-event-item${event.is_enrolled ? " is-enrolled" : ""}${past ? " is-past" : ""}`
+      );
       const summary = element("summary", "day-event-summary");
       const summaryInner = element("span", "day-event-summary-inner");
       const summaryCopy = element("span", "day-event-summary-copy");
       const badges = element("span", "event-badges");
-      badges.append(
-        element("span", `event-type ${event.event_type}`, event.event_type),
-        element("span", "instrument-badge", event.instrument_name || event.instrument)
-      );
+      const instrumentBadge = element("span", "instrument-badge", event.instrument_name || event.instrument);
+      instrumentBadge.dataset.instrument = event.instrument;
+      badges.append(element("span", `event-type ${event.event_type}`, event.event_type), instrumentBadge);
       if (event.is_enrolled) badges.appendChild(element("span", "enrolled-badge", "Enrolled"));
+      if (past) badges.appendChild(element("span", "past-badge", "Ended"));
       summaryCopy.append(element("strong", "", event.title), element("span", "day-event-summary-time", fmtRange(event)));
       summaryInner.append(badges, summaryCopy);
       summary.appendChild(summaryInner);
@@ -266,7 +341,7 @@
       await addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId);
       if (renderId !== panelRenderId) return;
 
-      if ((isAdmin || isVolunteer) && event.volunteer_capacity > 0) {
+      if ((isAdmin || isVolunteer) && event.volunteer_capacity > 0 && !past) {
         try {
           const { count, mine } = await api.signupStatus(event.id, user);
           if (renderId !== panelRenderId) return;
@@ -277,7 +352,7 @@
             `${left}/${event.volunteer_capacity} volunteer spot${event.volunteer_capacity === 1 ? "" : "s"} left`
           ));
           if (isVolunteer) {
-            const action = element("button", `btn btn-sm ${mine ? "btn-quiet" : "btn-beak"}`, mine ? "Withdraw" : "Volunteer");
+            const action = element("button", `btn btn-sm ${mine ? "btn-quiet" : "btn-primary"}`, mine ? "Withdraw" : "Volunteer");
             action.disabled = !mine && left === 0;
             action.addEventListener("click", async () => {
               action.disabled = true;
@@ -287,7 +362,7 @@
                   toast(`You withdrew from “${event.title}”.`);
                 } else {
                   await api.volunteerSignup(event.id, user);
-                  toast(`You are volunteering for “${event.title}”.`, "beak");
+                  toast(`You are volunteering for “${event.title}”.`, "success");
                 }
                 renderDayPanel();
               } catch (error) {
@@ -308,7 +383,7 @@
         } catch (error) {
           body.appendChild(element("p", "day-panel-error", error.message));
         }
-      } else if (isVolunteer) {
+      } else if (isVolunteer && !past) {
         body.appendChild(element("p", "day-roster", "No volunteer spots for this event."));
       }
 
@@ -429,7 +504,7 @@
         toast("Event updated.");
       } else {
         await api.createEvent(data);
-        toast("Event added to the calendar.", "beak");
+        toast("Event added to the calendar.", "success");
       }
       const savedDate = new Date(data.starts_at);
       selectedDate = new Date(savedDate.getFullYear(), savedDate.getMonth(), savedDate.getDate());
@@ -462,6 +537,17 @@
   $("#day-new-event").addEventListener("click", () => openEditor(null, "event"));
   $("#f-type").addEventListener("change", syncClassFields);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
+
+  document.querySelectorAll("[data-time-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      timeFilter = button.dataset.timeFilter;
+      document.querySelectorAll("[data-time-filter]").forEach((option) => {
+        option.setAttribute("aria-pressed", String(option === button));
+      });
+      jumpToPeriod();
+      render();
+    });
+  });
 
   window.addEventListener("toucan:instrument-changed", (event) => {
     user = event.detail.user;
