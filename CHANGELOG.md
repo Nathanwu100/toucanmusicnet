@@ -19,6 +19,15 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.2.1] - 2026-08-23
+
+### Changed
+- Titles removed from the team cards. Each card now shows the portrait, the
+  name, and the bio on hover. The `role` field and its markup stay in place
+  as an extension point -- give one a value and it renders again.
+- Every stated length of experience is two years longer. Sameer's bio names
+  no durations, so it is unchanged.
+
 ## [1.2.0] - 2026-08-23
 
 The team roster gets its real content.

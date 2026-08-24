@@ -3,9 +3,13 @@
 // Kept in script rather than hand-written into the page so the cards stay
 // consistent and adding a person is a one-line change here.
 //
-// Each card shows the portrait with the name and role along the bottom; the
-// bio is revealed by hovering or focusing the card. Order is by role: the
-// founder, then co-founders, then tutors.
+// Each card shows the portrait with the name along the bottom; the bio is
+// revealed by hovering or focusing the card. Order is by seniority -- the
+// founder, then co-founders, then tutors -- even though the titles that
+// spell that out are not displayed.
+//
+// `role` is left empty deliberately. Give one a value and it renders above
+// the bio again; nothing else has to change.
 
 (function () {
   "use strict";
@@ -14,44 +18,44 @@
     {
       name: "Nathan",
       photo: "assets/team/nathan.webp",
-      role: "Founder · Piano Tutor",
-      bio: "9 years of piano and 3 years of viola. Outside music: art, long-distance running, and basketball.",
+      role: "",
+      bio: "11 years of piano and 5 years of viola. Outside music: art, long-distance running, and basketball.",
     },
     {
       name: "Sean",
       photo: "assets/team/sean.webp",
-      role: "Co-Founder · Head of Technology · Viola Tutor",
-      bio: "8 years of viola and violin. Outside music: programming and hockey.",
+      role: "",
+      bio: "10 years of viola and violin. Outside music: programming and hockey.",
     },
     {
       name: "Sameer",
       photo: "assets/team/sameer.webp",
-      role: "Co-Founder · Head of Math · Graphic Designer",
+      role: "",
       bio: "AIME qualifier and USACO Gold division participant. Outside school: saxophone, basketball, track, 3D modeling, and guitar.",
     },
     {
       name: "Bryan",
       photo: "assets/team/bryan.webp",
-      role: "Co-Founder · Violin & Cello Tutor",
-      bio: "8 years of violin and 3 years of cello. Outside music: swimming.",
+      role: "",
+      bio: "10 years of violin and 5 years of cello. Outside music: swimming.",
     },
     {
       name: "Aiden",
       photo: "assets/team/aiden.webp",
-      role: "Co-Founder · Co-Head of Technology · Violin Tutor",
-      bio: "4 years of violin. Outside music: robotics, 3D printing, and tennis.",
+      role: "",
+      bio: "6 years of violin. Outside music: robotics, 3D printing, and tennis.",
     },
     {
       name: "Carrie",
       photo: "assets/team/carrie.jpg",
-      role: "Violin Tutor",
-      bio: "7 years of violin and 4 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
+      role: "",
+      bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
     },
     {
       name: "Luke",
       photo: "assets/team/luke.webp",
-      role: "Piano Tutor",
-      bio: "6 years of piano. Outside music: basketball, track and field, and games.",
+      role: "",
+      bio: "8 years of piano. Outside music: basketball, track and field, and games.",
     },
   ];
 
