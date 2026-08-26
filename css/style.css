@@ -996,21 +996,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   letter-spacing: 0.01em;
 }
 
-/* 0fr -> 1fr animates the row to exactly the content's height, so the bio
-   opens to its own size without anybody hardcoding one. */
-.team-bio-reveal {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  transition: grid-template-rows 0.38s cubic-bezier(0.22, 0.72, 0.25, 1), opacity 0.28s ease;
-}
-.team-bio-reveal > * { overflow: hidden; }
-.team-card:hover .team-bio-reveal,
-.team-card:focus-visible .team-bio-reveal,
-.team-card:focus-within .team-bio-reveal {
-  grid-template-rows: 1fr;
-  opacity: 1;
-}
 .team-bio {
   margin-top: 0.55rem;
   color: rgba(255, 255, 255, 0.88);
@@ -1023,16 +1008,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .team-card-name { font-size: 1rem; }
   .team-role { font-size: 0.68rem; }
   .team-bio { font-size: 0.76rem; }
-}
-
-/* No hover to give: show every bio outright rather than stranding it behind
-   an interaction the device cannot perform. */
-@media (hover: none) {
-  .team-bio-reveal { grid-template-rows: 1fr; opacity: 1; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .team-bio-reveal { transition: none; }
 }
 
 /* -------------------------------------------------------- settings drawer */

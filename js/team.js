@@ -3,9 +3,9 @@
 // Kept in script rather than hand-written into the page so the cards stay
 // consistent and adding a person is a one-line change here.
 //
-// Each card shows the portrait with the name along the bottom; the bio is
-// revealed by hovering or focusing the card. Order is by seniority -- the
-// founder, then co-founders, then tutors.
+// Each card shows the portrait with the name, role, and bio along the
+// bottom. Order is by seniority -- the founder, then co-founders, then
+// tutors.
 //
 // An empty `role` simply hides the line above the bio; nothing else has to
 // change.
@@ -80,16 +80,14 @@
     const name = escape(member.name);
     const role = escape(member.role);
     const bio = escape(member.bio);
-    // tabindex makes the card focusable, so the bio opens on keyboard focus
-    // as well as hover. Without it the reveal would be pointer-only.
     return `
       <li class="team-member">
-        <article class="team-card" tabindex="0">
+        <article class="team-card">
           <span class="team-photo">${photoMarkup(member)}</span>
           <div class="team-card-body">
             <h2 class="team-card-name">${name}</h2>
             ${role ? `<p class="team-role">${role}</p>` : ""}
-            ${bio ? `<div class="team-bio-reveal"><p class="team-bio">${bio}</p></div>` : ""}
+            ${bio ? `<p class="team-bio">${bio}</p>` : ""}
           </div>
         </article>
       </li>`;
