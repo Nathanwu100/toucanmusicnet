@@ -14,10 +14,16 @@
   toastHost.setAttribute("aria-live", "polite");
   document.body.appendChild(toastHost);
 
-  window.toast = function (message, kind = "info") {
-    const item = document.createElement("div");
-    item.className = `toast ${kind}`;
+  // `link` turns the toast into a link to the thing it is about, so a
+  // "starting soon" reminder can be clicked straight through to the event.
+  window.toast = function (message, kind = "info", link = null) {
+    const item = document.createElement(link ? "a" : "div");
+    item.className = `toast ${kind}${link ? " toast-link" : ""}`;
     item.textContent = message;
+    if (link) {
+      item.href = link.href;
+      if (link.label) item.setAttribute("aria-label", link.label);
+    }
     toastHost.appendChild(item);
     requestAnimationFrame(() => item.classList.add("show"));
     setTimeout(() => {
@@ -41,12 +47,20 @@
       currentUser = null;
     }
 
-    const file = window.location.pathname.split("/").pop() || "index.html";
-    const homeCurrent = file === "index.html" ? ' aria-current="page"' : "";
-    const aboutCurrent = file === "about.html" ? ' aria-current="page"' : "";
-    const calendarCurrent = file === "calendar.html" ? ' aria-current="page"' : "";
-    const loginCurrent = file === "login.html" ? ' aria-current="page"' : "";
-    const signupCurrent = file === "signup.html" ? ' aria-current="page"' : "";
+    // Cloudflare serves these files at extensionless URLs, so in production
+    // the path is /about, not /about.html. Comparing against the filename
+    // matched nothing there except home, which passed only because "/" falls
+    // back to the default below -- hence "the tab only highlights on the home
+    // page". Strip the extension and any trailing slash and compare bare names.
+    const page = (window.location.pathname.replace(/\/+$/, "").split("/").pop() || "index")
+      .replace(/\.html$/i, "")
+      .toLowerCase() || "index";
+    const currentIf = (name) => (page === name ? ' aria-current="page"' : "");
+    const homeCurrent = currentIf("index");
+    const aboutCurrent = currentIf("about");
+    const calendarCurrent = currentIf("calendar");
+    const loginCurrent = currentIf("login");
+    const signupCurrent = currentIf("signup");
     const authMarkup = currentUser
       ? `<span class="nav-user">${escapeHtml(currentUser.name)} <em>${escapeHtml(currentUser.role)}</em></span>
          <button class="nav-icon-button" type="button" data-open-settings data-tour="nav-settings" aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
@@ -87,7 +101,7 @@
           <div class="footer-brand-row">
             <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
           </div>
-          <p>Free neighborhood piano, violin, and viola classes and performance space.</p>
+          <p>Free weekend piano, violin, and viola lessons in Palo Alto.</p>
         </div>
         <div class="footer-links" aria-label="Organization">
           <strong>Organization</strong>
@@ -220,21 +234,21 @@
         <section class="settings-group" aria-labelledby="notification-title">
           <div class="settings-group-head">
             <span class="settings-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:bell"></iconify-icon></span>
-            <div><h3 id="notification-title">Notifications</h3><p>Choose how upcoming classes reach you.</p></div>
+            <div><h3 id="notification-title">Notifications</h3><p>How we reach you about a class.</p></div>
           </div>
           <label class="toggle-row" for="drawer-pref-digest">
             <span class="settings-row-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:mail"></iconify-icon></span>
-            <span class="setting-copy"><strong>Weekly schedule email</strong><p>One Monday email with the week ahead.</p></span>
+            <span class="setting-copy"><strong>Weekly schedule email</strong><p>One email on Monday with the week ahead.</p></span>
             <span class="switch"><input type="checkbox" id="drawer-pref-digest" aria-label="Weekly schedule email"><span class="track"></span></span>
           </label>
           <label class="toggle-row" for="drawer-pref-reminders">
             <span class="settings-row-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:bell-ring"></iconify-icon></span>
-            <span class="setting-copy"><strong>Class reminders</strong><p>Email and on-screen nudges before class.</p></span>
+            <span class="setting-copy"><strong>Class reminders</strong><p>A nudge here and by email before class.</p></span>
             <span class="switch"><input type="checkbox" id="drawer-pref-reminders" aria-label="Class reminders"><span class="track"></span></span>
           </label>
           <label class="toggle-row" for="drawer-pref-texts">
             <span class="settings-row-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:message-text"></iconify-icon></span>
-            <span class="setting-copy"><strong>Text notifications</strong><p>Receive short class reminders by SMS.</p></span>
+            <span class="setting-copy"><strong>Text notifications</strong><p>A short text before class starts.</p></span>
             <span class="switch"><input type="checkbox" id="drawer-pref-texts" aria-label="Text notifications"><span class="track"></span></span>
           </label>
           <div class="field phone-field" data-phone-field>
@@ -243,7 +257,7 @@
               <select id="drawer-phone-country" aria-label="Country calling code"></select>
               <input type="tel" id="drawer-phone" autocomplete="tel" placeholder="555 123 4567">
             </div>
-            <p class="hint">No need to type the country code -- pick it on the left. Message and data rates may apply.</p>
+            <p class="hint">Pick your country on the left rather than typing a code. Message and data rates may apply.</p>
             <button class="btn btn-sm btn-quiet save-phone" type="submit" name="save-target" value="phone">Save your number</button>
           </div>
         </section>
@@ -421,9 +435,9 @@
         const link = document.createElement("a");
         const date = new Date(event.starts_at);
         link.className = "event-gallery-card";
-        link.href = "calendar.html?v=3";
+        link.href = eventLink(event);
         link.innerHTML = `
-          <img src="${image.src}" alt="${image.alt}" ${index ? 'loading="lazy"' : ""}>
+          <img src="${image.src}" alt="${image.alt}" width="480" height="320" decoding="async" ${index ? 'loading="lazy"' : 'fetchpriority="high"'}>
           <div class="event-gallery-copy">
             <p class="event-gallery-date"></p>
             <h3></h3>
@@ -445,7 +459,7 @@
         const date = new Date(event.starts_at);
         const row = document.createElement("a");
         row.className = "notification-item";
-        row.href = "calendar.html?v=3";
+        row.href = eventLink(event);
         const when = document.createElement("span");
         const name = document.createElement("strong");
         when.textContent = date.toLocaleDateString([], { month: "short", day: "numeric" }) +
@@ -458,8 +472,38 @@
     }
   }
 
+  // A link that opens the calendar on this event's day with the event
+  // itself expanded. js/calendar.js reads the id back off the query string.
+  function eventLink(event) {
+    return `calendar.html?v=3&event=${encodeURIComponent(event.id)}`;
+  }
+
+  function showScheduleSkeletons() {
+    const gallery = document.querySelector("#upcoming-gallery");
+    const notificationList = document.querySelector("#upcoming-notification-list");
+    if (gallery) {
+      gallery.innerHTML = Array.from({ length: 3 }, () => `
+        <div class="skeleton-card" aria-hidden="true">
+          <div class="skeleton skeleton-thumb"></div>
+          <div class="skeleton-copy">
+            <div class="skeleton skeleton-line short"></div>
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line medium"></div>
+          </div>
+        </div>`).join("");
+    }
+    if (notificationList) {
+      notificationList.innerHTML = `
+        <div aria-hidden="true">
+          <div class="skeleton skeleton-line short"></div>
+          <div class="skeleton skeleton-line medium"></div>
+        </div>`;
+    }
+  }
+
   async function initHomeSchedule() {
     if (!document.querySelector("#upcoming-gallery, #upcoming-notification-list")) return;
+    showScheduleSkeletons();
     try {
       renderHomeSchedule(await api.listEvents());
     } catch (error) {
@@ -489,7 +533,8 @@
           toast(
             `Starting soon: "${event.title}" at ` +
               new Date(event.starts_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-            "success"
+            "success",
+            { href: eventLink(event), label: `Open ${event.title} on the calendar` }
           );
           break;
         }

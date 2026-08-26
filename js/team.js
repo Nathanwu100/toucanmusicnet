@@ -21,6 +21,12 @@
       bio: "11 years of piano and 5 years of viola. Outside music: art, long-distance running, and basketball.",
     },
     {
+      name: "Bryan",
+      photo: "assets/team/bryan.webp",
+      role: "Cofounder & CTO",
+      bio: "10 years of violin and 5 years of cello. Outside music: swimming.",
+    },
+    {
       name: "Sean",
       photo: "assets/team/sean.webp",
       role: "Cofounder & CMO",
@@ -33,28 +39,22 @@
       bio: "AIME qualifier and USACO Gold division participant. Outside school: saxophone, basketball, track, 3D modeling, and guitar.",
     },
     {
-      name: "Bryan",
-      photo: "assets/team/bryan.webp",
-      role: "Cofounder & CTO",
-      bio: "10 years of violin and 5 years of cello. Outside music: swimming.",
-    },
-    {
       name: "Aiden",
       photo: "assets/team/aiden.webp",
       role: "Violin Teacher",
       bio: "6 years of violin. Outside music: robotics, 3D printing, and tennis.",
     },
     {
+      name: "Carrie",
+      photo: "assets/team/carrie.webp",
+      role: "Violin Teacher",
+      bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
+    },
+    {
       name: "Luke",
       photo: "assets/team/luke.webp",
       role: "Piano Teacher",
       bio: "8 years of piano. Outside music: basketball, track and field, and games.",
-    },
-    {
-      name: "Carrie",
-      photo: "assets/team/carrie.jpg",
-      role: "Violin Teacher",
-      bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
     },
   ];
 
@@ -71,7 +71,7 @@
 
   function photoMarkup(member) {
     if (member.photo) {
-      return `<img src="${escape(member.photo)}" alt="" loading="lazy" decoding="async" />`;
+      return `<img src="${escape(member.photo)}" alt="" width="825" height="1100" loading="lazy" decoding="async" />`;
     }
     return `<span class="team-photo-monogram" aria-hidden="true">${escape(initials(member.name))}</span>`;
   }

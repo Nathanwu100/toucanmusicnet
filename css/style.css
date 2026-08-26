@@ -79,6 +79,66 @@
   --radius: 8px;
 }
 
+/* --------------------------------------------------------- page transitions */
+/* Cross-document view transitions: the browser fades the outgoing page into
+   the incoming one on same-origin navigation. Pure progressive enhancement --
+   browsers without it just navigate, and the reduced-motion block at the
+   bottom of this file turns it off. */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root) { animation: page-out 0.16s ease both; }
+::view-transition-new(root) { animation: page-in 0.24s ease both; }
+@keyframes page-out { to { opacity: 0; } }
+@keyframes page-in { from { opacity: 0; } }
+
+/* The nav and footer are the same on every page, so they hold still while the
+   content beneath them changes. */
+.nav { view-transition-name: site-nav; }
+.site-footer { view-transition-name: site-footer; }
+
+/* ------------------------------------------------------------- skeletons */
+/* Placeholder blocks shown while a list is still loading, sized to roughly
+   what is coming so the page does not jump when the real thing lands. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--paper-sunk);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg,
+    transparent, color-mix(in srgb, var(--paper-raise) 70%, transparent), transparent);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-sweep { to { transform: translateX(100%); } }
+
+.skeleton-line { height: 0.72rem; }
+.skeleton-line + .skeleton-line { margin-top: 0.5rem; }
+.skeleton-line.short { width: 45%; }
+.skeleton-line.medium { width: 70%; }
+
+.skeleton-card {
+  min-height: 310px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-raise);
+  display: grid;
+  grid-template-rows: minmax(190px, 1fr) auto;
+  overflow: hidden;
+}
+.skeleton-card .skeleton-thumb { border-radius: 0; }
+.skeleton-card .skeleton-copy { padding: 1rem 1.1rem 1.2rem; }
+
+/* On the dark reminder panel the placeholder has to lighten, not darken. */
+.notification-board .skeleton { background: rgba(255, 255, 255, 0.14); }
+.notification-board .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 [hidden] { display: none !important; }
@@ -412,6 +472,77 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .hero-layer-board .notification-board { will-change: transform; }
 .hero-layer-gallery { grid-column: 1 / -1; }
 .hero-layer-powered { grid-column: 1 / -1; }
+
+/* ----------------------------------------------------------- depth stack */
+/* From "Coming up" down, the page is built as planes rather than one flat
+   sheet. Three things carry the depth:
+
+   1. Each band has its own ground tone, getting deeper as it recedes, drawn
+      from the same greens as the canopy behind the page.
+   2. Curved dividers cut between them, echoing the ribbon shapes in the
+      backdrop, so a band looks like it slides under the one above.
+   3. Elevation is spent where attention should go: the event cards sit
+      highest, the closing band sits lowest and slightly inset.
+
+   Bands are opaque on purpose. The backdrop is viewport-fixed, so a
+   translucent band here would slide against it while scrolling -- the exact
+   effect that made the footer look broken. Depth comes from tone and shadow,
+   never from letting the background through. */
+.depth-stack { position: relative; isolation: isolate; }
+
+.depth-band { position: relative; }
+.depth-band > * {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-inline: clamp(1rem, 4vw, 3rem);
+}
+.depth-band-near {
+  z-index: 2;
+  padding-block: clamp(1rem, 2vw, 1.6rem) clamp(3rem, 7vw, 5rem);
+  background: linear-gradient(180deg, #eaf3ec 0%, #dceade 100%);
+  box-shadow: 0 -18px 40px -24px rgba(16, 42, 29, 0.45);
+}
+.depth-band-far {
+  z-index: 1;
+  padding-block: clamp(3rem, 7vw, 5rem) clamp(4rem, 9vw, 6.5rem);
+  background: linear-gradient(180deg, #cee2d4 0%, #bfd8c7 100%);
+  /* Inset at the top so it reads as sitting under the band above. */
+  box-shadow: inset 0 14px 26px -16px rgba(16, 42, 29, 0.32);
+}
+.depth-band-far .home-summary { padding-block: 0; }
+
+/* The curves are the seam between planes. Each is the same ribbon language as
+   the backdrop, filled to match the band it introduces. */
+.depth-curve {
+  position: relative;
+  height: clamp(56px, 8vw, 110px);
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 100% 100%;
+}
+.depth-curve-top {
+  z-index: 3;
+  margin-bottom: -1px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 100' preserveAspectRatio='none'%3E%3Cpath d='M0 62 C 240 10 460 96 720 58 C 980 20 1200 92 1440 44 L1440 100 L0 100 Z' fill='%23eaf3ec'/%3E%3C/svg%3E");
+}
+.depth-curve-mid {
+  z-index: 2;
+  margin-top: -1px;
+  margin-bottom: -1px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 100' preserveAspectRatio='none'%3E%3Cpath d='M0 34 C 260 88 470 14 720 46 C 990 82 1210 16 1440 58 L1440 100 L0 100 Z' fill='%23cee2d4'/%3E%3C/svg%3E");
+}
+
+/* Cards are the closest plane on the page, so they get the real shadow. */
+.depth-band-near .event-gallery-card {
+  box-shadow: 0 2px 3px rgba(16, 42, 29, 0.06), 0 16px 30px -14px rgba(16, 42, 29, 0.34);
+}
+.depth-band-near .event-gallery-card:nth-child(2) { transform: translateY(-10px); }
+.depth-band-near .event-gallery-card:nth-child(2) .event-gallery-copy { padding-bottom: 1.5rem; }
+
+@media (max-width: 720px) {
+  .depth-band-near .event-gallery-card:nth-child(2) { transform: none; }
+}
 
 /* -------------------------------------------------- powered by (sponsors) */
 /* The sponsor marks live in one contained credit block rather than as
@@ -799,6 +930,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .day-empty { min-height: 180px; display: grid; place-content: center; justify-items: center; gap: 0.7rem; padding: 1.5rem; color: var(--ink-soft); text-align: center; border: 1px dashed var(--line); border-radius: 6px; }
 .day-empty iconify-icon { font-size: 32px; color: var(--primary); }
 .day-panel-error { margin-top: 0.7rem; color: var(--danger); font-size: 0.84rem; }
+.day-event-skeleton { padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
+.day-event-item.is-linked {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+.toast-link { text-decoration: none; cursor: pointer; }
+.toast-link:hover { border-color: var(--primary); }
 
 /* ------------------------------------------------------------ past archive */
 /* A closed drawer under the calendar holding everything that has already
@@ -1380,4 +1518,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
+    animation: none !important;
+  }
 }

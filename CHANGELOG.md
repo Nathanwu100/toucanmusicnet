@@ -19,6 +19,44 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.5.0] - 2026-08-26
+
+### Fixed
+- **The nav never highlighted the current page anywhere but home.** Cloudflare
+  serves these files at extensionless URLs, so in production the path is
+  `/about`, not `/about.html`, and the filename comparison matched nothing.
+  Home only appeared to work because `/` falls through to a default. The path
+  is now normalised before comparison, so `/about`, `/about.html`, `/about/`
+  and `/` all resolve correctly.
+
+### Added
+- **Page transitions.** Cross-document view transitions fade one page into the
+  next, with the nav and footer held still across the change. Pure progressive
+  enhancement, and off under reduced motion.
+- **Skeleton loaders** for the home schedule and the calendar's day panel,
+  sized to what is coming so nothing jumps when the real content lands.
+- **Notifications link to their event.** Reminder toasts and the cards on the
+  home page now carry the event id; the calendar reads `?event=` on arrival,
+  lands on that day, opens the item and highlights it.
+- **Depth on the home page** from "Coming up" down: three planes, each with its
+  own ground tone taken from the canopy palette, separated by curved seams cut
+  in the same ribbon language as the backdrop, with elevation spent on the
+  event cards.
+
+### Changed
+- **Copy rewritten across the site** to read like a person wrote it.
+- Roster order is now Nathan, Bryan, Sean, Sameer, Aiden, Carrie, Luke.
+
+### Performance
+- Assets cut from 844 KB to 436 KB: `carrie.jpg` (380 KB) and both sponsor
+  PNGs converted to WebP.
+- Every script moved to `<head>` with `defer`, so they download during parse
+  instead of after it, and execution order is unchanged. The two inline page
+  scripts became `type="module"` to keep them running last.
+- Added `preconnect` for the icon and CDN origins, and intrinsic
+  `width`/`height` on every image to stop layout shift.
+- Home page now loads in 19 requests and 93 KB.
+
 ## [1.4.0] - 2026-08-26
 
 ### Added

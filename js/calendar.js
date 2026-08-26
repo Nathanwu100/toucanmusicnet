@@ -20,6 +20,9 @@
   // "upcoming" | "past" | "all" -- applies to the grid and the day panel
   // alike, so what a day cell promises is what opening it delivers.
   let timeFilter = "all";
+  // Set from ?event= on arrival, consumed by the first render, then cleared.
+  // A reminder or a card on the home page links here naming its event.
+  let pendingEventId = new URLSearchParams(window.location.search).get("event");
 
   const grid = $("#cal-grid");
   const title = $("#cal-title");
@@ -255,7 +258,17 @@
   async function refresh() {
     $("#calendar-scope").textContent = "Loading the schedule…";
     events = await api.listEvents($("#instrument-filter").value || null);
-    jumpToPeriod();
+    // A linked event decides the day and the period; otherwise fall back to
+    // keeping the current period stocked.
+    const linked = pendingEventId && events.find((event) => event.id === pendingEventId);
+    if (linked) {
+      const date = new Date(linked.starts_at);
+      if (!inTimeFilter(linked)) setTimeFilter("all");
+      selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      current = new Date(date.getFullYear(), date.getMonth(), 1);
+    } else {
+      jumpToPeriod();
+    }
     render();
   }
 
@@ -373,8 +386,23 @@
       ? `${dayEvents.length} scheduled event${dayEvents.length === 1 ? "" : "s"}`
       : "Nothing scheduled";
 
+    // Each item waits on enrollment and volunteer counts before it can be
+    // appended, so stand placeholders in until the first real one is ready.
     const list = $("#day-event-list");
-    list.innerHTML = "";
+    list.innerHTML = dayEvents.length
+      ? Array.from({ length: Math.min(dayEvents.length, 3) }, () => `
+        <div class="day-event-skeleton" aria-hidden="true">
+          <div class="skeleton skeleton-line short"></div>
+          <div class="skeleton skeleton-line"></div>
+        </div>`).join("")
+      : "";
+    let listCleared = !dayEvents.length;
+    const clearSkeletons = () => {
+      if (listCleared) return;
+      list.innerHTML = "";
+      listCleared = true;
+    };
+
     if (!dayEvents.length) {
       const empty = element("div", "day-empty");
       const icon = document.createElement("iconify-icon");
@@ -422,6 +450,7 @@
       const isStudent = user?.role === "student";
       await addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId);
       if (renderId !== panelRenderId) return;
+      clearSkeletons();
 
       if ((isAdmin || isVolunteer) && event.volunteer_capacity > 0 && !past) {
         try {
@@ -494,8 +523,16 @@
         actions.append(edit, remove);
         body.appendChild(actions);
       }
+      clearSkeletons();
+      if (pendingEventId && event.id === pendingEventId) {
+        item.open = true;
+        item.classList.add("is-linked");
+        requestAnimationFrame(() => item.scrollIntoView({ behavior: "smooth", block: "center" }));
+      }
       list.appendChild(item);
     }
+    // One arrival, one highlight: clear it so later renders behave normally.
+    pendingEventId = null;
   }
 
   function syncClassFields() {
