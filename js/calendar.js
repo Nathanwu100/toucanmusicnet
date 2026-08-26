@@ -170,7 +170,86 @@
     }
 
     renderScope();
+    renderPastLog();
     renderDayPanel();
+  }
+
+  // The archive below the grid. It always lists finished items regardless of
+  // the Upcoming/Past/All control -- that toggle scopes the calendar, and a
+  // drawer labelled "Past" that could be empty because of it would be a
+  // riddle. The instrument filter does apply, because that one narrows what
+  // the whole page is about.
+  function renderPastLog() {
+    const list = $("#past-log-list");
+    const count = $("#past-log-count");
+    if (!list) return;
+
+    const past = events
+      .filter(hasEnded)
+      .sort((left, right) => right.starts_at.localeCompare(left.starts_at));
+
+    count.textContent = past.length
+      ? `${past.length} item${past.length === 1 ? "" : "s"}`
+      : "nothing yet";
+    list.innerHTML = "";
+
+    if (!past.length) {
+      list.appendChild(element("p", "past-log-empty",
+        "Once a class or event finishes it is listed here."));
+      return;
+    }
+
+    // Grouped by month, newest first, so an archive that grows over years
+    // stays scannable instead of becoming one long undifferentiated run.
+    let openMonth = null;
+    let monthList = null;
+    for (const event of past) {
+      const date = new Date(event.starts_at);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      if (monthKey !== openMonth) {
+        openMonth = monthKey;
+        list.appendChild(element("h3", "past-log-month", `${MONTHS[date.getMonth()]} ${date.getFullYear()}`));
+        monthList = element("ul", "past-log-items");
+        list.appendChild(monthList);
+      }
+
+      const row = element("li", "past-log-item");
+      const jump = element("button", "past-log-jump");
+      jump.type = "button";
+      jump.setAttribute("aria-label",
+        `${event.title}, ${date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}. Show this day on the calendar.`);
+
+      const when = element("span", "past-log-when");
+      when.append(
+        element("span", "past-log-day", String(date.getDate())),
+        element("span", "past-log-dow", DOWS[date.getDay()])
+      );
+
+      const copy = element("span", "past-log-copy");
+      copy.appendChild(element("strong", "", event.title));
+      copy.appendChild(element("span", "past-log-meta",
+        `${fmtRange(event)} · ${event.location || "Location not recorded"}`));
+
+      const badges = element("span", "event-badges");
+      badges.appendChild(element("span", `event-type ${event.event_type}`, event.event_type));
+      event.instruments.forEach((slug, index) => {
+        const badge = element("span", "instrument-badge", event.instrument_names?.[index] || slug);
+        badge.dataset.instrument = slug;
+        badges.appendChild(badge);
+      });
+      if (event.is_enrolled) badges.appendChild(element("span", "enrolled-badge", "Attended"));
+
+      jump.append(when, copy, badges);
+      // Opening the day in the calendar needs the period to admit past items,
+      // or the click would scroll to a day that renders as empty.
+      jump.addEventListener("click", () => {
+        if (timeFilter === "upcoming") setTimeFilter("all");
+        selectDate(date);
+        $("#day-panel").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      row.appendChild(jump);
+      monthList.appendChild(row);
+    }
   }
 
   async function refresh() {
@@ -226,10 +305,10 @@
 
     if (isStudent) {
       const enrolled = event.is_enrolled === true;
-      // Students now browse every instrument, but can still only join their
-      // own -- join_class enforces this server-side, so the button says so
-      // rather than letting the click fail.
-      const wrongInstrument = Boolean(user.instrument) && event.instrument !== user.instrument;
+      // Students now browse every instrument, but can still only join a class
+      // that teaches their own -- join_class enforces this server-side, so
+      // the button says so rather than letting the click fail.
+      const wrongInstrument = Boolean(user.instrument) && !event.instruments.includes(user.instrument);
       const action = element(
         "button",
         `btn btn-sm ${enrolled ? "btn-quiet" : "btn-primary"}`,
@@ -240,7 +319,7 @@
         (left === 0 || !event.enrollment_open || started || wrongInstrument || !user.instrument);
       if (!enrolled && !user.instrument) action.title = "Choose an instrument in Settings first.";
       if (!enrolled && wrongInstrument) {
-        action.title = `You are enrolled in ${user.instrument_name}, so you cannot join a ${event.instrument_name || event.instrument} class.`;
+        action.title = `You are enrolled in ${user.instrument_name}, so you cannot join a ${(event.instrument_names || event.instruments).join(" / ")} class.`;
       }
       if (!enrolled && !event.enrollment_open) action.title = "Enrollment is closed.";
       if (!enrolled && started) action.title = "This class has already started.";
@@ -262,7 +341,7 @@
       });
       capacityRow.appendChild(action);
       if (enrolled) {
-        body.appendChild(element("p", "enrollment-linked", `Enrolled · ${event.instrument_name} · time slot ${fmtRange(event)}`));
+        body.appendChild(element("p", "enrollment-linked", `Enrolled · ${user.instrument_name} · time slot ${fmtRange(event)}`));
       }
     }
     body.appendChild(capacityRow);
@@ -320,9 +399,12 @@
       const summaryInner = element("span", "day-event-summary-inner");
       const summaryCopy = element("span", "day-event-summary-copy");
       const badges = element("span", "event-badges");
-      const instrumentBadge = element("span", "instrument-badge", event.instrument_name || event.instrument);
-      instrumentBadge.dataset.instrument = event.instrument;
-      badges.append(element("span", `event-type ${event.event_type}`, event.event_type), instrumentBadge);
+      badges.appendChild(element("span", `event-type ${event.event_type}`, event.event_type));
+      event.instruments.forEach((slug, index) => {
+        const instrumentBadge = element("span", "instrument-badge", event.instrument_names?.[index] || slug);
+        instrumentBadge.dataset.instrument = slug;
+        badges.appendChild(instrumentBadge);
+      });
       if (event.is_enrolled) badges.appendChild(element("span", "enrolled-badge", "Enrolled"));
       if (past) badges.appendChild(element("span", "past-badge", "Ended"));
       summaryCopy.append(element("strong", "", event.title), element("span", "day-event-summary-time", fmtRange(event)));
@@ -330,7 +412,7 @@
       summary.appendChild(summaryInner);
       const body = element("div", "day-event-body");
       item.append(summary, body);
-      addMetaRow(body, "pixelarticons:music", event.instrument_name || event.instrument);
+      addMetaRow(body, "pixelarticons:music", (event.instrument_names || event.instruments).join(", "));
       addMetaRow(body, "pixelarticons:clock", fmtRange(event));
       addMetaRow(body, "pixelarticons:map", event.location || "Location to be announced");
       if (event.description) body.appendChild(element("p", "day-event-description", event.description));
@@ -434,7 +516,12 @@
     $("#e-error").classList.remove("show");
     $("#f-title").value = event?.title || "";
     $("#f-type").value = type;
-    $("#f-instrument").value = event?.instrument || instruments[0]?.slug || "";
+    // A new item starts with the first catalog instrument checked -- the same
+    // default the old single-instrument dropdown had.
+    const selected = event ? event.instruments : [instruments[0]?.slug].filter(Boolean);
+    document.querySelectorAll("#f-instruments input").forEach((input) => {
+      input.checked = selected.includes(input.value);
+    });
     $("#f-start").value = event ? toLocalInput(event.starts_at) : toLocalInput(defaultStart);
     $("#f-end").value = event?.ends_at ? toLocalInput(event.ends_at) : toLocalInput(defaultEnd);
     $("#f-location").value = event?.location || "";
@@ -455,8 +542,10 @@
     const end = $("#f-end").value;
     const eventType = $("#f-type").value;
     const studentCapacity = eventType === "class" ? Math.max(1, parseInt($("#f-student-capacity").value, 10) || 0) : 0;
-    if (!$("#f-title").value.trim() || !$("#f-instrument").value || !start || !end) {
-      errorBox.textContent = "Title, instrument, start, and end are required.";
+    const selectedInstruments = [...document.querySelectorAll("#f-instruments input:checked")]
+      .map((input) => input.value);
+    if (!$("#f-title").value.trim() || !selectedInstruments.length || !start || !end) {
+      errorBox.textContent = "Title, at least one instrument, start, and end are required.";
       errorBox.classList.add("show");
       return;
     }
@@ -469,7 +558,7 @@
     const data = {
       title: $("#f-title").value.trim(),
       event_type: eventType,
-      instrument: $("#f-instrument").value,
+      instruments: selectedInstruments,
       starts_at: new Date(start).toISOString(),
       ends_at: new Date(end).toISOString(),
       location: $("#f-location").value.trim(),
@@ -482,12 +571,15 @@
     if (editingId) {
       const previous = events.find((candidate) => candidate.id === editingId);
       const active = Number(previous?.active_enrollments) || 0;
+      // Instruments are not part of this precheck: adding one is always
+      // allowed, and removing one is only blocked when an active enrollment
+      // uses it -- which the server checks, since the roster isn't here.
       const scheduleChanged = previous && (
-        previous.instrument !== data.instrument || previous.starts_at !== data.starts_at ||
+        previous.starts_at !== data.starts_at ||
         previous.ends_at !== data.ends_at || previous.event_type !== data.event_type
       );
       if (active && scheduleChanged) {
-        errorBox.textContent = `This class has ${active} active student enrollment${active === 1 ? "" : "s"}. Students must leave or transfer before its instrument or time slot can change.`;
+        errorBox.textContent = `This class has ${active} active student enrollment${active === 1 ? "" : "s"}. Students must leave or transfer before its time slot can change.`;
         errorBox.classList.add("show");
         return;
       }
@@ -538,12 +630,16 @@
   $("#f-type").addEventListener("change", syncClassFields);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
 
+  function setTimeFilter(next) {
+    timeFilter = next;
+    document.querySelectorAll("[data-time-filter]").forEach((option) => {
+      option.setAttribute("aria-pressed", String(option.dataset.timeFilter === next));
+    });
+  }
+
   document.querySelectorAll("[data-time-filter]").forEach((button) => {
     button.addEventListener("click", () => {
-      timeFilter = button.dataset.timeFilter;
-      document.querySelectorAll("[data-time-filter]").forEach((option) => {
-        option.setAttribute("aria-pressed", String(option === button));
-      });
+      setTimeFilter(button.dataset.timeFilter);
       jumpToPeriod();
       render();
     });
@@ -562,14 +658,20 @@
       instruments = api.instruments;
     }
 
-    for (const select of [$("#instrument-filter"), $("#f-instrument")]) {
-      instruments.forEach((instrument) => {
-        const option = document.createElement("option");
-        option.value = instrument.slug;
-        option.textContent = instrument.name;
-        select.appendChild(option);
-      });
-    }
+    instruments.forEach((instrument) => {
+      const option = document.createElement("option");
+      option.value = instrument.slug;
+      option.textContent = instrument.name;
+      $("#instrument-filter").appendChild(option);
+
+      const row = element("label", "instrument-option");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "f-instruments";
+      input.value = instrument.slug;
+      row.append(input, element("span", "", instrument.name));
+      $("#f-instruments").appendChild(row);
+    });
     if (user?.role === "admin") {
       $("#new-class").hidden = false;
       $("#new-event").hidden = false;

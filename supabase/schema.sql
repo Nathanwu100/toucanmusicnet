@@ -245,8 +245,9 @@ create policy "volunteers withdraw their own spot" on public.volunteer_signups
 -- which bypass RLS; no user-facing policies needed.
 
 -- ================================================= student instruments/classes
--- This section is also shipped as the incremental migration in
--- supabase/migrations/20260718000000_student_instruments_and_enrollment.sql.
+-- This section is also shipped as the incremental migrations in
+-- supabase/migrations/20260718000000_student_instruments_and_enrollment.sql
+-- and supabase/migrations/20260825000000_multi_instrument_classes.sql.
 
 -- Toucan teaches exactly three instruments: piano, violin, and viola. Keeping
 -- them in a lookup table gives signup and admin forms one canonical,
@@ -288,8 +289,12 @@ where slug not in ('piano', 'violin', 'viola');
 alter table public.profiles
   add column if not exists instrument text references public.instruments (slug);
 
+-- A class or event is taught for one or more instruments. The array replaces
+-- the old single-instrument column; the enforce_supported_instrument trigger
+-- below keeps every element a supported catalog slug, deduplicated and in
+-- catalog order.
 alter table public.events
-  add column if not exists instrument text references public.instruments (slug);
+  add column if not exists instruments text[];
 alter table public.events
   add column if not exists student_capacity int not null default 12;
 alter table public.events
@@ -297,24 +302,44 @@ alter table public.events
 alter table public.events
   add column if not exists time_slot_id uuid not null default gen_random_uuid();
 
--- Legacy records did not have an instrument. Match the program language that
--- was already used by the site. Unmatched general events are assigned to the
--- Violin track so no row is left publicly unscoped; admins should review
+-- Databases from when events carried a single instrument fold that value into
+-- the array, then drop the old column. The cascade also removes the select
+-- policy and index built on it; both are recreated in array form below.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'events' and column_name = 'instrument'
+  ) then
+    update public.events
+    set instruments = array[instrument]
+    where instruments is null and instrument is not null;
+    alter table public.events drop column instrument cascade;
+  end if;
+end $$;
+
+-- Records older still had no instrument at all. Match the program language
+-- that was already used by the site. Unmatched general events are assigned to
+-- the Violin track so no row is left publicly unscoped; admins should review
 -- those records after applying the migration.
 update public.events
-set instrument = case
+set instruments = array[case
   when concat_ws(' ', title, description) ~* 'viola' then 'viola'
   when concat_ws(' ', title, description) ~* '(piano|keyboard)' then 'piano'
   else 'violin'
-end
-where instrument is null;
+end]
+where instruments is null;
 
 update public.events
 set student_capacity = 0,
     enrollment_open = false
 where event_type <> 'class';
 
-alter table public.events alter column instrument set not null;
+alter table public.events alter column instruments set not null;
+alter table public.events drop constraint if exists events_instruments_not_empty;
+alter table public.events add constraint events_instruments_not_empty check (
+  cardinality(instruments) > 0
+);
 alter table public.events drop constraint if exists events_student_capacity_check;
 alter table public.events add constraint events_student_capacity_check check (
   (event_type = 'class' and student_capacity > 0)
@@ -334,13 +359,15 @@ alter table public.events add constraint events_end_after_start check (
 
 create unique index if not exists events_time_slot_id_uidx
   on public.events (time_slot_id);
-create index if not exists events_instrument_starts_at_idx
-  on public.events (instrument, starts_at);
+create index if not exists events_instruments_gin_idx
+  on public.events using gin (instruments);
 
 create table if not exists public.student_enrollments (
   id uuid primary key default gen_random_uuid(),
   student_id uuid not null references public.profiles (id) on delete cascade,
   class_id uuid not null references public.events (id) on delete cascade,
+  -- The instrument this student takes the class for -- one of the class's
+  -- taught instruments, snapshotted at join time.
   instrument text not null references public.instruments (slug),
   time_slot_id uuid not null references public.events (time_slot_id) on delete cascade,
   class_starts_at timestamptz not null,
@@ -366,16 +393,26 @@ create index if not exists student_enrollments_time_slot_idx
 
 -- Older databases may still have events and student profiles on retired
 -- tracks. Move them onto supported instruments where that is safe. Classes
--- with active enrollments keep their instrument frozen by the enrollment
+-- with active enrollments keep their instruments frozen by the enrollment
 -- guard, and enrolled students keep their profile instrument, so those rows
 -- are left for an admin to migrate by hand.
 update public.events e
-set instrument = case
-  when concat_ws(' ', e.title, e.description) ~* 'viola' then 'viola'
-  when concat_ws(' ', e.title, e.description) ~* '(piano|keyboard)' then 'piano'
-  else 'violin'
-end
-where e.instrument in (select slug from public.instruments where not active)
+set instruments = coalesce(
+  (
+    select array_agg(i.slug order by i.sort_order)
+    from public.instruments i
+    where i.active and i.slug = any (e.instruments)
+  ),
+  array[case
+    when concat_ws(' ', e.title, e.description) ~* 'viola' then 'viola'
+    when concat_ws(' ', e.title, e.description) ~* '(piano|keyboard)' then 'piano'
+    else 'violin'
+  end]
+)
+where exists (
+    select 1 from public.instruments r
+    where not r.active and r.slug = any (e.instruments)
+  )
   and not exists (
     select 1 from public.student_enrollments se
     where se.class_id = e.id and se.status = 'active'
@@ -389,19 +426,21 @@ where p.instrument in (select slug from public.instruments where not active)
     where se.student_id = p.id and se.status = 'active'
   );
 
--- Enrollment snapshots follow their class so retired slugs drop out of use.
+-- Enrollment snapshots must name an instrument their class still teaches.
+-- Rows written before the multi-instrument model, or whose class was moved
+-- off a retired track above, are pulled onto the class's first instrument.
 update public.student_enrollments se
-set instrument = e.instrument
+set instrument = e.instruments[1]
 from public.events e
 where e.id = se.class_id
-  and se.instrument is distinct from e.instrument;
+  and not (se.instrument = any (e.instruments));
 
 -- Remove retired instruments outright once nothing references them. A retired
 -- slug still referenced by a frozen enrolled class stays inactive until an
 -- admin migrates that class, and is deleted the next time this script runs.
 delete from public.instruments i
 where not i.active
-  and not exists (select 1 from public.events e where e.instrument = i.slug)
+  and not exists (select 1 from public.events e where i.slug = any (e.instruments))
   and not exists (select 1 from public.profiles p where p.instrument = i.slug)
   and not exists (select 1 from public.student_enrollments se where se.instrument = i.slug);
 
@@ -544,7 +583,10 @@ grant execute on function public.update_student_instrument(text) to authenticate
 -- granting students access to anybody else's enrollment rows. The schedule
 -- itself is public, so it returns every event - past and upcoming - to every
 -- caller including anonymous visitors; only is_enrolled depends on who asks.
-create or replace function public.list_visible_events(requested_instrument text default null)
+-- Dropped before recreation because the return columns changed when events
+-- moved from one instrument to an instrument array.
+drop function if exists public.list_visible_events(text);
+create function public.list_visible_events(requested_instrument text default null)
 returns table (
   id uuid,
   title text,
@@ -556,8 +598,8 @@ returns table (
   volunteer_capacity int,
   created_by uuid,
   created_at timestamptz,
-  instrument text,
-  instrument_name text,
+  instruments text[],
+  instrument_names text[],
   student_capacity int,
   enrollment_open boolean,
   time_slot_id uuid,
@@ -572,7 +614,7 @@ as $$
   select
     e.id, e.title, e.description, e.event_type, e.starts_at, e.ends_at,
     e.location, e.volunteer_capacity, e.created_by, e.created_at,
-    e.instrument, i.name, e.student_capacity, e.enrollment_open,
+    e.instruments, names.instrument_names, e.student_capacity, e.enrollment_open,
     e.time_slot_id, counts.active_enrollments,
     greatest(e.student_capacity - counts.active_enrollments::int, 0) as spots_left,
     -- auth.uid() is null for a signed-out caller, so this matches nothing and
@@ -584,13 +626,19 @@ as $$
         and mine.status = 'active'
     ) as is_enrolled
   from public.events e
-  join public.instruments i on i.slug = e.instrument
+  cross join lateral (
+    -- Same catalog order the enforce_supported_instrument trigger stores the
+    -- slugs in, so names[n] labels instruments[n].
+    select array_agg(i.name order by i.sort_order) as instrument_names
+    from public.instruments i
+    where i.slug = any (e.instruments)
+  ) names
   cross join lateral (
     select count(*) as active_enrollments
     from public.student_enrollments se
     where se.class_id = e.id and se.status = 'active'
   ) counts
-  where requested_instrument is null or e.instrument = requested_instrument
+  where requested_instrument is null or requested_instrument = any (e.instruments)
   order by e.starts_at;
 $$;
 
@@ -631,7 +679,7 @@ begin
   if target.id is null or target.event_type <> 'class' then
     raise exception 'Class not found.';
   end if;
-  if target.instrument <> viewer.instrument then
+  if not (viewer.instrument = any (target.instruments)) then
     raise exception 'This class does not match your selected instrument.';
   end if;
   if not target.enrollment_open or target.starts_at <= now() then
@@ -664,11 +712,13 @@ begin
     raise exception 'Class full.';
   end if;
 
+  -- The snapshot records the student's own instrument -- the one of the
+  -- class's taught instruments they are actually enrolled for.
   insert into public.student_enrollments (
     student_id, class_id, instrument, time_slot_id,
     class_starts_at, class_ends_at, status, joined_at, left_at, updated_at
   ) values (
-    auth.uid(), target.id, target.instrument, target.time_slot_id,
+    auth.uid(), target.id, viewer.instrument, target.time_slot_id,
     target.starts_at, target.ends_at, 'active', now(), null, now()
   )
   on conflict (student_id, class_id) do update set
@@ -756,12 +806,21 @@ begin
     raise exception 'A class time-slot identity cannot be replaced.';
   end if;
   if active_count > 0 and (
-    new.instrument is distinct from old.instrument
-    or new.starts_at is distinct from old.starts_at
+    new.starts_at is distinct from old.starts_at
     or new.ends_at is distinct from old.ends_at
     or new.event_type is distinct from old.event_type
   ) then
-    raise exception 'This class has active student enrollments. Students must leave or transfer before its instrument or time slot can change.';
+    raise exception 'This class has active student enrollments. Students must leave or transfer before its time slot can change.';
+  end if;
+  -- Instruments may be added freely, but one an active student is enrolled
+  -- for cannot be removed out from under them.
+  if exists (
+    select 1 from public.student_enrollments se
+    where se.class_id = old.id
+      and se.status = 'active'
+      and not (se.instrument = any (new.instruments))
+  ) then
+    raise exception 'An active student is enrolled for an instrument this class would no longer teach. Students must leave or transfer first.';
   end if;
   if active_count > new.student_capacity then
     raise exception 'Student capacity cannot be lower than the active enrollment count (%).', active_count;
@@ -775,27 +834,35 @@ create trigger guard_enrolled_class_changes
   before update or delete on public.events
   for each row execute function public.guard_enrolled_class_changes();
 
--- Events can only be created on, or moved to, an actively supported
--- instrument (piano, violin, viola) - even by admins writing to the table
--- directly. Non-instrument edits to a frozen legacy class remain possible.
+-- Events can only be created on, or moved to, actively supported instruments
+-- (piano, violin, viola) - even by admins writing to the table directly.
+-- The list is also normalized here: duplicates collapse and the slugs are
+-- stored in catalog order, so every reader agrees on badge order.
+-- Non-instrument edits to a frozen legacy class remain possible.
 create or replace function public.enforce_supported_instrument()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  requested int;
+  normalized text[];
 begin
   -- OLD is not a row on INSERT, and SQL's OR does not promise to leave the
   -- second operand unevaluated, so the comparison gets its own UPDATE-only
   -- branch instead of riding on a short circuit.
-  if tg_op = 'UPDATE' and new.instrument is not distinct from old.instrument then
+  if tg_op = 'UPDATE' and new.instruments is not distinct from old.instruments then
     return new;
   end if;
-  if not exists (
-    select 1 from public.instruments where slug = new.instrument and active
-  ) then
-    raise exception 'Choose a supported instrument.';
+  select count(distinct slug) into requested from unnest(new.instruments) as slug;
+  select array_agg(i.slug order by i.sort_order) into normalized
+  from public.instruments i
+  where i.active and i.slug = any (new.instruments);
+  if requested = 0 or normalized is null or cardinality(normalized) <> requested then
+    raise exception 'Choose supported instruments.';
   end if;
+  new.instruments := normalized;
   return new;
 end;
 $$;
@@ -845,7 +912,7 @@ create policy "role and instrument scoped events" on public.events
     or (
       (select public.current_profile_role()) = 'student'
       and (select public.current_instrument()) is not null
-      and instrument = (select public.current_instrument())
+      and (select public.current_instrument()) = any (instruments)
     )
   );
 

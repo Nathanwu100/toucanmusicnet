@@ -50,7 +50,7 @@ test("the schedule is unscoped for students, but joining still is not", async ()
   await api.login(student.email, student.password);
   const visible = await api.listEvents();
   assert.deepEqual(
-    new Set(visible.map((event) => event.instrument)),
+    new Set(visible.flatMap((event) => event.instruments)),
     new Set(["piano", "violin", "viola"]),
     "a violin student browses every instrument"
   );
@@ -59,7 +59,7 @@ test("the schedule is unscoped for students, but joining still is not", async ()
   // server puts students in.
   const pianoOnly = await api.listEvents("piano");
   assert.ok(pianoOnly.length > 0);
-  assert.ok(pianoOnly.every((event) => event.instrument === "piano"));
+  assert.ok(pianoOnly.every((event) => event.instruments.includes("piano")));
 
   // Seeing a class is not permission to join it.
   await assert.rejects(api.joinClass("ev-2"), /does not match/);
@@ -70,7 +70,7 @@ test("signed-out visitors read the whole schedule but cannot act on it", async (
   const visible = await api.listEvents();
   assert.ok(visible.length > 0, "the calendar is readable with no session");
   assert.deepEqual(
-    new Set(visible.map((event) => event.instrument)),
+    new Set(visible.flatMap((event) => event.instruments)),
     new Set(["piano", "violin", "viola"])
   );
   assert.ok(visible.every((event) => event.is_enrolled === false),
@@ -79,7 +79,7 @@ test("signed-out visitors read the whole schedule but cannot act on it", async (
     "capacity is public so visitors can see how full a class is");
 
   const pianoOnly = await api.listEvents("piano");
-  assert.ok(pianoOnly.every((event) => event.instrument === "piano"),
+  assert.ok(pianoOnly.every((event) => event.instruments.includes("piano")),
     "the instrument filter works without a session");
 
   await assert.rejects(api.joinClass("ev-1"), /Log in|logged in|session/i);
@@ -92,7 +92,7 @@ test("past events stay in the listing so the calendar can look backwards", async
   const started = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000);
   db.events.push({
     id: "ev-past", time_slot_id: "slot-past", title: "Finished recital rehearsal",
-    description: "Already over.", event_type: "class", instrument: "violin",
+    description: "Already over.", event_type: "class", instruments: ["violin"],
     starts_at: started.toISOString(),
     ends_at: new Date(started.getTime() + 3600000).toISOString(),
     location: "Community Hall", volunteer_capacity: 2,
@@ -111,10 +111,10 @@ test("admin sees all instruments and can filter explicitly", async () => {
   const { api } = loadDemoApi();
   await api.login("admin", "toucan2026");
   const all = await api.listEvents();
-  assert.deepEqual(new Set(all.map((event) => event.instrument)), new Set(["piano", "violin", "viola"]));
+  assert.deepEqual(new Set(all.flatMap((event) => event.instruments)), new Set(["piano", "violin", "viola"]));
   const pianoOnly = await api.listEvents("piano");
   assert.ok(pianoOnly.length > 0);
-  assert.ok(pianoOnly.every((event) => event.instrument === "piano"));
+  assert.ok(pianoOnly.every((event) => event.instruments.includes("piano")));
 });
 
 test("eligible join and leave update spots immediately without counting cancellation", async () => {
@@ -243,7 +243,7 @@ test("admin can assign a class to the violin, piano, and viola instruments", asy
   await api.login("admin", "toucan2026");
   const starts = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const created = await api.createEvent({
-    title: "Beginner viola", event_type: "class", instrument: "viola",
+    title: "Beginner viola", event_type: "class", instruments: ["viola"],
     starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 3600000).toISOString(),
     location: "Room C", volunteer_capacity: 1, student_capacity: 4, enrollment_open: true,
   });
@@ -284,7 +284,7 @@ test("classes cannot be created on or moved to an unsupported instrument", async
   const starts = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await assert.rejects(
     api.createEvent({
-      title: "Guitar basics", event_type: "class", instrument: "guitar",
+      title: "Guitar basics", event_type: "class", instruments: ["guitar"],
       starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 3600000).toISOString(),
       location: "Room A", volunteer_capacity: 1, student_capacity: 4, enrollment_open: true,
     }),
@@ -292,7 +292,11 @@ test("classes cannot be created on or moved to an unsupported instrument", async
   );
   const existing = (await api.listEvents()).find((event) => event.id === "ev-1");
   await assert.rejects(
-    api.updateEvent("ev-1", { ...existing, instrument: "strings" }),
+    api.updateEvent("ev-1", { ...existing, instruments: ["strings"] }),
+    /supported instrument/
+  );
+  await assert.rejects(
+    api.updateEvent("ev-1", { ...existing, instruments: [] }),
     /supported instrument/
   );
 });
@@ -306,8 +310,8 @@ test("admin can schedule concurrent classes for different instruments", async ()
     ends_at: new Date(starts.getTime() + 3600000).toISOString(),
     volunteer_capacity: 1, student_capacity: 6, enrollment_open: true,
   };
-  const piano = await api.createEvent({ ...shared, title: "Piano basics", instrument: "piano", location: "Room A" });
-  const violin = await api.createEvent({ ...shared, title: "Violin basics", instrument: "violin", location: "Room B" });
+  const piano = await api.createEvent({ ...shared, title: "Piano basics", instruments: ["piano"], location: "Room A" });
+  const violin = await api.createEvent({ ...shared, title: "Violin basics", instruments: ["violin"], location: "Room B" });
   const all = await api.listEvents();
   assert.ok(all.some((event) => event.id === piano.id));
   assert.ok(all.some((event) => event.id === violin.id));
@@ -325,6 +329,101 @@ test("stored demo databases gain newly added catalog instruments without losing 
     assert.ok(catalog.some((instrument) => instrument.slug === slug), `${slug} survives the upgrade`);
   }
   assert.ok(readDemoDb(storage).users.some((user) => user.email === student.email));
+});
+
+test("a class taught for several instruments accepts students from each of them", async () => {
+  const { api } = loadDemoApi();
+  await api.login("admin", "toucan2026");
+  const starts = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const created = await api.createEvent({
+    // Duplicated and out of catalog order on purpose: the stored list is
+    // normalized the same way the database trigger normalizes it.
+    title: "Strings intensive", event_type: "class", instruments: ["viola", "violin", "violin"],
+    starts_at: starts.toISOString(), ends_at: new Date(starts.getTime() + 3600000).toISOString(),
+    location: "Main Hall", volunteer_capacity: 1, student_capacity: 6, enrollment_open: true,
+  });
+  assert.deepEqual(created.instruments, ["violin", "viola"], "deduplicated and in catalog order");
+  await api.logout();
+
+  await api.login(student.email, student.password);
+  await api.joinClass(created.id);
+  await api.logout();
+  await api.signup({
+    name: "Viola Student", email: "viola@example.com", password: "password1",
+    role: "student", instrument: "viola",
+  });
+  await api.joinClass(created.id);
+  await api.logout();
+
+  const pianoStudent = await api.signup({
+    name: "Piano Student", email: "keys@example.com", password: "password1",
+    role: "student", instrument: "piano",
+  });
+  assert.equal(pianoStudent.instrument, "piano");
+  await assert.rejects(api.joinClass(created.id), /does not match/);
+
+  const row = (await api.listEvents()).find((event) => event.id === created.id);
+  assert.equal(row.active_enrollments, 2);
+  assert.deepEqual(row.instrument_names, ["Violin", "Viola"]);
+});
+
+test("admin can add instruments to an enrolled class but not remove one in use", async () => {
+  const { api, storage } = loadDemoApi();
+  await api.login(student.email, student.password);
+  await api.joinClass("ev-1");
+  await api.logout();
+
+  await api.login("admin", "toucan2026");
+  const event = (await api.listEvents()).find((row) => row.id === "ev-1");
+  const widened = await api.updateEvent("ev-1", { ...event, instruments: ["violin", "viola"] });
+  assert.deepEqual(widened.instruments, ["violin", "viola"], "adding an instrument is allowed");
+
+  await assert.rejects(
+    api.updateEvent("ev-1", { ...event, instruments: ["viola"] }),
+    /no longer teach/,
+    "removing the enrolled student's instrument is not"
+  );
+
+  const enrollment = readDemoDb(storage).studentEnrollments.find((row) => row.class_id === "ev-1");
+  assert.equal(enrollment.instrument, "violin", "the snapshot records the student's own instrument");
+});
+
+test("stored demo events from the single-instrument era upgrade in place", async () => {
+  const { api, storage } = loadDemoApi();
+  await api.listInstruments();
+  const db = readDemoDb(storage);
+  db.events.push({
+    id: "ev-legacy", time_slot_id: "slot-legacy", title: "Old-format violin class",
+    description: "Saved before classes could teach several instruments.",
+    event_type: "class", instrument: "violin",
+    starts_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    ends_at: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
+    location: "Room A", volunteer_capacity: 1, student_capacity: 4, enrollment_open: true,
+  });
+  writeDemoDb(storage, db);
+
+  const legacy = (await api.listEvents()).find((event) => event.id === "ev-legacy");
+  // Spread before comparing: the api runs in a vm context, so this array's
+  // prototype belongs to that realm and would fail deepEqual's proto check.
+  assert.deepEqual([...legacy.instruments], ["violin"]);
+  assert.equal(legacy.instrument, undefined, "the single-instrument field is gone after upgrade");
+
+  await api.login(student.email, student.password);
+  const joined = await api.joinClass("ev-legacy");
+  assert.ok(joined.spots_left >= 0, "upgraded events are joinable");
+});
+
+test("multi-instrument migration rebuilds everything the dropped column took with it", () => {
+  const sql = fs.readFileSync(path.join(__dirname, "../supabase/migrations/20260825000000_multi_instrument_classes.sql"), "utf8");
+  assert.match(sql, /add column if not exists instruments text\[\]/i);
+  assert.match(sql, /drop column if exists instrument cascade/i);
+  assert.match(sql, /cardinality\(instruments\) > 0/i);
+  assert.match(sql, /viewer\.instrument = any \(target\.instruments\)/i);
+  assert.match(sql, /auth\.uid\(\), target\.id, viewer\.instrument/i, "enrollments snapshot the student's instrument");
+  assert.match(sql, /not \(se\.instrument = any \(new\.instruments\)\)/i, "removal of an in-use instrument is guarded");
+  assert.match(sql, /\(select public\.current_instrument\(\)\) = any \(instruments\)/i, "the select policy is recreated in array form");
+  assert.match(sql, /grant execute on function public\.list_visible_events\(text\) to anon, authenticated/i);
+  assert.match(sql, /using gin \(instruments\)/i);
 });
 
 test("migration contains server-side RLS and atomic overbooking defenses", () => {

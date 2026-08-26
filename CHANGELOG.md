@@ -19,6 +19,39 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.3.0] - 2026-08-25
+
+### Added
+- Classes and events can be taught for several instruments at once. The
+  admin editor's single instrument dropdown is now a checkbox group, the
+  calendar shows one badge per instrument, and a student can join a class
+  whenever it includes their instrument.
+- **A past classes and events archive** in a collapsed drawer below the
+  calendar, newest first and grouped by month. Each row carries the date,
+  time, location, and instrument badges, and clicking one selects that day
+  on the calendar above. It always lists finished items regardless of the
+  Upcoming/Past/All control, since a drawer labelled "Past" that could be
+  empty because of a filter elsewhere would be a riddle; the instrument
+  filter does apply, because that narrows what the whole page is about.
+
+### Fixed
+- The instrument checkboxes in the admin editor rendered with no gap
+  between box and name: `.field label { display: block }` outweighed the
+  `.instrument-option` flex rule, so the layout never applied. They are
+  now selectable pills that fill in when checked.
+
+### Changed
+- Enrollments now record the student's own instrument rather than the
+  class's single track. An admin can add instruments to a class that has
+  active students, but cannot remove an instrument an active enrollment
+  depends on; time-slot changes stay frozen as before.
+
+### Database
+- Migration `20260825000000_multi_instrument_classes.sql` must run before
+  this front-end goes live: `events.instrument` becomes the
+  `events.instruments` array, and `list_visible_events`, `join_class`, the
+  event triggers, and the student select policy are rebuilt in array form.
+
 ## [1.2.1] - 2026-08-23
 
 ### Changed

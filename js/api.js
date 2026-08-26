@@ -67,44 +67,44 @@
         {
           id: "ev-1", time_slot_id: "slot-1", title: "Beginner violin ensemble",
           description: "Violin basics for ages 8-12. Posture, bowing, and first songs played together.",
-          event_type: "class", instrument: "violin", starts_at: day(1, 16, 0), ends_at: day(1, 17, 30),
+          event_type: "class", instruments: ["violin"], starts_at: day(1, 16, 0), ends_at: day(1, 17, 30),
           location: "Room A - Community Center", volunteer_capacity: 3,
           student_capacity: 8, enrollment_open: true,
         },
         {
           id: "ev-2", time_slot_id: "slot-2", title: "Piano foundations workshop",
           description: "Keyboard skills, rhythm, and first chords. High energy, with extra volunteer hands welcome.",
-          event_type: "class", instrument: "piano", starts_at: day(3, 15, 30), ends_at: day(3, 17, 0),
+          event_type: "class", instruments: ["piano"], starts_at: day(3, 15, 30), ends_at: day(3, 17, 0),
           location: "Main Hall", volunteer_capacity: 4, student_capacity: 10, enrollment_open: true,
         },
         {
-          id: "ev-3", time_slot_id: "slot-3", title: "Viola ensemble rehearsal",
-          description: "A small-group viola class focused on tone, listening, and learning one showcase piece.",
-          event_type: "class", instrument: "viola", starts_at: day(4, 16, 30), ends_at: day(4, 17, 45),
+          id: "ev-3", time_slot_id: "slot-3", title: "Strings ensemble rehearsal",
+          description: "A small-group class for violin and viola students focused on tone, listening, and learning one showcase piece.",
+          event_type: "class", instruments: ["violin", "viola"], starts_at: day(4, 16, 30), ends_at: day(4, 17, 45),
           location: "Music Room B", volunteer_capacity: 2, student_capacity: 6, enrollment_open: true,
         },
         {
           id: "ev-4", time_slot_id: "slot-4", title: "Violin open practice afternoon",
           description: "Practice rooms are open for violin students. Volunteers help set up stands and keep sessions on track.",
-          event_type: "event", instrument: "violin", starts_at: day(5, 13, 0), ends_at: day(5, 15, 0),
+          event_type: "event", instruments: ["violin"], starts_at: day(5, 13, 0), ends_at: day(5, 15, 0),
           location: "Library Annex", volunteer_capacity: 5, student_capacity: 0, enrollment_open: false,
         },
         {
           id: "ev-5", time_slot_id: "slot-5", title: "Family showcase night",
           description: "Piano students perform what they have been working on this month. Open to families and friends.",
-          event_type: "event", instrument: "piano", starts_at: day(6, 18, 0), ends_at: day(6, 20, 0),
+          event_type: "event", instruments: ["piano"], starts_at: day(6, 18, 0), ends_at: day(6, 20, 0),
           location: "Main Hall", volunteer_capacity: 6, student_capacity: 0, enrollment_open: false,
         },
         {
           id: "ev-6", time_slot_id: "slot-6", title: "Viola volunteer orientation",
           description: "New volunteers learn how room support works for the viola program.",
-          event_type: "event", instrument: "viola", starts_at: day(8, 17, 30), ends_at: day(8, 18, 30),
+          event_type: "event", instruments: ["viola"], starts_at: day(8, 17, 30), ends_at: day(8, 18, 30),
           location: "Welcome Desk", volunteer_capacity: 2, student_capacity: 0, enrollment_open: false,
         },
         {
           id: "ev-7", time_slot_id: "slot-7", title: "Showcase stage setup night",
           description: "Volunteers prepare the hall, chairs, and stands before the next violin student showcase.",
-          event_type: "event", instrument: "violin", starts_at: day(10, 18, 0), ends_at: day(10, 20, 30),
+          event_type: "event", instruments: ["violin"], starts_at: day(10, 18, 0), ends_at: day(10, 20, 30),
           location: "Workshop", volunteer_capacity: 4, student_capacity: 0, enrollment_open: false,
         },
       ],
@@ -120,21 +120,32 @@
   }
 
   // Stored demo databases created before an instrument was added to the
-  // catalog gain the new entries without losing accounts or enrollments.
-  function withCatalogInstruments(db) {
+  // catalog gain the new entries, and events saved when a class taught a
+  // single instrument move onto the instruments array -- all without losing
+  // accounts or enrollments.
+  function upgradeDb(db) {
+    let changed = false;
     const known = new Set((db.instruments || []).map((item) => item.slug));
     const missing = INSTRUMENTS.filter((item) => !known.has(item.slug));
     if (missing.length) {
       db.instruments = [...(db.instruments || []), ...missing.map((item) => ({ ...item, active: true }))];
-      saveDb(db);
+      changed = true;
     }
+    for (const event of db.events || []) {
+      if (!Array.isArray(event.instruments)) {
+        event.instruments = event.instrument ? [event.instrument] : ["violin"];
+        delete event.instrument;
+        changed = true;
+      }
+    }
+    if (changed) saveDb(db);
     return db;
   }
 
   function loadDb() {
     try {
       const raw = localStorage.getItem(DB_KEY);
-      if (raw) return withCatalogInstruments(JSON.parse(raw));
+      if (raw) return upgradeDb(JSON.parse(raw));
     } catch (error) {
       // A fresh demo database is safe when storage is unavailable or corrupt.
     }
@@ -173,6 +184,25 @@
   function instrumentName(slug, db = null) {
     const instruments = db?.instruments || INSTRUMENTS;
     return instruments.find((item) => item.slug === slug)?.name || null;
+  }
+
+  function instrumentNames(slugs, db = null) {
+    return (slugs || []).map((slug) => instrumentName(slug, db) || slug);
+  }
+
+  // Mirrors the enforce_supported_instrument trigger: every slug must be an
+  // active catalog instrument, duplicates collapse, and the result is stored
+  // in catalog order so badge order is the same everywhere.
+  function normalizeInstruments(slugs, db) {
+    const requested = new Set(Array.isArray(slugs) ? slugs : []);
+    const normalized = db.instruments
+      .filter((item) => item.active && requested.has(item.slug))
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((item) => item.slug);
+    if (!requested.size || normalized.length !== requested.size) {
+      throw new Error("Choose supported instruments.");
+    }
+    return normalized;
   }
 
   function publicUser(user) {
@@ -405,13 +435,13 @@
         const viewer = demoSessionUser(db);
         let rows = db.events;
         if (requestedInstrument) {
-          rows = rows.filter((event) => event.instrument === requestedInstrument);
+          rows = rows.filter((event) => event.instruments.includes(requestedInstrument));
         }
         return rows.map((event) => {
           const active = activeStudentEnrollments(db, event.id);
           return {
             ...event,
-            instrument_name: instrumentName(event.instrument, db),
+            instrument_names: instrumentNames(event.instruments, db),
             active_enrollments: active.length,
             spots_left: Math.max(0, event.student_capacity - active.length),
             is_enrolled: viewer?.role === "student" && active.some((row) => row.student_id === viewer.id),
@@ -431,10 +461,8 @@
     async createEvent(event) {
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("admin");
-        if (!db.instruments.some((item) => item.slug === event.instrument && item.active)) {
-          throw new Error("Choose a supported instrument.");
-        }
-        const row = { id: uid(), time_slot_id: uid(), ...event, created_by: currentUser.id };
+        const instruments = normalizeInstruments(event.instruments, db);
+        const row = { id: uid(), time_slot_id: uid(), ...event, instruments, created_by: currentUser.id };
         db.events.push(row);
         saveDb(db);
         return row;
@@ -451,20 +479,23 @@
         const index = db.events.findIndex((candidate) => candidate.id === id);
         if (index < 0) throw new Error("Event not found.");
         const previous = db.events[index];
-        if (previous.instrument !== event.instrument &&
-            !db.instruments.some((item) => item.slug === event.instrument && item.active)) {
-          throw new Error("Choose a supported instrument.");
-        }
-        const activeCount = activeStudentEnrollments(db, id).length;
-        const scheduleChanged = previous.instrument !== event.instrument || previous.starts_at !== event.starts_at ||
+        const sameInstruments = JSON.stringify(previous.instruments) === JSON.stringify(event.instruments);
+        const instruments = sameInstruments ? previous.instruments : normalizeInstruments(event.instruments, db);
+        const activeRows = activeStudentEnrollments(db, id);
+        const scheduleChanged = previous.starts_at !== event.starts_at ||
           previous.ends_at !== event.ends_at || previous.event_type !== event.event_type;
-        if (activeCount && scheduleChanged) {
-          throw new Error("This class has active student enrollments. Students must leave or transfer before its instrument or time slot can change.");
+        if (activeRows.length && scheduleChanged) {
+          throw new Error("This class has active student enrollments. Students must leave or transfer before its time slot can change.");
         }
-        if (activeCount > event.student_capacity) {
-          throw new Error(`Student capacity cannot be lower than the active enrollment count (${activeCount}).`);
+        // Adding instruments is always fine; removing one is only possible
+        // while no active student is enrolled for it.
+        if (activeRows.some((row) => !instruments.includes(row.instrument))) {
+          throw new Error("An active student is enrolled for an instrument this class would no longer teach. Students must leave or transfer first.");
         }
-        db.events[index] = { ...previous, ...event };
+        if (activeRows.length > event.student_capacity) {
+          throw new Error(`Student capacity cannot be lower than the active enrollment count (${activeRows.length}).`);
+        }
+        db.events[index] = { ...previous, ...event, instruments };
         saveDb(db);
         return db.events[index];
       }
@@ -517,7 +548,7 @@
         const target = db.events.find((event) => event.id === eventId);
         if (!target || target.event_type !== "class") throw new Error("Class not found.");
         if (!currentUser.instrument) throw new Error("Choose an instrument in Settings before joining a class.");
-        if (target.instrument !== currentUser.instrument) throw new Error("This class does not match your selected instrument.");
+        if (!target.instruments.includes(currentUser.instrument)) throw new Error("This class does not match your selected instrument.");
         if (!target.enrollment_open || new Date(target.starts_at).getTime() <= Date.now()) {
           throw new Error("This class is not open for enrollment.");
         }
@@ -531,16 +562,18 @@
         const taken = activeStudentEnrollments(db, eventId).length;
         if (taken >= target.student_capacity) throw new Error("Class full.");
 
+        // The snapshot records the student's own instrument -- the one of the
+        // class's taught instruments they are actually enrolled for.
         if (existing) {
           Object.assign(existing, {
-            instrument: target.instrument, time_slot_id: target.time_slot_id,
+            instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
             class_starts_at: target.starts_at, class_ends_at: target.ends_at,
             status: "active", joined_at: new Date().toISOString(), left_at: null,
           });
         } else {
           db.studentEnrollments.push({
             id: uid(), student_id: currentUser.id, class_id: target.id,
-            instrument: target.instrument, time_slot_id: target.time_slot_id,
+            instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
             class_starts_at: target.starts_at, class_ends_at: target.ends_at,
             status: "active", joined_at: new Date().toISOString(), left_at: null,
           });

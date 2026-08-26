@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.7.0/dist/driver.css" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
   <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
-  <link rel="stylesheet" href="css/style.css?v=24" />
+  <link rel="stylesheet" href="css/style.css?v=26" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -79,6 +79,14 @@
         <div class="day-event-list" id="day-event-list"></div>
       </aside>
     </div>
+
+    <details class="past-log" id="past-log">
+      <summary class="past-log-summary">
+        <span class="past-log-heading">Past classes &amp; events</span>
+        <span class="past-log-count" id="past-log-count"></span>
+      </summary>
+      <div class="past-log-body" id="past-log-list"></div>
+    </details>
   </main>
 
   <!-- admin: create / edit event -->
@@ -99,11 +107,9 @@
           </select>
         </div>
         <div class="field">
-          <label for="f-instrument">Instrument</label>
-          <select id="f-instrument" required>
-            <option value="">Choose an instrument</option>
-          </select>
-          <p class="hint">Students only see items assigned to their selected instrument.</p>
+          <label id="f-instruments-label">Instruments</label>
+          <div class="instrument-options" id="f-instruments" role="group" aria-labelledby="f-instruments-label"></div>
+          <p class="hint">Pick every instrument this is taught for. Students can join a class when it includes their instrument.</p>
         </div>
         <div class="field">
           <label for="f-start">Starts</label>
@@ -149,12 +155,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js?v=2"></script>
-  <script src="js/api.js?v=10"></script>
+  <script src="js/api.js?v=11"></script>
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.7.0/dist/driver.js.iife.js"></script>
   <script src="js/parallax.js?v=3"></script>
   <script src="js/tutorial.js"></script>
   <script src="js/background.js?v=4"></script>
   <script src="js/app.js?v=17"></script>
-  <script src="js/calendar.js?v=9"></script>
+  <script src="js/calendar.js?v=11"></script>
 </body>
 </html>

@@ -23,7 +23,7 @@
     {
       name: "Sean",
       photo: "assets/team/sean.webp",
-      role: "Cofounder & Viola Teacher",
+      role: "Cofounder & CMO",
       bio: "10 years of viola and violin. Outside music: programming and hockey.",
     },
     {
@@ -35,7 +35,7 @@
     {
       name: "Bryan",
       photo: "assets/team/bryan.webp",
-      role: "Cofounder & Violin Teacher",
+      role: "Cofounder & CTO",
       bio: "10 years of violin and 5 years of cello. Outside music: swimming.",
     },
     {

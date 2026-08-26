@@ -800,6 +800,91 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .day-empty iconify-icon { font-size: 32px; color: var(--primary); }
 .day-panel-error { margin-top: 0.7rem; color: var(--danger); font-size: 0.84rem; }
 
+/* ------------------------------------------------------------ past archive */
+/* A closed drawer under the calendar holding everything that has already
+   happened, newest first and grouped by month. */
+.past-log {
+  margin-top: clamp(1.2rem, 3vw, 2rem);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-1);
+}
+.past-log-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.95rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+}
+.past-log-summary::-webkit-details-marker { display: none; }
+.past-log-summary::after {
+  content: "";
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+  background: currentColor;
+  /* A chevron that turns to point down when the drawer is open. */
+  mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
+  -webkit-mask: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
+  color: var(--ink-soft);
+}
+.past-log[open] .past-log-summary::after { transform: rotate(90deg); }
+.past-log-summary:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; border-radius: 8px; }
+.past-log-heading { font-size: 1.02rem; font-weight: 700; }
+.past-log-count { color: var(--ink-soft); font-family: var(--font-body); font-size: 0.82rem; font-weight: 600; }
+
+.past-log-body { padding: 0 1.1rem 1.1rem; border-top: 1px solid var(--line); }
+.past-log-empty { padding-top: 1rem; color: var(--ink-soft); font-size: 0.9rem; }
+.past-log-month {
+  margin: 1.1rem 0 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.past-log-items { list-style: none; display: grid; gap: 0.4rem; }
+.past-log-jump {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--paper-sunk);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.past-log-jump:hover { border-color: var(--primary); background: var(--primary-soft); }
+.past-log-jump:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* A small date block, so the eye can run down the column of days. */
+.past-log-when {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  min-width: 2.6rem;
+  line-height: 1.1;
+}
+.past-log-day { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; }
+.past-log-dow { color: var(--ink-soft); font-size: 0.68rem; font-weight: 700; text-transform: uppercase; }
+.past-log-copy { flex: 1 1 12rem; min-width: 0; display: grid; gap: 0.1rem; }
+.past-log-copy strong { font-size: 0.95rem; }
+.past-log-meta { color: var(--ink-soft); font-size: 0.8rem; }
+.past-log .event-badges { flex: 0 0 auto; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
+
+@media (max-width: 620px) {
+  .past-log-jump { gap: 0.6rem; }
+  .past-log-copy { flex-basis: 100%; order: 3; }
+}
+
 /* ------------------------------------------------------------------ modal */
 .modal-backdrop {
   position: fixed; inset: 0;
@@ -826,6 +911,33 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .modal .meta { color: var(--ink-soft); font-size: 0.95rem; margin-bottom: 1rem; }
 .modal-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; margin-top: 1.4rem; }
 .class-enrollment-fields { margin: 0.2rem 0 1rem; padding: 1rem; border-left: 3px solid var(--accent); background: var(--accent-soft); }
+.instrument-options { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.2rem 0; }
+/* Outweighs `.field label { display: block }`, which would otherwise drop the
+   flex layout and collapse the gap between box and name. */
+.instrument-options .instrument-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.42rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.instrument-options .instrument-option:hover { border-color: var(--primary); }
+.instrument-options .instrument-option:has(input:checked) {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+.instrument-options .instrument-option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.instrument-options .instrument-option input { width: 16px; height: 16px; margin: 0; accent-color: var(--primary); }
+
 .checkbox-row { display: flex; align-items: flex-start; gap: 0.7rem; cursor: pointer; }
 .checkbox-row input { width: 18px; height: 18px; margin-top: 0.15rem; accent-color: var(--primary); }
 .checkbox-row strong, .checkbox-row small { display: block; }
