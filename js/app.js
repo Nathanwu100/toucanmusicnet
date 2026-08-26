@@ -239,8 +239,11 @@
           </label>
           <div class="field phone-field" data-phone-field>
             <label for="drawer-phone">Mobile number</label>
-            <input type="tel" id="drawer-phone" autocomplete="tel" placeholder="+1 555 123 4567">
-            <p class="hint">Include the country code. Message and data rates may apply.</p>
+            <div class="phone-input">
+              <select id="drawer-phone-country" aria-label="Country calling code"></select>
+              <input type="tel" id="drawer-phone" autocomplete="tel" placeholder="555 123 4567">
+            </div>
+            <p class="hint">No need to type the country code -- pick it on the left. Message and data rates may apply.</p>
             <button class="btn btn-sm btn-quiet save-phone" type="submit" name="save-target" value="phone">Save your number</button>
           </div>
         </section>
@@ -256,12 +259,24 @@
     const reminders = content.querySelector("#drawer-pref-reminders");
     const texts = content.querySelector("#drawer-pref-texts");
     const phone = content.querySelector("#drawer-phone");
+    const phoneCountry = content.querySelector("#drawer-phone-country");
     const phoneField = content.querySelector("[data-phone-field]");
     const instrument = content.querySelector("#drawer-instrument");
     digest.checked = currentUser.weekly_digest !== false;
     reminders.checked = currentUser.class_reminders !== false;
     texts.checked = currentUser.text_notifications === true;
-    phone.value = currentUser.phone_number || "";
+    const savedPhone = window.ToucanPhone.split(currentUser.phone_number);
+    window.ToucanPhone.fillCountrySelect(phoneCountry, savedPhone.iso);
+    phone.value = savedPhone.national;
+    // Typing a full international number re-points the dropdown at the
+    // country it names, so the two controls never disagree.
+    phone.addEventListener("blur", () => {
+      const parsed = window.ToucanPhone.parse(phoneCountry.value, phone.value);
+      if (parsed.valid) {
+        phoneCountry.value = parsed.iso;
+        phone.value = parsed.national;
+      }
+    });
     if (instrument) {
       instrument.value = currentUser.instrument || "";
       instrument.dataset.savedValue = currentUser.instrument || "";
@@ -291,14 +306,14 @@
     const saveStatus = content.querySelector("[data-settings-status]");
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const digits = phone.value.replace(/\D/g, "");
+      const parsedPhone = window.ToucanPhone.parse(phoneCountry.value, phone.value);
       if (instrument && !instrument.value) {
         toast("Choose an instrument before saving student settings.", "error");
         instrument.focus();
         return;
       }
-      if (texts.checked && (!phone.value.trim().startsWith("+") || digits.length < 10 || digits.length > 15)) {
-        toast("Enter a valid mobile number beginning with + and its country code.", "error");
+      if (texts.checked && !parsedPhone.valid) {
+        toast(window.ToucanPhone.message(parsedPhone.error), "error");
         phone.focus();
         return;
       }
@@ -320,9 +335,11 @@
           weekly_digest: digest.checked,
           class_reminders: reminders.checked,
           text_notifications: texts.checked,
-          phone_number: texts.checked ? `+${digits}` : null,
+          phone_number: texts.checked ? parsedPhone.e164 : null,
         });
-        phone.value = currentUser.phone_number || "";
+        const stored = window.ToucanPhone.split(currentUser.phone_number);
+        phoneCountry.value = stored.iso;
+        phone.value = stored.national;
         saveStatus.textContent = instrumentChanged
           ? `Instrument changed to ${currentUser.instrument_name}. Your schedule has been refreshed.`
           : submit.value === "phone"

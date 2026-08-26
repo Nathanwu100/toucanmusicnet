@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
   <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
   <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
-  <link rel="stylesheet" href="css/style.css?v=24" />
+  <link rel="stylesheet" href="css/style.css?v=27" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -64,6 +64,14 @@
           <p class="hint">Weekly schedules and class reminders go here. You can turn either off in Settings.</p>
         </div>
         <div class="field">
+          <label for="phone">Mobile number <span class="field-optional">optional</span></label>
+          <div class="phone-input">
+            <select id="phone-country" aria-label="Country calling code"></select>
+            <input type="tel" id="phone" autocomplete="tel" placeholder="555 123 4567" aria-describedby="phone-hint" />
+          </div>
+          <p class="hint" id="phone-hint">Add it and we can text you a reminder before class. No need to type the country code -- pick it on the left. You can add or remove this later in Settings.</p>
+        </div>
+        <div class="field">
           <label for="password">Password</label>
           <input type="password" id="password" autocomplete="new-password" minlength="8" required />
           <p class="hint">At least 8 characters.</p>
@@ -78,11 +86,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/config.js?v=2"></script>
-  <script src="js/api.js?v=11"></script>
+  <script src="js/phone.js?v=1"></script>
+  <script src="js/api.js?v=12"></script>
   <script src="js/parallax.js?v=3"></script>
   <script src="js/tutorial.js"></script>
   <script src="js/background.js?v=4"></script>
-  <script src="js/app.js?v=17"></script>
+  <script src="js/app.js?v=18"></script>
   <script>
     const instrumentField = document.getElementById("student-instrument-field");
     const instrumentSelect = document.getElementById("instrument");
@@ -118,6 +127,17 @@
     });
     loadSignupInstruments();
 
+    const phoneInput = document.getElementById("phone");
+    const phoneCountry = document.getElementById("phone-country");
+    ToucanPhone.fillCountrySelect(phoneCountry);
+    phoneInput.addEventListener("blur", () => {
+      const parsed = ToucanPhone.parse(phoneCountry.value, phoneInput.value);
+      if (parsed.valid) {
+        phoneCountry.value = parsed.iso;
+        phoneInput.value = parsed.national;
+      }
+    });
+
     document.getElementById("signup-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const err = document.getElementById("error");
@@ -135,6 +155,14 @@
         instrumentSelect.focus();
         return;
       }
+      const typedPhone = phoneInput.value.trim();
+      const parsedPhone = typedPhone ? ToucanPhone.parse(phoneCountry.value, typedPhone) : null;
+      if (parsedPhone && !parsedPhone.valid) {
+        err.textContent = ToucanPhone.message(parsedPhone.error);
+        err.classList.add("show");
+        phoneInput.focus();
+        return;
+      }
       btn.disabled = true;
       btn.textContent = "Creating account…";
       try {
@@ -144,6 +172,9 @@
           password: document.getElementById("password").value,
           role: role.value,
           instrument: role.value === "student" ? instrumentSelect.value : null,
+          // A number given here opts the account into texts; leaving it blank
+          // leaves texts off, which is the setting the account starts with.
+          phone_number: parsedPhone ? parsedPhone.e164 : null,
         });
         ToucanTour.queueFirstVisit(user);
         btn.textContent = "Account created";

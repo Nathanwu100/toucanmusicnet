@@ -1139,6 +1139,38 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .settings-drawer .toggle-row { padding: 0.85rem; }
 .settings-drawer .toggle-row p { font-size: 0.82rem; }
 .phone-field { margin: 1rem 0 0; padding: 1rem; border-left: 3px solid var(--primary); background: var(--primary-soft); }
+
+/* Country code and number sit on one line: the dropdown carries the +NN so
+   nobody has to type it, and the number field takes the rest of the room. */
+.phone-input { display: flex; gap: 0.5rem; align-items: stretch; }
+.phone-input select {
+  flex: 0 0 auto;
+  max-width: 9.5rem;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.phone-input input { flex: 1 1 auto; min-width: 0; }
+.field-optional {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 420px) {
+  .phone-input { flex-direction: column; }
+  .phone-input select { max-width: none; }
+}
 .phone-field[hidden] { display: none; }
 .instrument-setting-field { margin: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
 .instrument-change-warning { margin-top: 0.65rem; padding: 0.65rem 0.75rem; border-left: 3px solid var(--danger); background: var(--danger-soft); color: var(--danger); font-size: 0.8rem; line-height: 1.45; }

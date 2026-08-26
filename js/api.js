@@ -158,6 +158,16 @@
     localStorage.setItem(DB_KEY, JSON.stringify(db));
   }
 
+  // Mirrors the profiles_phone_number_format constraint: a leading +, no
+  // zero straight after it, digits only, 11 to 16 characters. Entry is made
+  // forgiving in js/phone.js; this is the last gate before storage.
+  function normalizePhone(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const digits = String(value).replace(/\D/g, "");
+    if (digits.length < 10 || digits.length > 15 || digits.startsWith("0")) return null;
+    return "+" + digits;
+  }
+
   function uid() {
     return "id-" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
   }
@@ -333,8 +343,13 @@
       if (error) throw new Error(error.message);
     },
 
-    async signup({ name, email, password, role, instrument }) {
+    async signup({ name, email, password, role, instrument, phone_number = null }) {
       if (!["student", "volunteer"].includes(role)) throw new Error("Pick a role to continue.");
+      // A number offered at signup is what switches texts on. The column and
+      // the profiles_text_notification_phone constraint move together: no
+      // number means no texts, which is where an account starts anyway.
+      const phone = normalizePhone(phone_number);
+      if (phone_number && !phone) throw new Error("Enter a valid mobile number, or leave it blank.");
       const supported = await this.listInstruments();
       if (role === "student" && !supported.some((item) => item.slug === instrument)) {
         throw new Error("Select an instrument to finish creating your student account.");
@@ -348,7 +363,8 @@
         }
         const user = {
           id: uid(), name, email, password, role, instrument: selectedInstrument,
-          weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
+          weekly_digest: true, class_reminders: true,
+          text_notifications: Boolean(phone), phone_number: phone,
         };
         db.users.push(user);
         saveDb(db);
@@ -361,7 +377,7 @@
         password,
         options: {
           emailRedirectTo: confirmationRedirectUrl(),
-          data: { full_name: name, role, instrument: selectedInstrument },
+          data: { full_name: name, role, instrument: selectedInstrument, phone_number: phone },
         },
       });
       if (error) throw new Error(error.message);
@@ -371,7 +387,8 @@
       }
       return publicUser({
         id: data.user.id, name, email, role, instrument: selectedInstrument,
-        weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
+        weekly_digest: true, class_reminders: true,
+        text_notifications: Boolean(phone), phone_number: phone,
       });
     },
 

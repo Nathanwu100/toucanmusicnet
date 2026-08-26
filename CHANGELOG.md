@@ -19,6 +19,34 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.4.0] - 2026-08-26
+
+### Added
+- **Country-code dropdown on every phone field.** Nobody has to type `+1`.
+  The new `js/phone.js` is shared by the signup form and the settings
+  drawer so both accept exactly the same things.
+- **Forgiving number entry.** Spaces, dashes, dots and parentheses are all
+  fine; a national trunk `0` is dropped; `00` works as the international
+  prefix; and pasting a full international number re-points the dropdown at
+  the country it names instead of fighting the selection.
+- **A number can be given while creating an account.** The field is
+  optional and says so. Supplying one switches text reminders on, since the
+  `profiles_text_notification_phone` constraint pairs them; leaving it blank
+  leaves texts off, which is where an account starts anyway.
+
+### Changed
+- Numbers are still stored strictly as E.164, unchanged. Only entry became
+  loose -- `js/api.js` normalises once more before storage, mirroring the
+  `profiles_phone_number_format` constraint.
+- Cache-busting query strings across the site had drifted apart; every page
+  now loads the same stylesheet and script versions.
+
+### Database
+- Migration `20260826000000_signup_phone_number.sql` teaches
+  `ensure_current_profile` to carry a signup number onto the new profile. A
+  malformed value in auth metadata is dropped rather than raised: a failed
+  insert would leave a signed-up account with no profile row at all.
+
 ## [1.3.0] - 2026-08-25
 
 ### Added
