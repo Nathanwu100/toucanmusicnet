@@ -5,11 +5,10 @@
 //
 // Each card shows the portrait with the name along the bottom; the bio is
 // revealed by hovering or focusing the card. Order is by seniority -- the
-// founder, then co-founders, then tutors -- even though the titles that
-// spell that out are not displayed.
+// founder, then co-founders, then tutors.
 //
-// `role` is left empty deliberately. Give one a value and it renders above
-// the bio again; nothing else has to change.
+// An empty `role` simply hides the line above the bio; nothing else has to
+// change.
 
 (function () {
   "use strict";
@@ -18,44 +17,44 @@
     {
       name: "Nathan",
       photo: "assets/team/nathan.webp",
-      role: "",
+      role: "Founder & Piano Teacher",
       bio: "11 years of piano and 5 years of viola. Outside music: art, long-distance running, and basketball.",
     },
     {
       name: "Sean",
       photo: "assets/team/sean.webp",
-      role: "",
+      role: "Cofounder & Viola Teacher",
       bio: "10 years of viola and violin. Outside music: programming and hockey.",
     },
     {
       name: "Sameer",
       photo: "assets/team/sameer.webp",
-      role: "",
+      role: "Cofounder & Head of Toucan Math",
       bio: "AIME qualifier and USACO Gold division participant. Outside school: saxophone, basketball, track, 3D modeling, and guitar.",
     },
     {
       name: "Bryan",
       photo: "assets/team/bryan.webp",
-      role: "",
+      role: "Cofounder & Violin Teacher",
       bio: "10 years of violin and 5 years of cello. Outside music: swimming.",
     },
     {
       name: "Aiden",
       photo: "assets/team/aiden.webp",
-      role: "",
+      role: "Violin Teacher",
       bio: "6 years of violin. Outside music: robotics, 3D printing, and tennis.",
-    },
-    {
-      name: "Carrie",
-      photo: "assets/team/carrie.jpg",
-      role: "",
-      bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
     },
     {
       name: "Luke",
       photo: "assets/team/luke.webp",
-      role: "",
+      role: "Piano Teacher",
       bio: "8 years of piano. Outside music: basketball, track and field, and games.",
+    },
+    {
+      name: "Carrie",
+      photo: "assets/team/carrie.jpg",
+      role: "Violin Teacher",
+      bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
     },
   ];
 
