@@ -281,7 +281,8 @@
     let message = raw;
     let resolved = supabaseCode;
 
-    if (supabaseCode === "email_exists" || /already registered|already been registered/i.test(raw)) {
+    if (supabaseCode === "email_exists" || supabaseCode === "user_already_exists" ||
+        /already registered|already been registered/i.test(raw)) {
       resolved = "email_exists";
       message = "An account already uses that email address.";
     } else if (supabaseCode === "over_email_send_rate_limit" || status === 429 || /rate limit/i.test(raw)) {
@@ -439,12 +440,19 @@
       }
       if (!data.user) throw authError(new Error("Sign-up did not complete. Try again."));
 
-      // Supabase deliberately does not error when the address is already
-      // registered -- that would let anyone test which emails have accounts.
-      // Instead it returns a decoy user with no identities and sends nothing,
-      // including a confirmation_sent_at that never happened. Reporting
-      // "check your email" here is the bug: no mail was sent and no account
-      // was made. An empty identities array is the only reliable tell.
+      // A duplicate address comes back in one of two shapes depending on a
+      // project setting, and both have to be handled because the setting can
+      // be flipped at any time.
+      //
+      // With "Confirm email" ON, Supabase refuses to error -- that would let
+      // anyone test which addresses have accounts -- and instead returns a
+      // decoy user with no identities, plus a confirmation_sent_at for mail
+      // it never sent. The empty identities array is the only tell, and it is
+      // checked here.
+      //
+      // With "Confirm email" OFF there is no email step to leak through, so
+      // it returns a plain 422 user_already_exists, which authError above
+      // translates. That path never reaches this line.
       if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         throw authError(new Error("An account already uses that email address."), "email_exists");
       }

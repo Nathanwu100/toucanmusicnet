@@ -19,6 +19,27 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.8.1] - 2026-08-29
+
+Email confirmation was switched off on the project. Verified the whole
+account flow against it end to end and patched the one thing that changed.
+
+### Fixed
+- **A duplicate address comes back in a different shape with confirmation
+  off**, and only one of the two was handled. With confirmation on Supabase
+  hides the collision behind a decoy user; with it off there is no email step
+  to leak through, so it returns a plain `422 user_already_exists`. Both are
+  now translated to the same `email_exists`, because the setting can be
+  flipped at any time and either shape can come back.
+- Diagnostics summary said "1 thing need attention".
+
+### Verified against the live project
+- Signing up returns a session immediately and the account is auto-confirmed.
+- `ensure_current_profile` builds the profile row with the right name and role.
+- Logging in with that account works.
+- `list_visible_events` returns events with the `instruments` array, so all
+  three migrations are applied.
+
 ## [1.8.0] - 2026-08-29
 
 ### Fixed

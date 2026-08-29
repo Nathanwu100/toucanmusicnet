@@ -64,6 +64,40 @@ test("signing up with an address that already exists is reported, not faked", as
   });
 });
 
+test("a duplicate address is caught with confirmation OFF too", async () => {
+  // Captured from the live project after "Confirm email" was switched off:
+  // with no email step to leak through, Supabase stops obfuscating and
+  // returns a plain 422 instead of the decoy user.
+  const api = apiWith({
+    signUp: {
+      data: { user: null, session: null },
+      error: { message: "User already registered", code: "user_already_exists", status: 422 },
+    },
+  });
+  await assert.rejects(api.signup(NEW_ACCOUNT), (error) => {
+    assert.equal(error.code, "email_exists");
+    assert.match(error.message, /already uses that email/i);
+    return true;
+  });
+});
+
+test("signing up with confirmation off lands a usable account straight away", async () => {
+  // The live shape now: a session comes back immediately and the account is
+  // already confirmed, so nothing should divert to the verification page.
+  const api = apiWith({
+    signUp: {
+      data: {
+        user: { id: "u1", identities: [{ id: "i" }], email_confirmed_at: "2026-08-29T02:25:01Z" },
+        session: { access_token: "t" },
+      },
+      error: null,
+    },
+  });
+  const user = await api.signup(NEW_ACCOUNT);
+  assert.equal(user.needs_verification, false);
+  assert.equal(user.id, "1", "the profile row is what gets returned, not the auth user");
+});
+
 test("a genuinely new account reports whether the email actually left", async () => {
   const mailed = apiWith({
     signUp: {

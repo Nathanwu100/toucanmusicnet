@@ -146,7 +146,7 @@
     summary.textContent = failed
       ? `${failed} check${failed === 1 ? "" : "s"} failed. Start with the first FAIL above.`
       : warned
-        ? `Everything reachable, but ${warned} thing${warned === 1 ? "" : "s"} need attention.`
+        ? `Everything reachable, but ${warned} thing${warned === 1 ? " needs" : "s need"} attention.`
         : "All checks passed.";
     summary.className = "diag-summary " + (failed ? "diag-fail" : warned ? "diag-warn" : "diag-ok");
   </script>
