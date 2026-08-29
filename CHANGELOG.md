@@ -19,6 +19,28 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.6.0] - 2026-08-28
+
+### Added
+- **A confirm-your-email page after signing up.** New accounts on a Supabase
+  project that requires a confirmed address land on `verify-email.html`, which
+  names the address, spells out the three steps, and can resend the link.
+
+### Fixed
+- **Signing up with email confirmation on used to dump you on the calendar,
+  signed out, with no explanation.** Supabase returns no session in that case,
+  but the form redirected to the calendar regardless. `signup()` now reports
+  `needs_verification` and the form only diverts when it is set, so accounts
+  that are immediately usable still go straight through.
+
+### Notes
+- The address is handed to the page in `sessionStorage`, not the query string:
+  a URL would put a new member's email in browser history, the referer header,
+  and any log along the way.
+- The resend button holds for 30 seconds after a send, because Supabase
+  rate-limits confirmation emails and a rejected send is worse than a wait.
+  Arriving at the page directly disables it rather than failing.
+
 ## [1.5.0] - 2026-08-26
 
 ### Fixed

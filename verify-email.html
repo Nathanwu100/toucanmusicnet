@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm your email — Toucan Music</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://code.iconify.design" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <script src="https://code.iconify.design/iconify-icon/3.0.0/iconify-icon.min.js" defer></script>
+  <link rel="icon" type="image/png" href="assets/sprites/bird-logo.png" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script src="js/config.js?v=2" defer></script>
+  <script src="js/phone.js?v=1" defer></script>
+  <script src="js/api.js?v=13" defer></script>
+  <script src="js/parallax.js?v=3" defer></script>
+  <script src="js/tutorial.js" defer></script>
+  <script src="js/background.js?v=4" defer></script>
+  <script src="js/app.js?v=20" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=31" />
+</head>
+<body>
+  <nav class="nav" data-site-nav>
+    <a class="brand" href="index.html"><span class="brand-bird" data-brand-bird aria-hidden="true"></span>Toucan Music</a>
+    <div class="nav-links">
+      <a class="nav-icon-link" href="index.html" aria-label="Home" data-tooltip="Home"><iconify-icon icon="pixelarticons:home" aria-hidden="true"></iconify-icon></a>
+      <a class="nav-icon-link" href="about.html" aria-label="About us" data-tooltip="About us"><iconify-icon icon="pixelarticons:users" aria-hidden="true"></iconify-icon></a>
+      <a class="nav-icon-link" href="calendar.html?v=3" aria-label="Calendar" data-tooltip="Calendar"><iconify-icon icon="pixelarticons:calendar" aria-hidden="true"></iconify-icon></a>
+      <span class="nav-auth" data-nav-auth>
+        <button class="nav-icon-button" type="button" data-open-settings aria-label="Settings" data-tooltip="Settings"><iconify-icon icon="pixelarticons:settings-cog" aria-hidden="true"></iconify-icon></button>
+        <a class="nav-icon-link" href="login.html" aria-label="Log in" data-tooltip="Log in"><iconify-icon icon="pixelarticons:login" aria-hidden="true"></iconify-icon></a>
+        <a class="btn btn-primary btn-sm nav-join" href="signup.html"><iconify-icon icon="pixelarticons:user-plus" aria-hidden="true"></iconify-icon>Join us</a>
+      </span>
+    </div>
+  </nav>
+
+  <main class="auth-wrap">
+    <div class="panel verify-panel">
+      <span class="verify-mark" aria-hidden="true"><iconify-icon icon="pixelarticons:mail"></iconify-icon></span>
+      <h1>Check your email</h1>
+      <p class="sub">
+        Your account is made. We sent a confirmation link to
+        <strong class="verify-address" id="verify-address">the address you signed up with</strong>.
+        Open it and you are in.
+      </p>
+
+      <ol class="verify-steps">
+        <li>Find the email from Toucan Music. Give it a minute to arrive.</li>
+        <li>Click the link inside it.</li>
+        <li>That brings you back here to log in for the first time.</li>
+      </ol>
+
+      <div class="verify-actions">
+        <a class="btn btn-primary" href="login.html">Go to log in</a>
+        <button class="btn btn-quiet" type="button" id="resend">Send it again</button>
+      </div>
+      <p class="verify-status" id="status" role="status" aria-live="polite"></p>
+
+      <p class="hint verify-footnote">
+        Nothing in your inbox? Check the spam folder first. If the address was wrong,
+        <a href="signup.html">sign up again</a> with the right one.
+      </p>
+    </div>
+  </main>
+
+  <footer data-site-footer></footer>
+
+  <script type="module">
+    // The address is handed over in sessionStorage rather than the query
+    // string: it is the new member's email, and a query string would put it
+    // in browser history, in the referer header, and in any server log along
+    // the way. sessionStorage stays in the tab that just signed up.
+    const PENDING_KEY = "toucan_pending_verification_v1";
+
+    const addressEl = document.getElementById("verify-address");
+    const statusEl = document.getElementById("status");
+    const resend = document.getElementById("resend");
+
+    let pending = null;
+    try {
+      pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) || "null");
+    } catch (error) {
+      pending = null;
+    }
+
+    if (pending?.email) {
+      addressEl.textContent = pending.email;
+    } else {
+      // Landing here directly, with nothing to resend to.
+      resend.disabled = true;
+      statusEl.textContent = "Open this page right after signing up and we can resend the link from here.";
+    }
+
+    // Supabase rate-limits confirmation emails, and hammering the button is
+    // the surest way to get one rejected. Hold it for a moment after a send.
+    const COOLDOWN_MS = 30000;
+    function holdResend(seconds) {
+      resend.disabled = true;
+      let left = seconds;
+      resend.textContent = `Send it again (${left})`;
+      const tick = setInterval(() => {
+        left -= 1;
+        if (left <= 0) {
+          clearInterval(tick);
+          resend.disabled = false;
+          resend.textContent = "Send it again";
+          return;
+        }
+        resend.textContent = `Send it again (${left})`;
+      }, 1000);
+    }
+
+    resend.addEventListener("click", async () => {
+      if (!pending?.email) return;
+      resend.disabled = true;
+      statusEl.textContent = "Sending…";
+      try {
+        await ToucanAPI.resendConfirmation(pending.email);
+        statusEl.textContent = `Sent again to ${pending.email}.`;
+        holdResend(COOLDOWN_MS / 1000);
+      } catch (error) {
+        statusEl.textContent = error.message;
+        resend.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

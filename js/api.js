@@ -369,7 +369,7 @@
         db.users.push(user);
         saveDb(db);
         localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id }));
-        return publicUser(user);
+        return { ...publicUser(user), needs_verification: false };
       }
 
       const { data, error } = await sb.auth.signUp({
@@ -383,13 +383,18 @@
       if (error) throw new Error(error.message);
       if (data.session) {
         const profile = await sbProfile(data.user);
-        return publicUser({ ...profile, email });
+        return { ...publicUser({ ...profile, email }), needs_verification: false };
       }
-      return publicUser({
-        id: data.user.id, name, email, role, instrument: selectedInstrument,
-        weekly_digest: true, class_reminders: true,
-        text_notifications: Boolean(phone), phone_number: phone,
-      });
+      // No session means the project requires a confirmed email address. The
+      // account exists but cannot be signed in to yet.
+      return {
+        ...publicUser({
+          id: data.user.id, name, email, role, instrument: selectedInstrument,
+          weekly_digest: true, class_reminders: true,
+          text_notifications: Boolean(phone), phone_number: phone,
+        }),
+        needs_verification: true,
+      };
     },
 
     async logout() {

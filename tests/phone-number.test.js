@@ -136,3 +136,33 @@ test("ensure_current_profile carries a signup number onto the profile", () => {
   assert.match(migration, /requested_phone := null;/);
   assert.match(migration, /length\(requested_phone\) between 11 and 16/);
 });
+
+test("demo signup needs no verification, so it never diverts to the prompt", async () => {
+  const { api } = loadDemoApi();
+  const user = await api.signup({
+    name: "Direct Entry", email: "direct@example.com", password: "password1",
+    role: "volunteer",
+  });
+  assert.equal(user.needs_verification, false);
+});
+
+test("the signup form only diverts to verification when it is pending", () => {
+  const signup = fs.readFileSync(path.join(__dirname, "../signup.html"), "utf8");
+  assert.match(signup, /if \(user\.needs_verification\)/);
+  assert.match(signup, /window\.location\.href = "verify-email\.html"/);
+  // The address travels in sessionStorage, never the URL: it must not end up
+  // in history, a referer header, or a proxy log.
+  assert.match(signup, /sessionStorage\.setItem\(\s*"toucan_pending_verification_v1"/);
+  assert.doesNotMatch(signup, /verify-email\.html\?[^"]*email/);
+});
+
+test("the verification page resends only to a pending address", () => {
+  const page = fs.readFileSync(path.join(__dirname, "../verify-email.html"), "utf8");
+  assert.match(page, /toucan_pending_verification_v1/);
+  assert.match(page, /ToucanAPI\.resendConfirmation\(pending\.email\)/);
+  // Arriving with nothing pending must disable the button rather than throw.
+  assert.match(page, /resend\.disabled = true;/);
+  // Supabase rate-limits these, so the button has to hold after a send.
+  assert.match(page, /COOLDOWN_MS/);
+  assert.match(page, /<meta name="robots" content="noindex"/);
+});

@@ -14,12 +14,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="js/config.js?v=2" defer></script>
   <script src="js/phone.js?v=1" defer></script>
-  <script src="js/api.js?v=12" defer></script>
+  <script src="js/api.js?v=13" defer></script>
   <script src="js/parallax.js?v=3" defer></script>
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=20" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=30" />
+  <link rel="stylesheet" href="css/style.css?v=31" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -181,6 +181,17 @@
         ToucanTour.queueFirstVisit(user);
         btn.textContent = "Account created";
         await musicNoteConfetti(btn);
+        // With email confirmation switched on there is no session yet, so
+        // sending them to the calendar would drop them on a signed-out page
+        // with no clue what to do. Explain the mailbox step instead.
+        if (user.needs_verification) {
+          sessionStorage.setItem(
+            "toucan_pending_verification_v1",
+            JSON.stringify({ email: user.email })
+          );
+          window.location.href = "verify-email.html";
+          return;
+        }
         window.location.href = "calendar.html?v=3";
       } catch (ex) {
         err.textContent = ex.message;

@@ -738,6 +738,39 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 .form-error.show { display: block; }
 .login-recovery { margin-bottom: 1.2rem; padding: 1rem; border-left: 3px solid var(--accent); border-radius: 4px; background: var(--accent-soft); }
+
+/* ------------------------------------------------------- verify email page */
+.verify-panel { text-align: left; }
+.verify-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 1.1rem;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 27px;
+}
+.verify-panel .sub { margin-bottom: 1.4rem; }
+.verify-address { color: var(--primary-strong); overflow-wrap: anywhere; }
+
+.verify-steps {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1rem 1rem 2.4rem;
+  border-radius: 8px;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+.verify-steps li::marker { color: var(--primary-strong); font-weight: 700; }
+
+.verify-actions { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+.verify-actions .btn { flex: 1 1 auto; }
+.verify-status { min-height: 1.5em; margin-top: 0.9rem; color: var(--success); font-size: 0.88rem; font-weight: 600; }
+.verify-footnote { margin-top: 1.2rem; padding-top: 1.1rem; border-top: 1px solid var(--line); }
+.verify-footnote a { color: var(--primary-strong); font-weight: 700; }
 .login-recovery strong { display: block; font-family: var(--font-display); }
 .login-recovery > p { margin: 0.3rem 0 0.8rem; color: var(--ink-soft); font-size: 0.9rem; }
 .login-recovery .login-recovery-status { min-height: 1.4em; margin: 0.65rem 0 0; color: var(--success); font-weight: 600; }
