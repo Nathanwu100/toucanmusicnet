@@ -19,6 +19,29 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.9.0] - 2026-08-29
+
+### Added
+- **Password recovery.** `forgot-password.html` asks for the address and
+  requests a reset link; `reset-password.html` is where the link lands and the
+  new password is set. Linked from the login page.
+- `requestPasswordReset()`, `completePasswordReset()` and `hasValidRecovery()`
+  on the API, with a working local implementation so the flow can be walked
+  through on localhost where there is no mailbox.
+
+### Notes
+- **A reset request always reports success**, even for an address with no
+  account. Saying "no such account" would turn the form into a tool for
+  working out which addresses are registered. Supabase behaves the same way,
+  and the demo path copies it.
+- The reset page checks the link is live *before* showing the password fields,
+  rather than accepting a password and only then refusing it.
+- Tokens are single use, and the local ones expire after an hour.
+- **This depends on email actually being delivered.** With no SMTP configured,
+  Supabase's built-in mailer sends a handful of messages per hour and they
+  usually land in spam, so reset links will be unreliable until an email
+  service is set up. The code is complete and works the moment one is.
+
 ## [1.8.1] - 2026-08-29
 
 Email confirmation was switched off on the project. Verified the whole

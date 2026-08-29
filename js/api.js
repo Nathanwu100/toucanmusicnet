@@ -317,6 +317,11 @@
     return new URL("/login?confirmed=1", siteUrl).href;
   }
 
+  function recoveryRedirectUrl() {
+    const siteUrl = cfg.PUBLIC_SITE_URL || window.location.origin;
+    return new URL("/reset-password", siteUrl).href;
+  }
+
   function normalizeRpcRow(data) {
     return Array.isArray(data) ? data[0] : data;
   }
@@ -374,6 +379,81 @@
         return publicUser(user);
       }
       const { data, error } = await sb.auth.signInWithPassword({ email: loginEmail(ident), password });
+      if (error) throw authError(error);
+      const profile = await sbProfile(data.user);
+      return publicUser({ ...profile, email: data.user.email });
+    },
+
+    // Ask for a reset link. This always reports success, even for an address
+    // with no account: telling a stranger which addresses are registered is
+    // how account lists get harvested. Supabase behaves the same way.
+    async requestPasswordReset(identifier) {
+      const email = loginEmail(String(identifier || "").trim());
+      if (!email || !email.includes("@")) throw new Error("Enter the email address on the account.");
+
+      if (DEMO) {
+        // No mail on localhost, so the link is handed back for the page to
+        // show. Only ever reachable in demo mode.
+        const db = loadDb();
+        const user = db.users.find((candidate) => candidate.email.toLowerCase() === email.toLowerCase());
+        if (!user) return { sent: true, demoLink: null };
+        const token = uid();
+        db.recoveries = (db.recoveries || []).filter((row) => row.userId !== user.id);
+        db.recoveries.push({ token, userId: user.id, expires: Date.now() + 60 * 60 * 1000 });
+        saveDb(db);
+        return { sent: true, demoLink: `reset-password.html?demo_token=${token}` };
+      }
+
+      const { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: recoveryRedirectUrl(),
+      });
+      if (error) throw authError(error);
+      return { sent: true, demoLink: null };
+    },
+
+    // Whether the reset page should offer the form at all. Checking before
+    // rendering it means a dead link says so, instead of inviting someone to
+    // choose a password and only then refusing it.
+    async hasValidRecovery(demoToken = null) {
+      if (DEMO) {
+        if (!demoToken) return false;
+        const record = (loadDb().recoveries || []).find((row) => row.token === demoToken);
+        return Boolean(record && record.expires > Date.now());
+      }
+      const { data } = await sb.auth.getSession();
+      return Boolean(data.session);
+    },
+
+    // Called from the reset page. On Supabase the recovery link has already
+    // put a session in place by the time this runs, so this is just a password
+    // change on the signed-in user.
+    async completePasswordReset(newPassword, demoToken = null) {
+      if (!newPassword || newPassword.length < 8) {
+        throw new Error("Choose a password of at least 8 characters.");
+      }
+
+      if (DEMO) {
+        const db = loadDb();
+        const record = (db.recoveries || []).find((row) => row.token === demoToken);
+        if (!record || record.expires < Date.now()) {
+          throw new Error("That reset link has expired. Ask for a new one.");
+        }
+        const user = db.users.find((candidate) => candidate.id === record.userId);
+        if (!user) throw new Error("That account no longer exists.");
+        user.password = newPassword;
+        db.recoveries = db.recoveries.filter((row) => row.token !== demoToken);
+        saveDb(db);
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: user.id }));
+        return publicUser(user);
+      }
+
+      const { data: sessionData } = await sb.auth.getSession();
+      if (!sessionData.session) {
+        const expired = new Error("This reset link is no longer valid. Ask for a new one.");
+        expired.code = "recovery_expired";
+        throw expired;
+      }
+      const { data, error } = await sb.auth.updateUser({ password: newPassword });
       if (error) throw authError(error);
       const profile = await sbProfile(data.user);
       return publicUser({ ...profile, email: data.user.email });

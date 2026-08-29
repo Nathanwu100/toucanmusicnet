@@ -182,3 +182,66 @@ test("the verification page does not promise mail that was never sent", () => {
   assert.match(page, /did not go out/);
   assert.match(page, /email_rate_limited/);
 });
+
+test("a reset request never reveals whether the address has an account", async () => {
+  const { loadDemoApi } = require("./helpers/load-demo-api");
+  const { api } = loadDemoApi();
+
+  const known = await api.requestPasswordReset("ari@example.com");
+  const unknown = await api.requestPasswordReset("nobody@example.com");
+  // Both report sent. Only the demo link differs, and that is local-only.
+  assert.equal(known.sent, true);
+  assert.equal(unknown.sent, true);
+  assert.ok(known.demoLink, "a real account gets a usable demo link");
+  assert.equal(unknown.demoLink, null, "an unknown address gets no link to follow");
+});
+
+test("a reset token works once and then stops working", async () => {
+  const { loadDemoApi } = require("./helpers/load-demo-api");
+  const { api } = loadDemoApi();
+
+  const { demoLink } = await api.requestPasswordReset("ari@example.com");
+  const token = new URL(demoLink, "https://x/").searchParams.get("demo_token");
+
+  assert.equal(await api.hasValidRecovery(token), true);
+  const user = await api.completePasswordReset("BrandNewPassword1", token);
+  assert.equal(user.email, "ari@example.com");
+
+  // Consumed: the same link must not be replayable.
+  assert.equal(await api.hasValidRecovery(token), false);
+  await assert.rejects(api.completePasswordReset("AnotherPassword1", token), /expired/i);
+
+  // And the new password is the one that works now.
+  await api.logout();
+  const back = await api.login("ari@example.com", "BrandNewPassword1");
+  assert.equal(back.email, "ari@example.com");
+  await assert.rejects(api.login("ari@example.com", "toucan2026"), /No account matches/);
+});
+
+test("a made-up reset token is refused before any password is asked for", async () => {
+  const { loadDemoApi } = require("./helpers/load-demo-api");
+  const { api } = loadDemoApi();
+  assert.equal(await api.hasValidRecovery("not-a-real-token"), false);
+  assert.equal(await api.hasValidRecovery(null), false);
+});
+
+test("reset refuses passwords that are too short", async () => {
+  const { loadDemoApi } = require("./helpers/load-demo-api");
+  const { api } = loadDemoApi();
+  const { demoLink } = await api.requestPasswordReset("ari@example.com");
+  const token = new URL(demoLink, "https://x/").searchParams.get("demo_token");
+  await assert.rejects(api.completePasswordReset("short", token), /at least 8/i);
+});
+
+test("the reset page checks the link before offering the form", () => {
+  const page = fs.readFileSync(path.join(__dirname, "../reset-password.html"), "utf8");
+  assert.match(page, /hasValidRecovery/);
+  assert.match(page, /expired or has already been used/);
+  assert.match(page, /do not match/, "should compare the two password fields");
+  assert.match(page, /<meta name="robots" content="noindex"/);
+});
+
+test("login offers a way to recover a forgotten password", () => {
+  const login = fs.readFileSync(path.join(__dirname, "../login.html"), "utf8");
+  assert.match(login, /forgot-password\.html/);
+});
