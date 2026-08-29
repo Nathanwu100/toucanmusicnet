@@ -543,6 +543,22 @@
     sessionStorage.setItem(REMINDED_KEY, JSON.stringify(reminded));
   }
 
+  function showMisconfiguredBanner() {
+    if (document.querySelector("[data-config-banner]")) return;
+    const banner = document.createElement("div");
+    banner.className = "config-banner";
+    banner.setAttribute("data-config-banner", "");
+    banner.setAttribute("role", "alert");
+    banner.innerHTML = `
+      <strong>This site is not talking to its database.</strong>
+      <span>The Supabase client script did not load, so accounts, sign-ups and
+      email are running on data stored in this browser alone. Nothing saved
+      here reaches the server or any other device.</span>
+      <a href="diagnostics.html">Run the diagnostics</a>`;
+    document.body.prepend(banner);
+    document.body.classList.add("has-config-banner");
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     const user = await renderNav();
     renderFooter();
@@ -557,9 +573,15 @@
       initHomeSchedule();
     });
 
-    if (api.demoMode && !sessionStorage.getItem("toucan_demo_notice")) {
+    // A site configured for Supabase that is running on browser-local data is
+    // broken, not in "demo mode": accounts go nowhere, no email is ever sent,
+    // and every account vanishes on another device. That deserves a banner
+    // that stays put, not a toast that slides away in five seconds.
+    if (api.misconfigured) {
+      showMisconfiguredBanner();
+    } else if (api.demoMode && !sessionStorage.getItem("toucan_demo_notice")) {
       sessionStorage.setItem("toucan_demo_notice", "1");
-      toast("Demo mode: data lives in this browser. Connect Supabase in js/config.js to go live.");
+      toast("Demo mode: data lives in this browser only.");
     }
   });
 })();

@@ -166,3 +166,53 @@ test("the verification page resends only to a pending address", () => {
   assert.match(page, /COOLDOWN_MS/);
   assert.match(page, /<meta name="robots" content="noindex"/);
 });
+
+test("demo mode is distinguished from a broken Supabase connection", () => {
+  const vm2 = require("node:vm");
+  const source = fs.readFileSync(path.join(__dirname, "../js/api.js"), "utf8");
+  const run = (cfg, hostname, hasLib) => {
+    const window = { TOUCAN_CONFIG: cfg, location: { hostname, origin: "https://x" } };
+    if (hasLib) window.supabase = { createClient: () => ({ auth: {}, from: () => ({}), rpc: () => ({}) }) };
+    const storage = { getItem: () => null, setItem() {}, removeItem() {} };
+    vm2.runInContext(source, vm2.createContext({
+      window, localStorage: storage, URL, Date, Math, JSON, console, setTimeout, clearTimeout,
+    }), { filename: "js/api.js" });
+    return window.ToucanAPI;
+  };
+
+  const configured = { SUPABASE_URL: "https://p.supabase.co", SUPABASE_ANON_KEY: "k" };
+
+  // Localhost is a legitimate demo, not a fault.
+  const local = run(configured, "localhost", true);
+  assert.equal(local.demoReason, "localhost");
+  assert.equal(local.misconfigured, false);
+
+  // A configured deployment whose client script never loaded is broken, and
+  // has to say so: signups there go nowhere and no email is ever sent.
+  const broken = run(configured, "toucan-music.com", false);
+  assert.equal(broken.demoReason, "library-missing");
+  assert.equal(broken.misconfigured, true);
+
+  // No project configured at all is a plain demo, not a misconfiguration.
+  const unconfigured = run({}, "toucan-music.com", false);
+  assert.equal(unconfigured.demoReason, "not-configured");
+  assert.equal(unconfigured.misconfigured, false);
+});
+
+test("a configured deployment running on local data shows a banner", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  assert.match(app, /if \(api\.misconfigured\)/);
+  assert.match(app, /showMisconfiguredBanner/);
+  assert.match(app, /diagnostics\.html/);
+});
+
+test("the diagnostics page names the failure modes that break signup", () => {
+  const page = fs.readFileSync(path.join(__dirname, "../diagnostics.html"), "utf8");
+  for (const check of ["Configuration", "Supabase client script", "Data layer", "Database", "Sign-ups", "Email confirmation", "Current session"]) {
+    assert.ok(page.includes(check), `diagnostics should check ${check}`);
+  }
+  // The two that silently kill account creation.
+  assert.match(page, /disable_signup/);
+  assert.match(page, /mailer_autoconfirm/);
+  assert.match(page, /<meta name="robots" content="noindex"/);
+});

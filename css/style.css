@@ -739,6 +739,67 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .form-error.show { display: block; }
 .login-recovery { margin-bottom: 1.2rem; padding: 1rem; border-left: 3px solid var(--accent); border-radius: 4px; background: var(--accent-soft); }
 
+/* ------------------------------------------------- misconfiguration banner */
+/* Shown when the config names a Supabase project but the app is running on
+   browser-local data. It does not dismiss, because the site is not working. */
+.config-banner {
+  position: relative;
+  z-index: 60;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.85rem clamp(1rem, 4vw, 3rem);
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.config-banner strong { font-family: var(--font-display); }
+.config-banner span { flex: 1 1 20rem; opacity: 0.94; }
+.config-banner a { color: #fff; font-weight: 700; white-space: nowrap; }
+
+/* -------------------------------------------------------- diagnostics page */
+.diag-wrap {
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: clamp(2.5rem, 6vw, 4.5rem) clamp(1rem, 4vw, 3rem) 4rem;
+}
+.diag-wrap h1 { font-size: clamp(1.6rem, 3.5vw, 2.3rem); }
+.diag-wrap .sub { margin: 0.6rem 0 2rem; color: var(--ink-soft); max-width: 60ch; }
+.diag-list { display: grid; gap: 0.6rem; }
+.diag-row {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--paper-raise);
+}
+.diag-row.diag-ok { border-left-color: var(--success); }
+.diag-row.diag-warn { border-left-color: var(--accent); }
+.diag-row.diag-fail { border-left-color: var(--danger); }
+.diag-state {
+  flex: 0 0 3.2rem;
+  font: 700 0.7rem var(--font-body);
+  letter-spacing: 0.06em;
+  padding-top: 0.15rem;
+}
+.diag-ok .diag-state { color: var(--success); }
+.diag-warn .diag-state { color: var(--accent-strong); }
+.diag-fail .diag-state { color: var(--danger); }
+.diag-body { display: grid; gap: 0.2rem; min-width: 0; }
+.diag-detail { color: var(--ink-soft); font-size: 0.9rem; overflow-wrap: anywhere; }
+.diag-fix { margin-top: 0.25rem; font-size: 0.86rem; font-weight: 600; }
+.diag-warn .diag-fix { color: var(--accent-strong); }
+.diag-fail .diag-fix { color: var(--danger); }
+.diag-summary { margin-top: 1.6rem; font-weight: 700; }
+.diag-summary.diag-ok { color: var(--success); }
+.diag-summary.diag-warn { color: var(--accent-strong); }
+.diag-summary.diag-fail { color: var(--danger); }
+
 /* ------------------------------------------------------- verify email page */
 .verify-panel { text-align: left; }
 .verify-mark {

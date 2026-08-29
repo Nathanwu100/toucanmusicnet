@@ -14,12 +14,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="js/config.js?v=2" defer></script>
   <script src="js/phone.js?v=1" defer></script>
-  <script src="js/api.js?v=13" defer></script>
+  <script src="js/api.js?v=14" defer></script>
   <script src="js/parallax.js?v=3" defer></script>
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
-  <script src="js/app.js?v=20" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=31" />
+  <script src="js/app.js?v=21" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=32" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -45,6 +45,7 @@
         <strong>Confirm this account</strong>
         <p>This account exists, but its email address is still awaiting confirmation.</p>
         <button class="btn btn-quiet btn-sm" type="button" id="resend-confirmation">Send confirmation email</button>
+        <a class="btn btn-quiet btn-sm" href="verify-email.html">What do I do?</a>
         <p class="login-recovery-status" id="confirmation-status" role="status" aria-live="polite"></p>
       </div>
       <form id="login-form" novalidate>
@@ -91,8 +92,15 @@
           : "calendar.html?v=3";
       } catch (ex) {
         const needsConfirmation = ex.code === "email_not_confirmed" || ex.message === "Email not confirmed";
+        if (needsConfirmation) {
+          // Hand the address to the verification page so its resend button works.
+          sessionStorage.setItem(
+            "toucan_pending_verification_v1",
+            JSON.stringify({ email: identifier.value.trim() })
+          );
+        }
         err.textContent = needsConfirmation
-          ? "This account needs email confirmation before it can log in."
+          ? "This account has not confirmed its email address yet, so it cannot log in."
           : ex.message;
         err.classList.add("show");
         recovery.hidden = !needsConfirmation;

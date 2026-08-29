@@ -9,11 +9,20 @@
   const LOCAL_DEMO =
     cfg.FORCE_DEMO === true ||
     (cfg.FORCE_DEMO !== false && localHosts.includes(window.location.hostname));
-  const DEMO =
-    LOCAL_DEMO ||
-    !cfg.SUPABASE_URL ||
-    cfg.SUPABASE_URL.includes("YOUR-PROJECT") ||
-    !window.supabase;
+  // Why demo mode was chosen, so a failure can be named instead of guessed
+  // at. "library-missing" is the dangerous one: the config asks for Supabase
+  // but the client script never arrived, so the site silently becomes a
+  // browser-local sandbox where signups go nowhere and no email is ever sent.
+  const CONFIGURED_FOR_SUPABASE = Boolean(
+    cfg.SUPABASE_URL && !cfg.SUPABASE_URL.includes("YOUR-PROJECT") && cfg.SUPABASE_ANON_KEY
+  );
+  const DEMO_REASON =
+    cfg.FORCE_DEMO === true ? "forced"
+    : LOCAL_DEMO ? "localhost"
+    : !CONFIGURED_FOR_SUPABASE ? "not-configured"
+    : !window.supabase ? "library-missing"
+    : null;
+  const DEMO = DEMO_REASON !== null;
 
   // Dropdowns label each option with the name alone, so the catalog carries
   // no descriptive text; schema.sql seeds a null description to match.
@@ -280,6 +289,13 @@
 
   const api = {
     demoMode: DEMO,
+    demoReason: DEMO_REASON,
+    configuredForSupabase: CONFIGURED_FOR_SUPABASE,
+    // True when the config names a Supabase project but the app is running on
+    // local data anyway -- nothing a visitor does will reach the server.
+    get misconfigured() {
+      return CONFIGURED_FOR_SUPABASE && DEMO_REASON === "library-missing";
+    },
     instruments: INSTRUMENTS.map((instrument) => ({ ...instrument })),
 
     async listInstruments() {

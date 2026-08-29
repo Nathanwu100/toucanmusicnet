@@ -25,7 +25,14 @@
 
   async function maybeAutoStart(user) {
     if (!user || sessionStorage.getItem(PENDING_KEY) !== user.id) return;
-    if (!window.driver?.js?.driver || !(await waitForCalendar())) return;
+    // driver.js comes from a CDN. If it did not arrive the walkthrough cannot
+    // run, and silently doing nothing reads as a broken button -- say so and
+    // leave it queued so the next load can try again.
+    if (!window.driver?.js?.driver) {
+      window.toast?.("The guided tour could not load. Check your connection and try Settings again.", "error");
+      return;
+    }
+    if (!(await waitForCalendar())) return;
 
     const safeName = String(user.name).replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",

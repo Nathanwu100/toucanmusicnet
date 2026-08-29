@@ -19,6 +19,33 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.7.0] - 2026-08-28
+
+### Added
+- **`diagnostics.html`** — checks the config, whether the Supabase client
+  script loaded, which mode the data layer is really in, whether the database
+  is reachable and has the schema, whether sign-ups are enabled, whether email
+  confirmation is required, and who the browser is currently signed in as.
+  Read-only, `noindex`, and it names the fix next to each failure.
+- **A standing banner** when the site is configured for Supabase but running
+  on browser-local data anyway. That state is not "demo mode", it is broken:
+  accounts go nowhere and no email is sent. It used to be a toast that slid
+  away after five seconds.
+
+### Changed
+- `api.demoReason` now says *why* local data is in use (`localhost`,
+  `not-configured`, `library-missing`, `forced`), and `api.misconfigured`
+  flags the one case that is a fault rather than a choice.
+- An unconfirmed account failing to log in now gets the address handed to
+  `verify-email.html`, so the resend button there works, plus a link to it
+  from the login page.
+- The walkthrough says so when driver.js fails to load instead of returning
+  silently, which read as a dead "Site guide" button.
+
+### Notes
+- The walkthrough already ran on first login and replayed from Settings ›
+  Site guide; both were verified rather than rebuilt.
+
 ## [1.6.0] - 2026-08-28
 
 ### Added
