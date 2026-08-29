@@ -19,6 +19,32 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.8.0] - 2026-08-29
+
+### Fixed
+- **Signing up with an address that already had an account claimed an email
+  had been sent when none had.** Supabase deliberately does not error in that
+  case, because erroring would let anyone probe which addresses have accounts.
+  It returns a decoy user with an empty `identities` array, no session, and a
+  `confirmation_sent_at` for mail it never sent. The code read "no session" as
+  "confirmation pending" and sent people to wait on an inbox that would stay
+  empty forever. An empty `identities` array is the reliable tell, and it is
+  now checked: the signup form says the address is taken and links to log in.
+- **A new account whose confirmation email failed to send was told to go and
+  check for it.** `confirmation_sent_at` is now carried through, and the
+  verification page says the mail did not go out instead of promising it did.
+
+### Changed
+- Auth errors are translated in one place and carry a code, so pages branch on
+  the code rather than on English error strings. Named so far:
+  `email_exists`, `email_rate_limited`, `email_send_failed`,
+  `email_not_confirmed`, `invalid_credentials`, `already_confirmed`.
+- Mailer rate limiting reads as "wait an hour", not "email rate limit
+  exceeded", and holds the resend button rather than inviting a retry that
+  will fail.
+- Resending to an address that is already confirmed now says so and points at
+  the login page, instead of surfacing an error.
+
 ## [1.7.0] - 2026-08-28
 
 ### Added

@@ -15,12 +15,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="js/config.js?v=2" defer></script>
   <script src="js/phone.js?v=1" defer></script>
-  <script src="js/api.js?v=14" defer></script>
+  <script src="js/api.js?v=15" defer></script>
   <script src="js/parallax.js?v=3" defer></script>
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=21" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=32" />
+  <link rel="stylesheet" href="css/style.css?v=33" />
 </head>
 <body>
   <nav class="nav" data-site-nav>
@@ -88,6 +88,18 @@
 
     if (pending?.email) {
       addressEl.textContent = pending.email;
+      // The account was made but Supabase never actually sent the mail. Saying
+      // "check your inbox" would send someone to wait for nothing.
+      if (pending.sent === false) {
+        document.querySelector(".verify-panel h1").textContent = "Your account is made";
+        document.querySelector(".verify-panel .sub").innerHTML =
+          "It is registered to <strong class=\"verify-address\"></strong>, but the confirmation email did not go out. " +
+          "Try sending it again below, and if that keeps failing the site's email settings need fixing.";
+        document.querySelector(".verify-panel .sub .verify-address").textContent = pending.email;
+        document.querySelector(".verify-steps").hidden = true;
+        statusEl.textContent = "No confirmation email was sent yet.";
+        statusEl.classList.add("verify-status-warn");
+      }
     } else {
       // Landing here directly, with nothing to resend to.
       resend.disabled = true;
@@ -123,7 +135,11 @@
         holdResend(COOLDOWN_MS / 1000);
       } catch (error) {
         statusEl.textContent = error.message;
-        resend.disabled = false;
+        statusEl.classList.toggle("verify-status-warn", error.code !== "already_confirmed");
+        // Rate limiting is the one failure where retrying immediately makes
+        // things worse, so hold the button anyway.
+        if (error.code === "email_rate_limited") holdResend(60);
+        else resend.disabled = false;
       }
     });
   </script>

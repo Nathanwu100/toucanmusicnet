@@ -271,6 +271,39 @@
     return Array.isArray(created) ? created[0] : created;
   }
 
+  // Supabase auth errors arrive as codes and terse strings. Translate the ones
+  // that actually happen here, and keep the code on the error so the pages can
+  // branch on it rather than matching English.
+  function authError(error, code) {
+    const raw = String(error?.message || "");
+    const supabaseCode = code || error?.code || "";
+    const status = error?.status;
+    let message = raw;
+    let resolved = supabaseCode;
+
+    if (supabaseCode === "email_exists" || /already registered|already been registered/i.test(raw)) {
+      resolved = "email_exists";
+      message = "An account already uses that email address.";
+    } else if (supabaseCode === "over_email_send_rate_limit" || status === 429 || /rate limit/i.test(raw)) {
+      resolved = "email_rate_limited";
+      message = "Too many emails have been sent from this site recently. Wait an hour and try again.";
+    } else if (supabaseCode === "email_not_confirmed" || /email not confirmed/i.test(raw)) {
+      resolved = "email_not_confirmed";
+      message = "This account has not confirmed its email address yet.";
+    } else if (supabaseCode === "invalid_credentials" || /invalid login credentials/i.test(raw)) {
+      resolved = "invalid_credentials";
+      message = "That email and password do not match an account.";
+    } else if (/error sending confirmation|error sending email|smtp/i.test(raw)) {
+      resolved = "email_send_failed";
+      message = "The confirmation email could not be sent. The site's email settings need attention.";
+    }
+
+    const wrapped = new Error(message);
+    wrapped.code = resolved || "auth_error";
+    wrapped.original = raw;
+    return wrapped;
+  }
+
   function loginEmail(identifier) {
     const ident = identifier.trim();
     return ident.toLowerCase() === String(cfg.ADMIN_NAME || "admin").toLowerCase()
@@ -340,11 +373,7 @@
         return publicUser(user);
       }
       const { data, error } = await sb.auth.signInWithPassword({ email: loginEmail(ident), password });
-      if (error) {
-        const loginError = new Error(error.message);
-        loginError.code = error.code || (error.message === "Email not confirmed" ? "email_not_confirmed" : "auth_error");
-        throw loginError;
-      }
+      if (error) throw authError(error);
       const profile = await sbProfile(data.user);
       return publicUser({ ...profile, email: data.user.email });
     },
@@ -356,7 +385,14 @@
         email: loginEmail(identifier),
         options: { emailRedirectTo: confirmationRedirectUrl() },
       });
-      if (error) throw new Error(error.message);
+      // Resending to an address that is already confirmed is not a failure
+      // worth alarming anyone about -- they can simply log in.
+      if (error && /already confirmed|already been confirmed/i.test(error.message || "")) {
+        const done = new Error("That address is already confirmed. You can log in.");
+        done.code = "already_confirmed";
+        throw done;
+      }
+      if (error) throw authError(error);
     },
 
     async signup({ name, email, password, role, instrument, phone_number = null }) {
@@ -375,7 +411,7 @@
       if (DEMO) {
         const db = loadDb();
         if (db.users.some((user) => user.email.toLowerCase() === email.toLowerCase())) {
-          throw new Error("An account with that email already exists.");
+          throw authError(new Error("An account already uses that email address."), "email_exists");
         }
         const user = {
           id: uid(), name, email, password, role, instrument: selectedInstrument,
@@ -396,13 +432,26 @@
           data: { full_name: name, role, instrument: selectedInstrument, phone_number: phone },
         },
       });
-      if (error) throw new Error(error.message);
+      if (error) throw authError(error);
       if (data.session) {
         const profile = await sbProfile(data.user);
         return { ...publicUser({ ...profile, email }), needs_verification: false };
       }
-      // No session means the project requires a confirmed email address. The
-      // account exists but cannot be signed in to yet.
+      if (!data.user) throw authError(new Error("Sign-up did not complete. Try again."));
+
+      // Supabase deliberately does not error when the address is already
+      // registered -- that would let anyone test which emails have accounts.
+      // Instead it returns a decoy user with no identities and sends nothing,
+      // including a confirmation_sent_at that never happened. Reporting
+      // "check your email" here is the bug: no mail was sent and no account
+      // was made. An empty identities array is the only reliable tell.
+      if (Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        throw authError(new Error("An account already uses that email address."), "email_exists");
+      }
+
+      // A genuinely new account with confirmation required. If the mail never
+      // left, say so rather than sending them to stare at an empty inbox.
+      const mailed = Boolean(data.user.confirmation_sent_at);
       return {
         ...publicUser({
           id: data.user.id, name, email, role, instrument: selectedInstrument,
@@ -410,6 +459,7 @@
           text_notifications: Boolean(phone), phone_number: phone,
         }),
         needs_verification: true,
+        confirmation_sent: mailed,
       };
     },
 
