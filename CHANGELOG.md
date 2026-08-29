@@ -19,6 +19,26 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.9.1] - 2026-08-29
+
+### Fixed
+- **Joining a class failed with `42702: column reference "class_id" is
+  ambiguous`.** `join_class` declares an OUT parameter called `class_id`,
+  which puts that name in scope as a PL/pgSQL variable for the whole function
+  body, and `student_enrollments` has a column of the same name. Every other
+  reference is written `se.class_id`, but the `ON CONFLICT` inference list
+  cannot take a table alias, so Postgres could not tell them apart and refused
+  to run the statement. Reproduced against the live project before fixing.
+
+### Database
+- Migration `20260829000000_fix_join_class_ambiguity.sql` **must be applied**
+  — this one is not optional, enrollment is broken until it runs. The function
+  body is unchanged apart from a `#variable_conflict use_column` pragma, so
+  the atomic upsert that guards against two students racing for the last spot
+  is untouched.
+- `leave_class` has the same OUT parameter name but qualifies every reference
+  and has no `ON CONFLICT`, so it was never affected and is left alone.
+
 ## [1.9.0] - 2026-08-29
 
 ### Added

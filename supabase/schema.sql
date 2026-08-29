@@ -675,6 +675,15 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+-- The OUT parameter named class_id is a PL/pgSQL variable for the whole body,
+-- and student_enrollments has a column of the same name. Everywhere else that
+-- column is written se.class_id, but the ON CONFLICT inference list below
+-- cannot be table-qualified -- Postgres does not allow an alias there -- so it
+-- saw both and raised 42702, "column reference class_id is ambiguous". That
+-- aborted every join. This pragma settles it: inside this function an
+-- ambiguous name means the column. The only name it applies to is class_id;
+-- enrollment_id and spots_left match no column in any table used here.
+#variable_conflict use_column
 declare
   viewer public.profiles%rowtype;
   target public.events%rowtype;

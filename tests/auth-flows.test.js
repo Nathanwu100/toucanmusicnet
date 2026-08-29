@@ -245,3 +245,24 @@ test("login offers a way to recover a forgotten password", () => {
   const login = fs.readFileSync(path.join(__dirname, "../login.html"), "utf8");
   assert.match(login, /forgot-password\.html/);
 });
+
+test("join_class cannot hit the class_id ambiguity again", () => {
+  // 42702: the OUT parameter class_id shadowed student_enrollments.class_id,
+  // and the ON CONFLICT inference list cannot be table-qualified, so every
+  // join aborted. Both the schema and the migration must carry the pragma.
+  const schema = fs.readFileSync(path.join(__dirname, "../supabase/schema.sql"), "utf8");
+  const migration = fs.readFileSync(
+    path.join(__dirname, "../supabase/migrations/20260829000000_fix_join_class_ambiguity.sql"), "utf8");
+
+  for (const [label, sql] of [["schema.sql", schema], ["migration", migration]]) {
+    const start = sql.indexOf("create or replace function public.join_class");
+    assert.ok(start >= 0, `${label} should define join_class`);
+    const body = sql.slice(start, sql.indexOf("$$;", start));
+    assert.match(body, /#variable_conflict use_column/, `${label} needs the pragma`);
+    // It only works where PL/pgSQL looks for it: after as $$, before declare.
+    const between = body.slice(body.indexOf("as $$"), body.indexOf("declare"));
+    assert.match(between, /#variable_conflict use_column/, `${label} pragma is misplaced`);
+    // The upsert is what made this atomic under a race; it must survive.
+    assert.match(body, /on conflict \(student_id, class_id\)/, `${label} lost the upsert`);
+  }
+});
