@@ -215,6 +215,33 @@
   // Mirrors the class_time_blocks_within_class trigger: a block belongs to a
   // class, sits inside that class's window, and runs forwards. Validating
   // here too means the demo refuses exactly what the database would.
+  // A booking described in words, so a notice still reads correctly after the
+  // block it refers to has been deleted.
+  function describeSlot(block, event) {
+    if (block) {
+      const when = new Date(block.starts_at)
+        .toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return `${block.label || "Session"} at ${when}`;
+    }
+    return event?.title || "a class";
+  }
+
+  function addNotice(db, studentId, classId, kind, extra = {}) {
+    db.notices = db.notices || [];
+    db.notices.push({
+      id: uid(),
+      student_id: studentId,
+      class_id: classId,
+      kind,
+      previous_slot: null,
+      new_slot: null,
+      note: null,
+      created_at: new Date().toISOString(),
+      resolved_at: null,
+      ...extra,
+    });
+  }
+
   function normalizeBlocks(blocks, event) {
     const rows = Array.isArray(blocks) ? blocks : [];
     if (!rows.length) return [];
@@ -715,29 +742,51 @@
         const { db } = requireDemoUser("admin");
         const event = db.events.find((row) => row.id === classId);
         if (!event) throw new Error("Event not found.");
+        const before = new Map((event.blocks || []).map((block) => [block.id, block]));
         const keep = new Set(blocks.map((block) => block.id));
-        const booked = activeStudentEnrollments(db, classId)
-          .filter((row) => row.block_id && !keep.has(row.block_id));
-        if (booked.length) {
-          throw new Error("A time block you removed still has students booked in. They have to leave it first.");
+
+        for (const row of activeStudentEnrollments(db, classId)) {
+          if (!row.block_id) continue;
+          const kept = blocks.find((block) => block.id === row.block_id);
+          const was = before.get(row.block_id);
+          if (!keep.has(row.block_id)) {
+            // The block they were in is gone.
+            row.status = "cancelled";
+            row.left_at = new Date().toISOString();
+            addNotice(db, row.student_id, classId, "slot_changed", {
+              previous_slot: describeSlot(was, event),
+              note: "That time block was removed from the class.",
+            });
+          } else if (kept.instrument !== row.instrument) {
+            row.status = "cancelled";
+            row.left_at = new Date().toISOString();
+            addNotice(db, row.student_id, classId, "slot_changed", {
+              previous_slot: describeSlot(was, event),
+              note: "That time block was moved to a different instrument.",
+            });
+          } else if (kept.starts_at !== row.class_starts_at || kept.ends_at !== row.class_ends_at) {
+            row.class_starts_at = kept.starts_at;
+            row.class_ends_at = kept.ends_at;
+            addNotice(db, row.student_id, classId, "slot_changed", {
+              new_slot: describeSlot(kept, event),
+              note: "That time block moved to a new time.",
+            });
+          }
         }
         event.blocks = blocks;
         saveDb(db);
         return blocks;
       }
       await requireSupabaseSession();
-      const keep = blocks.map((block) => block.id).filter(Boolean);
-      let removal = sb.from("class_time_blocks").delete().eq("class_id", classId);
-      if (keep.length) removal = removal.not("id", "in", `(${keep.join(",")})`);
-      const { error: deleteError } = await removal;
-      if (deleteError) throw new Error(deleteError.message);
-      if (!blocks.length) return [];
-      const { data, error } = await sb
-        .from("class_time_blocks")
-        .upsert(blocks.map((block) => ({ ...block, class_id: classId })))
-        .select();
+      // One call rather than a delete and an upsert: removing a block has to
+      // displace the students in it and file them a notice, and that only
+      // works as a single transaction on the server.
+      const { error } = await sb.rpc("save_class_blocks", {
+        target_class_id: classId,
+        blocks,
+      });
       if (error) throw new Error(error.message);
-      return data;
+      return blocks;
     },
 
     async updateEvent(id, event) {
@@ -799,6 +848,131 @@
     // them. Email lives in auth.users and phone numbers in profiles, neither
     // of which a client can read, so this goes through list_class_roster --
     // one narrow, admin-gated door rather than broad table access.
+    // Admin: take a student out of a class. They are told at next login.
+    async removeEnrollment(enrollmentId, note = null) {
+      if (DEMO) {
+        const { db } = requireDemoUser("admin");
+        const row = db.studentEnrollments.find((item) => item.id === enrollmentId && item.status === "active");
+        if (!row) throw new Error("That enrolment is no longer active.");
+        const event = db.events.find((item) => item.id === row.class_id);
+        const block = (event?.blocks || []).find((item) => item.id === row.block_id);
+        row.status = "cancelled";
+        row.left_at = new Date().toISOString();
+        addNotice(db, row.student_id, row.class_id, "removed", {
+          previous_slot: describeSlot(block, event),
+          note,
+        });
+        saveDb(db);
+        return true;
+      }
+      await requireSupabaseSession();
+      const { error } = await sb.rpc("admin_cancel_enrollment", {
+        target_enrollment_id: enrollmentId,
+        note,
+      });
+      if (error) throw new Error(error.message);
+      return true;
+    },
+
+    // Admin: move a student to another class or another slot. The destination
+    // is checked the same way a student's own booking would be, so an admin
+    // cannot place somebody where they could not have gone themselves.
+    async moveEnrollment(enrollmentId, classId, blockId = null, note = null) {
+      if (DEMO) {
+        const { db } = requireDemoUser("admin");
+        const row = db.studentEnrollments.find((item) => item.id === enrollmentId && item.status === "active");
+        if (!row) throw new Error("That enrolment is no longer active.");
+        const destination = db.events.find((item) => item.id === classId);
+        if (!destination || destination.event_type !== "class") throw new Error("That class does not exist.");
+        if (!destination.instruments.includes(row.instrument)) {
+          throw new Error(`That class does not teach ${instrumentName(row.instrument, db)}.`);
+        }
+        const blocks = destination.blocks || [];
+        let block = null;
+        let capacity = destination.student_capacity;
+        let startsAt = destination.starts_at;
+        let endsAt = destination.ends_at;
+        if (blocks.length) {
+          if (!blockId) throw new Error("Choose a time block in the new class.");
+          block = blocks.find((item) => item.id === blockId);
+          if (!block) throw new Error("That time block is not part of that class.");
+          if (block.instrument !== row.instrument) {
+            throw new Error(`That time block is for ${instrumentName(block.instrument, db)}, not ${instrumentName(row.instrument, db)}.`);
+          }
+          capacity = block.capacity;
+          startsAt = block.starts_at;
+          endsAt = block.ends_at;
+        } else if (blockId) {
+          throw new Error("That class is not divided into time blocks.");
+        }
+        const taken = db.studentEnrollments.filter((item) =>
+          item.status === "active" && item.id !== row.id &&
+          (block ? item.block_id === block.id : item.class_id === destination.id)).length;
+        if (taken >= capacity) throw new Error("That slot is already full.");
+        if (destination.id !== row.class_id && db.studentEnrollments.some((item) =>
+          item.status === "active" && item.id !== row.id &&
+          item.student_id === row.student_id && item.class_id === destination.id)) {
+          throw new Error("That student is already enrolled in that class.");
+        }
+
+        const wasEvent = db.events.find((item) => item.id === row.class_id);
+        const wasBlock = (wasEvent?.blocks || []).find((item) => item.id === row.block_id);
+        const was = describeSlot(wasBlock, wasEvent);
+
+        row.class_id = destination.id;
+        row.block_id = block ? block.id : null;
+        row.time_slot_id = destination.time_slot_id;
+        row.class_starts_at = startsAt;
+        row.class_ends_at = endsAt;
+        addNotice(db, row.student_id, destination.id, "moved", {
+          previous_slot: was,
+          new_slot: describeSlot(block, destination),
+          note,
+        });
+        saveDb(db);
+        return true;
+      }
+      await requireSupabaseSession();
+      const { error } = await sb.rpc("admin_move_enrollment", {
+        target_enrollment_id: enrollmentId,
+        destination_class_id: classId,
+        destination_block_id: blockId,
+        note,
+      });
+      if (error) throw new Error(error.message);
+      return true;
+    },
+
+    // What the signed-in student still needs to hear about.
+    async listNotices() {
+      if (DEMO) {
+        const user = demoSessionUser();
+        if (!user) return [];
+        return (loadDb().notices || [])
+          .filter((row) => row.student_id === user.id && !row.resolved_at)
+          .sort((left, right) => right.created_at.localeCompare(left.created_at));
+      }
+      const { data: authData } = await sb.auth.getSession();
+      if (!authData.session) return [];
+      const { data, error } = await sb.rpc("list_my_notices");
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
+
+    async resolveNotice(noticeId) {
+      if (DEMO) {
+        const db = loadDb();
+        const row = (db.notices || []).find((item) => item.id === noticeId);
+        if (row) { row.resolved_at = new Date().toISOString(); saveDb(db); }
+        return true;
+      }
+      await requireSupabaseSession();
+      const { error } = await sb.from("student_notices")
+        .update({ resolved_at: new Date().toISOString() }).eq("id", noticeId);
+      if (error) throw new Error(error.message);
+      return true;
+    },
+
     async listClassEnrollments(eventId) {
       if (DEMO) {
         const { db } = requireDemoUser("admin");

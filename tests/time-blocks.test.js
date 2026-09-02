@@ -133,10 +133,80 @@ test("a class without blocks still books as one whole-class place", async () => 
   await assert.rejects(api.joinClass(plain.id, "made-up"), /not divided into time blocks/i);
 });
 
-test("a block a student is booked into cannot be removed underneath them", async () => {
+test("removing a block displaces the students in it and tells them", async () => {
   const { api } = loadDemoApi();
   const created = await classWithBlocks(api);
   await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const block = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.instrument === "violin" && row.label === "Beginners");
+  await api.joinClass(created.id, block.id);
+  assert.equal((await api.listNotices()).length, 0, "nothing to say yet");
+  await api.logout();
+
+  // The admin drops that block. This used to be refused outright, which just
+  // moved the problem to a phone call.
+  await api.login("admin", "toucan2026");
+  const { id, time_slot_id, created_by, blocks, ...fields } = created;
+  const remaining = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.filter((row) => row.id !== block.id)
+    .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+  await api.updateEvent(created.id, { ...fields, blocks: remaining });
+  assert.equal((await api.listClassEnrollments(created.id)).length, 0, "their place is gone");
+  await api.logout();
+
+  // And the student is told, and pointed back at the class to pick again.
+  await api.login("ari@example.com", "toucan2026");
+  const notices = await api.listNotices();
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].kind, "slot_changed");
+  assert.equal(notices[0].class_id, created.id);
+  assert.match(notices[0].previous_slot, /Beginners/);
+  assert.match(notices[0].note, /removed from the class/i);
+
+  // Dismissing it is the student's own call and it does not come back.
+  await api.resolveNotice(notices[0].id);
+  assert.equal((await api.listNotices()).length, 0, "a dismissed notice stays dismissed");
+});
+
+test("moving a block to a new time keeps the place and says so", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const block = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.instrument === "violin" && row.label === "Beginners");
+  await api.joinClass(created.id, block.id);
+  await api.logout();
+
+  await api.login("admin", "toucan2026");
+  const { id, time_slot_id, created_by, blocks, ...fields } = created;
+  const shifted = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep)
+    .map((row) => (row.id === block.id
+      ? { ...row, starts_at: inDays(3, 16), ends_at: inDays(3, 16, 30) }
+      : row));
+  await api.updateEvent(created.id, { ...fields, blocks: shifted });
+
+  // Still enrolled, but the snapshot follows the block so nobody turns up
+  // at the old hour.
+  const roster = await api.listClassEnrollments(created.id);
+  assert.equal(roster.length, 1);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const notices = await api.listNotices();
+  assert.equal(notices.length, 1);
+  assert.match(notices[0].note, /moved to a new time/i);
+});
+
+test("an admin can remove a student, and the student is told", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
   await api.login("ari@example.com", "toucan2026");
   const block = (await api.listEvents()).find((event) => event.id === created.id)
     .blocks.find((row) => row.instrument === "violin");
@@ -144,15 +214,78 @@ test("a block a student is booked into cannot be removed underneath them", async
   await api.logout();
 
   await api.login("admin", "toucan2026");
-  const remaining = (await api.listEvents()).find((event) => event.id === created.id)
-    .blocks.filter((row) => row.id !== block.id)
-    .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
-  // updateEvent takes the whole event, which is what the drag handler sends.
-  const { id, time_slot_id, created_by, blocks, ...fields } = created;
-  await assert.rejects(
-    api.updateEvent(created.id, { ...fields, blocks: remaining }),
-    /still has students booked in/i
-  );
+  const [entry] = await api.listClassEnrollments(created.id);
+  await api.removeEnrollment(entry.enrollment_id, "Class rescheduled.");
+  assert.equal((await api.listClassEnrollments(created.id)).length, 0);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const [notice] = await api.listNotices();
+  assert.equal(notice.kind, "removed");
+  assert.equal(notice.note, "Class rescheduled.");
+  assert.match(notice.previous_slot, /Beginners/);
+});
+
+test("an admin can move a student to another slot", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const listed = (await api.listEvents()).find((event) => event.id === created.id);
+  const from = listed.blocks.find((row) => row.label === "Beginners" && row.instrument === "violin");
+  const to = listed.blocks.find((row) => row.label === "Grade 3");
+  await api.joinClass(created.id, from.id);
+  await api.logout();
+
+  await api.login("admin", "toucan2026");
+  const [entry] = await api.listClassEnrollments(created.id);
+  await api.moveEnrollment(entry.enrollment_id, created.id, to.id);
+  const [after] = await api.listClassEnrollments(created.id);
+  assert.equal(after.block_id, to.id);
+  assert.equal(after.block_label, "Grade 3");
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const [notice] = await api.listNotices();
+  assert.equal(notice.kind, "moved");
+  assert.match(notice.previous_slot, /Beginners/);
+  assert.match(notice.new_slot, /Grade 3/);
+});
+
+test("a move is checked the way a student's own booking would be", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");   // violin
+  const listed = (await api.listEvents()).find((event) => event.id === created.id);
+  await api.joinClass(created.id, listed.blocks.find((row) => row.instrument === "violin").id);
+  await api.logout();
+
+  await api.login("admin", "toucan2026");
+  const [entry] = await api.listClassEnrollments(created.id);
+  const piano = listed.blocks.find((row) => row.instrument === "piano");
+  // An admin cannot put a violin student in the piano column.
+  await assert.rejects(api.moveEnrollment(entry.enrollment_id, created.id, piano.id), /not Violin/i);
+  // Nor into a slot that is already full.
+  const full = listed.blocks.find((row) => row.label === "Beginners" && row.instrument === "violin");
+  await assert.rejects(api.moveEnrollment(entry.enrollment_id, created.id, "not-a-block"), /not part of that class/i);
+  assert.ok(full);
+});
+
+test("only an admin can remove or move somebody", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+  await api.login("ari@example.com", "toucan2026");
+  const block = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.instrument === "violin");
+  await api.joinClass(created.id, block.id);
+  const mine = await api.listEvents();
+  assert.ok(mine.length);
+  await assert.rejects(api.removeEnrollment("anything"), /admin/i);
+  await assert.rejects(api.moveEnrollment("anything", created.id, block.id), /admin/i);
 });
 
 test("the admin roster carries contact details and the slot taken", async () => {
@@ -267,4 +400,40 @@ test("one press lays a whole class out in back-to-back slots", () => {
   // It refuses politely rather than producing nonsense.
   assert.match(calendar, /Set the class start and end times first\./);
   assert.match(calendar, /Tick at least one instrument first\./);
+});
+
+test("the migration files notices instead of refusing the edit", () => {
+  const sql = fs.readFileSync(
+    path.join(__dirname, "../supabase/migrations/20260903000000_student_notices.sql"), "utf8");
+
+  assert.match(sql, /create table if not exists public\.student_notices/);
+  // A student reads and dismisses only their own.
+  assert.match(sql, /for select to authenticated using \(student_id = \(select auth\.uid\(\)\)\)/);
+  // Both admin actions are gated, and both leave a notice behind.
+  for (const fn of ["admin_cancel_enrollment", "admin_move_enrollment", "save_class_blocks"]) {
+    assert.ok(sql.includes(`function public.${fn}`), `${fn} should exist`);
+  }
+  assert.match(sql, /Only an admin can remove a student from a class\./);
+  assert.match(sql, /Only an admin can move a student\./);
+  assert.match(sql, /Only an admin can change a class timetable\./);
+  // A move is checked the way a student's own booking would be.
+  assert.match(sql, /That class does not teach %\./);
+  assert.match(sql, /slot\.instrument <> row\.instrument/);
+  assert.match(sql, /That slot is already full\./);
+  // Removing a block cancels the places in it and says why.
+  assert.match(sql, /That time block was removed from the class\./);
+  assert.match(sql, /That time block moved to a new time\./);
+  // Notices describe the slot in words, so they survive its deletion.
+  assert.match(sql, /function public\.describe_slot/);
+});
+
+test("the student prompt links back to the class to pick again", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  assert.match(app, /showStudentNotices/);
+  assert.match(app, /Your place in a class was cancelled/);
+  assert.match(app, /Pick another time/);
+  // Only students, and only once they have something outstanding.
+  assert.match(app, /user\.role !== "student"/);
+  // A move leaves them with a place, so it does not ask them to choose again.
+  assert.match(app, /notice\.kind !== "moved"/);
 });

@@ -19,6 +19,33 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.14.0] - 2026-09-03
+
+### Added
+- **Remove a student from a class**, and **move a student** to another slot or
+  another class, from the roster under the timetable. A move is checked the
+  way the student's own booking would be, so an admin cannot put somebody
+  where they could not have gone themselves: wrong instrument, full slot, or
+  already enrolled are all refused.
+- **Students are told when their booking changes.** A notice appears the next
+  time they open the site, saying what happened and linking straight back to
+  the class. Removed or displaced students get "Pick another time"; a student
+  who was merely moved still has a place, so they get "See the class".
+
+### Changed
+- **Editing a class no longer refuses to touch one people have booked into.**
+  Removing a time block cancels the places in it and files each student a
+  notice; moving a block to a new time carries the bookings with it and says
+  so; moving one to a different instrument cancels them, because the student
+  cannot follow it there. Refusing the edit only moved the problem to a
+  phone call.
+- Block saving goes through `save_class_blocks` rather than writing to the
+  table from the browser, because displacing students and filing their
+  notices has to happen in the same transaction as the edit.
+
+### Database
+- Migration `20260903000000_student_notices.sql` must be applied.
+
 ## [1.13.0] - 2026-09-02
 
 ### Added

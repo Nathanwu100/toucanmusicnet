@@ -559,6 +559,83 @@
     document.body.classList.add("has-config-banner");
   }
 
+  // A student whose booking was changed out from under them hears about it
+  // the next time they open the site, wherever they land. The notice says
+  // what happened and links straight to the class so picking a new time is
+  // one click rather than a hunt through the calendar.
+  async function showStudentNotices(user) {
+    if (!user || user.role !== "student") return;
+    let notices = [];
+    try {
+      notices = await api.listNotices();
+    } catch (error) {
+      return;
+    }
+    if (!notices.length) return;
+
+    const host = document.createElement("div");
+    host.className = "notice-stack";
+    host.setAttribute("role", "alert");
+
+    for (const notice of notices) {
+      const card = document.createElement("div");
+      card.className = `notice-card notice-${notice.kind}`;
+
+      const headline = {
+        removed: "Your place in a class was cancelled",
+        moved: "You were moved to a different time",
+        slot_changed: "Your class time changed",
+      }[notice.kind] || "Something changed in your schedule";
+
+      const detail = [];
+      if (notice.previous_slot) detail.push(`You were in ${notice.previous_slot}.`);
+      if (notice.new_slot) detail.push(`You are now in ${notice.new_slot}.`);
+      if (notice.note) detail.push(notice.note);
+
+      card.append(
+        Object.assign(document.createElement("strong"), { textContent: headline }),
+        Object.assign(document.createElement("p"), { textContent: detail.join(" ") })
+      );
+
+      const actions = document.createElement("div");
+      actions.className = "notice-actions";
+      // Nothing to choose when they were only moved -- they still have a place.
+      if (notice.class_id && notice.kind !== "moved") {
+        const pick = document.createElement("a");
+        pick.className = "btn btn-primary btn-sm";
+        pick.href = `calendar.html?v=3&event=${encodeURIComponent(notice.class_id)}`;
+        pick.textContent = "Pick another time";
+        actions.appendChild(pick);
+      } else if (notice.class_id) {
+        const look = document.createElement("a");
+        look.className = "btn btn-quiet btn-sm";
+        look.href = `calendar.html?v=3&event=${encodeURIComponent(notice.class_id)}`;
+        look.textContent = "See the class";
+        actions.appendChild(look);
+      }
+
+      const dismiss = document.createElement("button");
+      dismiss.className = "btn btn-quiet btn-sm";
+      dismiss.type = "button";
+      dismiss.textContent = "Got it";
+      dismiss.addEventListener("click", async () => {
+        dismiss.disabled = true;
+        try {
+          await api.resolveNotice(notice.id);
+          card.remove();
+          if (!host.querySelector(".notice-card")) host.remove();
+        } catch (error) {
+          toast(error.message, "error");
+          dismiss.disabled = false;
+        }
+      });
+      actions.appendChild(dismiss);
+      card.appendChild(actions);
+      host.appendChild(card);
+    }
+    document.body.appendChild(host);
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     const user = await renderNav();
     renderFooter();
@@ -566,6 +643,7 @@
     initSettings();
     initHomeSchedule();
     window.ToucanTour?.maybeAutoStart(user);
+    showStudentNotices(user);
     checkReminders(user);
     setInterval(() => checkReminders(user), 5 * 60 * 1000);
 

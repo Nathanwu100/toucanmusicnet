@@ -739,6 +739,47 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .form-error.show { display: block; }
 .login-recovery { margin-bottom: 1.2rem; padding: 1rem; border-left: 3px solid var(--accent); border-radius: 4px; background: var(--accent-soft); }
 
+/* ------------------------------------------------------- student notices */
+/* Shown to a student whose booking was changed by somebody else. It sits
+   over the page rather than in it, because it is news they have not seen and
+   the page underneath may be about something else entirely. */
+.notice-stack {
+  position: fixed;
+  z-index: 95;
+  right: clamp(0.6rem, 3vw, 1.4rem);
+  bottom: clamp(0.6rem, 3vw, 1.4rem);
+  width: min(360px, calc(100vw - 1.2rem));
+  display: grid;
+  gap: 0.6rem;
+}
+.notice-card {
+  padding: 0.95rem 1.05rem;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-2);
+}
+.notice-card.notice-removed { border-left-color: var(--danger); }
+.notice-card.notice-moved { border-left-color: var(--primary); }
+.notice-card strong { display: block; font-family: var(--font-display); font-size: 0.98rem; }
+.notice-card p { margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.87rem; line-height: 1.5; }
+.notice-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+/* Move dialog and the roster's row actions. */
+.move-modal .field { margin-top: 0.8rem; }
+.move-modal select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper-raise);
+  color: var(--ink);
+  font: inherit;
+}
+.roster-actions { display: flex; gap: 0.3rem; white-space: nowrap; }
+.roster-actions .btn { padding: 0.25rem 0.55rem; font-size: 0.76rem; min-height: 0; }
+
 /* ------------------------------------------------- misconfiguration banner */
 /* Shown when the config names a Supabase project but the app is running on
    browser-local data. It does not dismiss, because the site is not working. */

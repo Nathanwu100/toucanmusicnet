@@ -843,7 +843,7 @@
 
     const table = element("table", "roster-table");
     const head = element("tr", "");
-    ["Student", "Instrument", "Slot", "Email", "Phone"].forEach((label) => {
+    ["Student", "Instrument", "Slot", "Email", "Phone", ""].forEach((label) => {
       head.appendChild(element("th", "", label));
     });
     table.appendChild(element("thead", "")).appendChild(head);
@@ -882,11 +882,131 @@
         phoneCell.textContent = "-";
       }
       row.appendChild(phoneCell);
+
+      // Moving somebody keeps their place; removing takes it away. Either way
+      // the student is told the next time they open the site.
+      const actions = element("td", "roster-actions");
+      const move = element("button", "btn btn-sm btn-quiet", "Move");
+      move.type = "button";
+      move.addEventListener("click", () => openMoveDialog(entry, event));
+      const drop = element("button", "btn btn-sm btn-danger", "Remove");
+      drop.type = "button";
+      drop.addEventListener("click", async () => {
+        if (!confirm(`Remove ${entry.student_name} from this class? They will be told, and asked to pick another time.`)) return;
+        drop.disabled = true;
+        try {
+          await api.removeEnrollment(entry.enrollment_id, "An admin removed you from this class.");
+          toast(`${entry.student_name} was removed. They will see a note about it.`, "success");
+          await refresh();
+        } catch (error) {
+          toast(error.message, "error");
+          drop.disabled = false;
+        }
+      });
+      actions.append(move, drop);
+      row.appendChild(actions);
       tbody.appendChild(row);
     }
     table.appendChild(tbody);
     wrap.appendChild(table);
     return wrap;
+  }
+
+  // Where to put somebody instead. Only the classes and slots they could have
+  // booked themselves are offered, so a move cannot create a booking a
+  // student would have been refused.
+  function openMoveDialog(entry, currentEvent) {
+    const eligible = events.filter((candidate) =>
+      candidate.event_type === "class" &&
+      (candidate.instruments || []).includes(entry.instrument) &&
+      !hasEnded(candidate));
+    if (!eligible.length) {
+      toast(`No other class teaches ${entry.instrument_name || entry.instrument}.`, "error");
+      return;
+    }
+
+    const backdrop = element("div", "modal-backdrop open");
+    const panel = element("div", "modal move-modal");
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.innerHTML = `
+      <h2>Move ${escapeHtml(entry.student_name)}</h2>
+      <p class="meta">Currently in ${escapeHtml(entry.block_label || currentEvent.title)}.</p>
+      <div class="form-error" role="alert"></div>
+      <div class="field"><label>Class</label><select data-class></select></div>
+      <div class="field" data-block-field hidden><label>Time block</label><select data-block></select></div>
+      <div class="modal-actions">
+        <button class="btn btn-quiet" type="button" data-cancel>Cancel</button>
+        <button class="btn btn-primary" type="button" data-confirm>Move them</button>
+      </div>`;
+    backdrop.appendChild(panel);
+    document.body.appendChild(backdrop);
+
+    const classSelect = panel.querySelector("[data-class]");
+    const blockSelect = panel.querySelector("[data-block]");
+    const blockField = panel.querySelector("[data-block-field]");
+    const errorBox = panel.querySelector(".form-error");
+
+    eligible.forEach((candidate) => {
+      const option = document.createElement("option");
+      option.value = candidate.id;
+      const when = new Date(candidate.starts_at)
+        .toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+      option.textContent = `${candidate.title} · ${when}`;
+      classSelect.appendChild(option);
+    });
+    classSelect.value = currentEvent.id;
+
+    const syncBlocks = () => {
+      const target = eligible.find((candidate) => candidate.id === classSelect.value);
+      // Only this student's own instrument column, and only slots with room.
+      const options = blocksOf(target)
+        .filter((block) => block.instrument === entry.instrument)
+        .filter((block) => block.spots_left > 0 || block.id === entry.block_id);
+      blockField.hidden = !blocksOf(target).length;
+      blockSelect.innerHTML = "";
+      options.forEach((block) => {
+        const option = document.createElement("option");
+        option.value = block.id;
+        option.textContent = `${block.label} · ${fmtTime(block.starts_at)}` +
+          (block.id === entry.block_id ? " (current)" : ` · ${block.spots_left} left`);
+        blockSelect.appendChild(option);
+      });
+      if (!options.length && blocksOf(target).length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No slot with room in their instrument";
+        blockSelect.appendChild(option);
+      }
+    };
+    classSelect.addEventListener("change", syncBlocks);
+    syncBlocks();
+
+    const close = () => backdrop.remove();
+    panel.querySelector("[data-cancel]").addEventListener("click", close);
+    backdrop.addEventListener("click", (clickEvent) => {
+      if (clickEvent.target === backdrop) close();
+    });
+
+    panel.querySelector("[data-confirm]").addEventListener("click", async () => {
+      errorBox.classList.remove("show");
+      const blockId = blockField.hidden ? null : blockSelect.value || null;
+      if (!blockField.hidden && !blockId) {
+        errorBox.textContent = "There is no slot with room for them in that class.";
+        errorBox.classList.add("show");
+        return;
+      }
+      try {
+        await api.moveEnrollment(entry.enrollment_id, classSelect.value, blockId,
+          "An admin moved you to a different time.");
+        close();
+        toast(`${entry.student_name} was moved. They will see a note about it.`, "success");
+        await refresh();
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.classList.add("show");
+      }
+    });
   }
 
   async function appendRoster(body, event, isAdmin, renderId) {
