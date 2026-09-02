@@ -309,21 +309,54 @@
     }));
   }
 
+  const minutesBetween = (from, to) => (new Date(to) - new Date(from)) / 60000;
+
+  // Ticks every half hour, on the half hour, so the labels read like a real
+  // calendar rather than starting at whatever minute the class happens to.
+  function gridTicks(startsAt, endsAt) {
+    const ticks = [];
+    const cursor = new Date(startsAt);
+    cursor.setSeconds(0, 0);
+    if (cursor.getMinutes() % 30) {
+      cursor.setMinutes(cursor.getMinutes() + (30 - (cursor.getMinutes() % 30)));
+    }
+    const end = new Date(endsAt);
+    while (cursor <= end) {
+      ticks.push(new Date(cursor));
+      cursor.setMinutes(cursor.getMinutes() + 30);
+    }
+    return ticks;
+  }
+
+  // Blocks that overlap in the same column share the width rather than
+  // sitting on top of each other, the way a calendar splits a busy hour.
+  function assignLanes(blocks) {
+    const running = [];
+    return blocks.map((block) => {
+      const start = new Date(block.starts_at).getTime();
+      const end = new Date(block.ends_at).getTime();
+      let lane = running.findIndex((freeAt) => freeAt <= start);
+      if (lane === -1) { lane = running.length; running.push(end); }
+      else running[lane] = end;
+      return { block, lane };
+    }).map((entry, _, all) => ({ ...entry, lanes: Math.max(...all.map((row) => row.lane)) + 1 }));
+  }
+
   function blockCard(event, block, { isStudent, isAdmin, mine, joinable }) {
-    const card = element("div", "block-card");
+    const card = element("div", "tt-block");
     card.dataset.blockId = block.id;
     card.dataset.instrument = block.instrument;
     if (block.is_mine) card.classList.add("is-mine");
     if (!block.spots_left) card.classList.add("is-full");
 
     card.append(
-      element("span", "block-time", `${fmtTime(block.starts_at)} - ${fmtTime(block.ends_at)}`),
-      element("strong", "block-name", block.label || "Session")
+      element("strong", "tt-block-name", block.label || "Session"),
+      element("span", "tt-block-time", `${fmtTime(block.starts_at)} - ${fmtTime(block.ends_at)}`)
     );
     const left = Number(block.spots_left) || 0;
     card.appendChild(element(
       "span",
-      `block-spots${left === 0 ? " full" : ""}`,
+      `tt-block-spots${left === 0 ? " full" : ""}`,
       block.is_mine ? "You are in this one" : left === 0 ? "Full" : `${left} of ${block.capacity} left`
     ));
 
@@ -356,10 +389,18 @@
     return card;
   }
 
+  // A slice of a day calendar: the class's start at the top, its end at the
+  // bottom, half-hour rules across, and one column per instrument. Blocks are
+  // placed by their real times, so a half-hour slot is half the height of an
+  // hour one and a gap in the schedule looks like a gap.
   function renderBlockGrid(event, { isStudent, isAdmin }) {
     const host = $("#class-timetable");
     const columns = instrumentColumns(event);
     if (!host || !columns.some((column) => column.blocks.length)) return false;
+
+    const startsAt = event.starts_at;
+    const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
+    const total = Math.max(30, minutesBetween(startsAt, endsAt));
 
     host.hidden = false;
     host.innerHTML = "";
@@ -371,144 +412,169 @@
       element("p", "eyebrow", "Timetable"),
       element("h2", "", event.title),
       element("p", "timetable-when",
-        `${new Date(event.starts_at).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · ${fmtRange(event)}` +
+        `${new Date(startsAt).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · ${fmtRange(event)}` +
         (event.location ? ` · ${event.location}` : ""))
     );
     head.appendChild(copy);
     if (isAdmin) {
-      head.appendChild(element("p", "timetable-hint", "Drag a block to move it, or to another instrument's column."));
+      head.appendChild(element("p", "timetable-hint", "Drag a block to move it, or into another column."));
     } else if (isStudent) {
       head.appendChild(element("p", "timetable-hint", "Pick a slot in your instrument's column."));
     }
     host.appendChild(head);
 
-    const body = host;
-    const grid = element("div", "block-grid");
-    grid.style.setProperty("--block-columns", String(columns.length));
+    const table = element("div", "tt");
+    table.style.setProperty("--tt-columns", String(columns.length));
+    table.style.setProperty("--tt-minutes", String(total));
+
+    // Column headings sit above the scrolling body so they stay readable.
+    const headings = element("div", "tt-headings");
+    headings.appendChild(element("span", "tt-axis-head", ""));
+    columns.forEach((column) => {
+      const cell = element("span", "tt-heading", "");
+      const badge = element("span", "instrument-badge", column.name);
+      badge.dataset.instrument = column.slug;
+      cell.appendChild(badge);
+      headings.appendChild(cell);
+    });
+    table.appendChild(headings);
+
+    const bodyRow = element("div", "tt-body");
+
+    // The time axis: the class start, then every half hour, then the end.
+    const axis = element("div", "tt-axis");
+    const label = (when, extra) => {
+      const tick = element("span", `tt-tick${extra ? " " + extra : ""}`, fmtTime(when));
+      tick.style.top = `${(minutesBetween(startsAt, when) / total) * 100}%`;
+      return tick;
+    };
+    axis.appendChild(label(startsAt, "tt-tick-edge"));
+    gridTicks(startsAt, endsAt).forEach((tick) => {
+      const at = tick.toISOString();
+      if (minutesBetween(startsAt, at) > 5 && minutesBetween(at, endsAt) > 5) axis.appendChild(label(at));
+    });
+    axis.appendChild(label(endsAt, "tt-tick-edge"));
+    bodyRow.appendChild(axis);
+
     const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
     const open = event.enrollment_open && !hasEnded(event);
 
     for (const column of columns) {
-      const lane = element("div", "block-column");
+      const lane = element("div", "tt-column");
       lane.dataset.instrument = column.slug;
-      const head = element("div", "block-column-head");
-      head.appendChild(element("span", "instrument-badge", column.name));
-      head.dataset.instrument = column.slug;
-      lane.appendChild(head);
 
-      const stack = element("div", "block-stack");
-      stack.dataset.instrument = column.slug;
-      if (!column.blocks.length) {
-        stack.appendChild(element("p", "block-empty", "Nothing scheduled"));
-      }
-      for (const block of column.blocks) {
-        stack.appendChild(blockCard(event, block, {
+      // The half-hour rules, drawn once per column so they line up with the axis.
+      gridTicks(startsAt, endsAt).forEach((tick) => {
+        const at = tick.toISOString();
+        const offset = minutesBetween(startsAt, at);
+        if (offset <= 0 || offset >= total) return;
+        const rule = element("span", `tt-rule${tick.getMinutes() === 0 ? " tt-rule-hour" : ""}`);
+        rule.style.top = `${(offset / total) * 100}%`;
+        lane.appendChild(rule);
+      });
+
+      for (const { block, lane: index, lanes } of assignLanes(column.blocks)) {
+        const card = blockCard(event, block, {
           isStudent,
           isAdmin,
           mine: block.id === enrolledBlockId,
-          // Students only book in their own instrument's column.
           joinable: open && isStudent && column.slug === user?.instrument,
-        }));
+        });
+        const offset = minutesBetween(startsAt, block.starts_at);
+        const length = Math.max(10, minutesBetween(block.starts_at, block.ends_at));
+        card.style.top = `${(offset / total) * 100}%`;
+        card.style.height = `${(length / total) * 100}%`;
+        card.style.left = `${(index / lanes) * 100}%`;
+        card.style.width = `${(1 / lanes) * 100}%`;
+        lane.appendChild(card);
       }
-      lane.appendChild(stack);
-      grid.appendChild(lane);
+      bodyRow.appendChild(lane);
     }
 
-    if (isStudent && !columns.some((column) => column.slug === user?.instrument)) {
-      body.appendChild(element("p", "block-note",
-        "This class does not have a column for your instrument."));
-    }
-    body.appendChild(grid);
-    if (isAdmin) enableBlockDragging(grid, event);
+    table.appendChild(bodyRow);
+    host.appendChild(table);
+    if (isAdmin) enableBlockDragging(table, event);
     return true;
   }
 
-
-  // Dragging a block moves it in time, and moving it into another column
-  // changes which instrument it is for. The drop target is a gap between
-  // cards, so the block takes the start time of whatever it lands in front
-  // of and keeps its own length. Everything is validated server-side too --
-  // this only ever proposes a change.
-  function enableBlockDragging(grid, event) {
+  // Dragging works the way it does in a day calendar: the block lands where
+  // the pointer is, snapped to five minutes, and changes instrument if it is
+  // dropped in another column. The server validates all of it again.
+  function enableBlockDragging(table, event) {
     let dragging = null;
+    let grabOffsetMinutes = 0;
 
-    grid.addEventListener("dragstart", (dragEvent) => {
-      const card = dragEvent.target.closest(".block-card");
+    const startsAt = event.starts_at;
+    const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
+    const total = Math.max(30, minutesBetween(startsAt, endsAt));
+
+    const minutesAt = (column, clientY) => {
+      const box = column.getBoundingClientRect();
+      return ((clientY - box.top) / box.height) * total;
+    };
+
+    table.addEventListener("dragstart", (dragEvent) => {
+      const card = dragEvent.target.closest(".tt-block");
       if (!card) return;
       dragging = card;
+      // Keep the grab point under the cursor, so a block does not jump.
+      const box = card.getBoundingClientRect();
+      const columnBox = card.closest(".tt-column").getBoundingClientRect();
+      grabOffsetMinutes = ((dragEvent.clientY - box.top) / columnBox.height) * total;
       card.classList.add("is-dragging");
       dragEvent.dataTransfer.effectAllowed = "move";
-      // Firefox will not start a drag without payload.
       dragEvent.dataTransfer.setData("text/plain", card.dataset.blockId);
     });
 
-    grid.addEventListener("dragend", () => {
+    table.addEventListener("dragend", () => {
       dragging?.classList.remove("is-dragging");
-      grid.querySelectorAll(".block-stack").forEach((stack) => stack.classList.remove("is-target"));
+      table.querySelectorAll(".tt-column").forEach((column) => column.classList.remove("is-target"));
       dragging = null;
     });
 
-    grid.addEventListener("dragover", (dragEvent) => {
+    table.addEventListener("dragover", (dragEvent) => {
       if (!dragging) return;
-      const stack = dragEvent.target.closest(".block-stack");
-      if (!stack) return;
+      const column = dragEvent.target.closest(".tt-column");
+      if (!column) return;
       dragEvent.preventDefault();
       dragEvent.dataTransfer.dropEffect = "move";
-      grid.querySelectorAll(".block-stack").forEach((other) => {
-        other.classList.toggle("is-target", other === stack);
+      table.querySelectorAll(".tt-column").forEach((other) => {
+        other.classList.toggle("is-target", other === column);
       });
     });
 
-    grid.addEventListener("drop", async (dragEvent) => {
+    table.addEventListener("drop", async (dragEvent) => {
       if (!dragging) return;
-      const stack = dragEvent.target.closest(".block-stack");
-      if (!stack) return;
+      const column = dragEvent.target.closest(".tt-column");
+      if (!column) return;
       dragEvent.preventDefault();
 
       const moved = blocksOf(event).find((block) => block.id === dragging.dataset.blockId);
       if (!moved) return;
-      const instrument = stack.dataset.instrument;
 
-      // Where in the column did it land? The card it was dropped in front of
-      // donates its start time; dropping past the end appends after the last.
-      const siblings = [...stack.querySelectorAll(".block-card")].filter((card) => card !== dragging);
-      const before = siblings.find((card) => {
-        const box = card.getBoundingClientRect();
-        return dragEvent.clientY < box.top + box.height / 2;
-      });
+      const length = minutesBetween(moved.starts_at, moved.ends_at);
+      let offset = minutesAt(column, dragEvent.clientY) - grabOffsetMinutes;
+      offset = Math.round(offset / SNAP_MINUTES) * SNAP_MINUTES;
+      // A block can never be dragged outside the class that owns it.
+      offset = Math.max(0, Math.min(offset, total - length));
 
-      const length = new Date(moved.ends_at) - new Date(moved.starts_at);
-      const classStart = new Date(event.starts_at).getTime();
-      const classEnd = new Date(event.ends_at || event.starts_at).getTime();
+      const classStart = new Date(startsAt).getTime();
+      const nextStart = new Date(classStart + offset * 60000);
+      const nextEnd = new Date(nextStart.getTime() + length * 60000);
+      const instrument = column.dataset.instrument;
 
-      let startsAt;
-      if (before) {
-        const target = blocksOf(event).find((block) => block.id === before.dataset.blockId);
-        startsAt = new Date(target.starts_at).getTime();
-      } else {
-        const last = siblings[siblings.length - 1];
-        const target = last && blocksOf(event).find((block) => block.id === last.dataset.blockId);
-        startsAt = target ? new Date(target.ends_at).getTime() : classStart;
-      }
-      const snap = SNAP_MINUTES * 60000;
-      startsAt = Math.round(startsAt / snap) * snap;
-      // Never let a drag push a block outside the class it belongs to.
-      startsAt = Math.max(classStart, Math.min(startsAt, classEnd - length));
+      if (moved.instrument === instrument &&
+          new Date(moved.starts_at).getTime() === nextStart.getTime()) return;
 
       const next = blocksOf(event)
         .map((block) => (block.id === moved.id
-          ? {
-              ...block,
-              instrument,
-              starts_at: new Date(startsAt).toISOString(),
-              ends_at: new Date(startsAt + length).toISOString(),
-            }
+          ? { ...block, instrument, starts_at: nextStart.toISOString(), ends_at: nextEnd.toISOString() }
           : block))
         .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
 
       try {
         await api.updateEvent(event.id, { ...eventFields(event), blocks: next });
-        toast(`Moved "${moved.label}" to ${fmtTime(new Date(startsAt).toISOString())}.`, "success");
+        toast(`Moved "${moved.label}" to ${fmtTime(nextStart.toISOString())}.`, "success");
         await refresh();
       } catch (error) {
         toast(error.message, "error");

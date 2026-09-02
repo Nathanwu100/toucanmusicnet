@@ -19,6 +19,20 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.10.1] - 2026-09-02
+
+### Changed
+- **The class timetable is now a slice of a day calendar** rather than a
+  stacked list. The class's start sits at the top, its end at the bottom,
+  half-hour rules run across, and blocks are placed by their real times -- so
+  a half-hour slot is half the height of an hour one, and a gap in the
+  schedule looks like a gap. One column per instrument, as before.
+- Blocks that overlap inside a column share the width instead of covering
+  each other, the way a calendar splits a busy hour.
+- Dragging works off the pointer position rather than the gap between cards:
+  a block lands where you drop it, snapped to five minutes, and cannot be
+  dragged outside the class that owns it.
+
 ## [1.10.0] - 2026-09-02
 
 ### Added

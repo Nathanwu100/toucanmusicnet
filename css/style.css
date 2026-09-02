@@ -1048,56 +1048,88 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .timetable-when { margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.88rem; }
 .timetable-hint { color: var(--ink-soft); font-size: 0.82rem; }
 
-/* -------------------------------------------------------------- block grid */
-/* A class split into time blocks reads as one column per instrument, its
-   named sessions running down it. Same shape for everyone: a student books
-   in their own column, an admin drags blocks between any of them. */
-.block-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--block-columns, 3), minmax(0, 1fr));
-  gap: 0.6rem;
-  margin: 0.9rem 0 0.4rem;
+/* ---------------------------------------------------------- timetable grid */
+/* A slice of a day calendar. The class's start sits at the top, its end at
+   the bottom, half-hour rules run across, and each instrument gets a column.
+   Blocks are positioned by their real times, so a half-hour slot is half the
+   height of an hour one and a gap in the schedule looks like a gap. */
+.tt {
+  --tt-axis: 60px;
+  /* Height comes from the class's own length, so an hour always reads as an
+     hour whichever class you are looking at. */
+  --tt-px-per-minute: 1.9px;
+  margin-top: 0.6rem;
 }
-.block-column { min-width: 0; display: flex; flex-direction: column; gap: 0.45rem; }
-.block-column-head { display: flex; justify-content: center; padding-bottom: 0.2rem; }
-.block-stack {
+.tt-headings,
+.tt-body {
+  display: grid;
+  grid-template-columns: var(--tt-axis) repeat(var(--tt-columns, 3), minmax(0, 1fr));
+  gap: 0.4rem;
+}
+.tt-headings { margin-bottom: 0.35rem; }
+.tt-heading { display: flex; justify-content: center; }
+
+.tt-body { height: calc(var(--tt-minutes) * var(--tt-px-per-minute)); min-height: 180px; }
+
+/* The time axis. Labels hang off each rule rather than sitting in a row, so
+   they line up with the lines exactly. */
+.tt-axis { position: relative; }
+.tt-tick {
+  position: absolute;
+  right: 0.45rem;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tt-tick-edge { color: var(--ink); font-weight: 700; }
+
+.tt-column {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-sunk);
+  overflow: hidden;
+}
+.tt-column.is-target { border-color: var(--primary); background: var(--primary-soft); }
+
+/* The rules. On the hour they are a shade stronger, as in a day calendar. */
+.tt-rule { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.tt-rule-hour { background: var(--line-strong); }
+
+.tt-block {
+  position: absolute;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  min-height: 3.5rem;
-  padding: 0.35rem;
-  border: 1px dashed transparent;
-  border-radius: 8px;
-}
-/* Only visible mid-drag, so a column shows it will accept the block. */
-.block-stack.is-target { border-color: var(--primary); background: var(--primary-soft); }
-.block-empty { padding: 0.6rem 0.2rem; color: var(--ink-soft); font-size: 0.8rem; text-align: center; }
-
-.block-card {
-  display: grid;
-  gap: 0.15rem;
-  padding: 0.6rem 0.65rem;
-  border: 1px solid var(--line);
+  gap: 0.05rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--primary);
   border-left: 3px solid var(--primary);
-  border-radius: 6px;
-  background: var(--paper-raise);
+  border-radius: 5px;
+  background: var(--primary-soft);
+  color: var(--ink);
 }
-.block-card.is-mine { border-color: var(--success); border-left-color: var(--success); background: var(--success-soft); }
-.block-card.is-full { opacity: 0.72; }
-.block-card.is-draggable { cursor: grab; }
-.block-card.is-draggable:active { cursor: grabbing; }
-.block-card.is-dragging { opacity: 0.45; }
-.block-time { color: var(--ink-soft); font-size: 0.72rem; font-weight: 700; }
-.block-name { font-size: 0.9rem; line-height: 1.25; }
-.block-spots { color: var(--ink-soft); font-size: 0.74rem; }
-.block-spots.full { color: var(--danger); font-weight: 700; }
-.block-card .btn { margin-top: 0.35rem; width: 100%; }
+.tt-block.is-mine { border-color: var(--success); border-left-color: var(--success); background: var(--success-soft); }
+.tt-block.is-full { background: var(--paper-raise); border-color: var(--line-strong); border-left-color: var(--ink-soft); }
+.tt-block.is-draggable { cursor: grab; }
+.tt-block.is-draggable:active { cursor: grabbing; }
+.tt-block.is-dragging { opacity: 0.4; }
+.tt-block-name { font-size: 0.85rem; line-height: 1.2; }
+.tt-block-time { color: var(--ink-soft); font-size: 0.7rem; }
+.tt-block-spots { color: var(--ink-soft); font-size: 0.7rem; margin-top: auto; }
+.tt-block-spots.full { color: var(--danger); font-weight: 700; }
+.tt-block .btn { margin-top: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; min-height: 0; }
+
 .block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; }
 
-/* The columns get narrow fast; below this they stack per instrument. */
-@media (max-width: 700px) {
-  .block-grid { grid-template-columns: minmax(0, 1fr); }
-  .block-column-head { justify-content: flex-start; }
+/* Narrow screens cannot hold three columns and a legible axis, so the grid
+   stretches vertically instead of squeezing sideways. */
+@media (max-width: 760px) {
+  .tt { --tt-axis: 46px; --tt-px-per-minute: 2.6px; }
+  .tt-block-time, .tt-block-spots { display: none; }
+  .tt-block-name { font-size: 0.78rem; }
 }
 
 /* ------------------------------------------------------------ block editor */
