@@ -19,6 +19,21 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.12.0] - 2026-09-02
+
+### Changed
+- **The class dialog now lays time blocks out on the same timetable the
+  calendar shows.** The list of form rows is gone: the dialog embeds the
+  instrument columns, and you add a block by clicking a column or dragging
+  down it, exactly as you would afterwards. Laying a class out and looking at
+  it later are now the same picture and the same gestures.
+- The grid follows the fields above it. Changing the class's start or end
+  redraws the axis, and unticking an instrument removes its column along with
+  any blocks drafted in it, so nothing can be stranded on an instrument the
+  class no longer teaches.
+- Edits inside the dialog collect in a draft and are written when the class
+  is saved, so cancelling really cancels.
+
 ## [1.11.0] - 2026-09-02
 
 ### Added

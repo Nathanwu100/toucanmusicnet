@@ -227,3 +227,25 @@ test("the timetable lets an admin draw a block and type exact times", () => {
   // Everything lands on the five-minute grid.
   assert.match(calendar, /Math\.round\(raw \/ SNAP_MINUTES\) \* SNAP_MINUTES/);
 });
+
+test("the class dialog lays blocks out on the same timetable, in a draft", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+
+  // One renderer, two call sites: the live timetable and the dialog's copy.
+  assert.match(calendar, /function renderBlockGrid\(ctx\)/);
+  assert.match(calendar, /renderLiveTimetable/);
+  assert.match(calendar, /renderDraftTimetable/);
+  // The dialog must show empty columns -- they are what you click on.
+  assert.match(calendar, /allowEmpty/);
+  // Edits in the dialog collect in a draft; nothing is written until the
+  // class itself is saved.
+  assert.match(calendar, /let draftBlocks = \[\];/);
+  assert.match(calendar, /function collectBlocks\(\) \{\s*return draftBlocks;/);
+  // The grid follows the fields it is drawn from.
+  assert.match(calendar, /\$\("#f-start"\)\.addEventListener\("change", renderDraftTimetable\)/);
+  assert.match(calendar, /\$\("#f-end"\)\.addEventListener\("change", renderDraftTimetable\)/);
+  // Unticking an instrument cannot leave blocks stranded in its column.
+  assert.match(calendar, /draftBlocks = draftBlocks\.filter\(\(block\) => taught\.has\(block\.instrument\)\)/);
+  // The old row-based editor is gone entirely.
+  assert.doesNotMatch(calendar, /blockEditorRow/);
+});

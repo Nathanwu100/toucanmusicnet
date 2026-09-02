@@ -1176,51 +1176,32 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 
 /* ------------------------------------------------------------ block editor */
-.block-editor { display: grid; gap: 0.4rem; margin: 0.5rem 0 0.6rem; }
-/* Six controls will not fit across a modal, and squeezing them turned the
-   name and instrument fields into slivers. Two lines per block instead:
-   what it is called on top, when and how many underneath. */
-.block-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto 3.6rem;
-  grid-template-areas:
-    "name  name  name remove"
-    "inst  start end  seats";
-  gap: 0.35rem;
-  align-items: center;
-  padding: 0.5rem;
-  border: 1px solid var(--line);
+/* The dialog embeds the same timetable the calendar shows, at a smaller
+   scale: the modal is narrow, so the axis and the per-block detail shrink
+   rather than the columns. */
+.block-editor { position: relative; margin: 0.5rem 0 0.2rem; }
+.block-editor .tt { --tt-axis: 44px; --tt-px-per-minute: 1.5px; margin-top: 0.3rem; }
+.block-editor .tt-body { min-height: 150px; }
+.block-editor .tt-block { padding: 0.25rem 0.35rem; }
+.block-editor .tt-block-name { font-size: 0.75rem; }
+.block-editor .tt-block-time { font-size: 0.63rem; }
+.block-editor .tt-block-spots { display: none; }
+.block-editor .tt-tick { font-size: 0.63rem; }
+.block-editor .instrument-badge { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
+/* The dialog already has its own "Time blocks" heading and the class's own
+   date and time fields directly above, so the timetable's header would just
+   repeat them. */
+.block-editor .timetable-head,
+.block-editor .timetable-hint { display: none; }
+.block-editor-empty {
+  padding: 1.1rem 0.8rem;
+  border: 1px dashed var(--line-strong);
   border-radius: 6px;
-  background: var(--paper-raise);
-}
-.block-row-name { grid-area: name; font-weight: 600; }
-.block-row-instrument { grid-area: inst; }
-.block-row > .block-row-time:nth-of-type(2) { grid-area: start; }
-.block-row > .block-row-time:nth-of-type(3) { grid-area: end; }
-.block-row-remove { grid-area: remove; }
-.block-row-seats { grid-area: seats; }
-.block-row input, .block-row select {
-  min-width: 0;
-  padding: 0.42rem 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  background: var(--paper-raise);
-  color: var(--ink);
-  font: inherit;
+  color: var(--ink-soft);
   font-size: 0.85rem;
+  text-align: center;
 }
-.block-row-remove { width: 34px; height: 34px; flex: 0 0 34px; }
 .block-editor-field .hint { margin-bottom: 0.2rem; }
-@media (max-width: 520px) {
-  .block-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "name  remove"
-      "inst  inst"
-      "start end"
-      "seats seats";
-  }
-}
 
 /* ----------------------------------------------------------------- roster */
 /* Names, contact details and which slot each student took. Only an admin

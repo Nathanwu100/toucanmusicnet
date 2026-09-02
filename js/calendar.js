@@ -393,10 +393,12 @@
   // bottom, half-hour rules across, and one column per instrument. Blocks are
   // placed by their real times, so a half-hour slot is half the height of an
   // hour one and a gap in the schedule looks like a gap.
-  function renderBlockGrid(event, { isStudent, isAdmin }) {
-    const host = $("#class-timetable");
+  function renderBlockGrid(ctx) {
+    const { event, host, isStudent, isAdmin, allowEmpty } = ctx;
     const columns = instrumentColumns(event);
-    if (!host || !columns.some((column) => column.blocks.length)) return false;
+    // The live timetable only appears once a class has blocks; the editor's
+    // copy has to show its empty columns, because that is what you click on.
+    if (!host || (!allowEmpty && !columns.some((column) => column.blocks.length))) return false;
 
     const startsAt = event.starts_at;
     const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
@@ -496,8 +498,8 @@
     table.appendChild(bodyRow);
     host.appendChild(table);
     if (isAdmin) {
-      enableBlockDragging(table, event);
-      enableBlockCreation(table, event);
+      enableBlockDragging(table, ctx);
+      enableBlockCreation(table, ctx);
       host.appendChild(element("p", "timetable-hint tt-hint-create",
         "Click an empty spot to add a block, or drag down to set how long it runs."));
     }
@@ -507,7 +509,8 @@
   // Dragging works the way it does in a day calendar: the block lands where
   // the pointer is, snapped to five minutes, and changes instrument if it is
   // dropped in another column. The server validates all of it again.
-  function enableBlockDragging(table, event) {
+  function enableBlockDragging(table, ctx) {
+    const { event, commit } = ctx;
     let dragging = null;
     let grabOffsetMinutes = 0;
 
@@ -580,12 +583,9 @@
         .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
 
       try {
-        await api.updateEvent(event.id, { ...eventFields(event), blocks: next });
-        toast(`Moved "${moved.label}" to ${fmtTime(nextStart.toISOString())}.`, "success");
-        await refresh();
+        await commit(next, `Moved "${moved.label}" to ${fmtTime(nextStart.toISOString())}.`);
       } catch (error) {
         toast(error.message, "error");
-        await refresh();
       }
     });
   }
@@ -611,7 +611,7 @@
 
   // The popover. `block` is null when creating.
   function openBlockEditor(context) {
-    const { event, block, instrument, startsAt, endsAt, column } = context;
+    const { event, host, commit, block, instrument, startsAt, endsAt, column } = context;
     closeBlockEditor();
 
     const form = document.createElement("form");
@@ -650,7 +650,6 @@
 
     // Anchored to the column it belongs to, and nudged back inside the
     // timetable if it would hang off the right edge.
-    const host = $("#class-timetable");
     const hostBox = host.getBoundingClientRect();
     const columnBox = column.getBoundingClientRect();
     host.appendChild(form);
@@ -676,10 +675,8 @@
 
     const save = async (blocks, message) => {
       try {
-        await api.updateEvent(event.id, { ...eventFields(event), blocks });
+        await commit(blocks, message);
         closeBlockEditor();
-        toast(message, "success");
-        await refresh();
       } catch (error) {
         fail(error.message);
       }
@@ -720,7 +717,8 @@
   }
 
   // Press-and-drag on empty column space to draw a new block.
-  function enableBlockCreation(table, event) {
+  function enableBlockCreation(table, ctx) {
+    const { event } = ctx;
     const startsAt = event.starts_at;
     const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
     const total = Math.max(30, minutesBetween(startsAt, endsAt));
@@ -768,7 +766,7 @@
         const clamped = Math.min(length, total - top);
         ghost.remove();
         openBlockEditor({
-          event,
+          ...ctx,
           block: null,
           instrument: column.dataset.instrument,
           startsAt: new Date(classStart + top * 60000).toISOString(),
@@ -788,13 +786,29 @@
       const block = blocksOf(event).find((row) => row.id === card.dataset.blockId);
       if (!block) return;
       openBlockEditor({
-        event,
+        ...ctx,
         block,
         instrument: block.instrument,
         startsAt: block.starts_at,
         endsAt: block.ends_at,
         column: card.closest(".tt-column"),
       });
+    });
+  }
+
+  // The timetable under the calendar, backed by the saved class. Every edit
+  // goes straight to the server and the page reloads from what it says.
+  function renderLiveTimetable(event, { isStudent, isAdmin }) {
+    return renderBlockGrid({
+      event,
+      host: $("#class-timetable"),
+      isStudent,
+      isAdmin,
+      commit: async (blocks, message) => {
+        await api.updateEvent(event.id, { ...eventFields(event), blocks });
+        toast(message, "success");
+        await refresh();
+      },
     });
   }
 
@@ -901,7 +915,7 @@
       const show = element("button", "btn btn-sm btn-quiet", "See the timetable");
       show.type = "button";
       show.addEventListener("click", () => {
-        renderBlockGrid(event, { isStudent, isAdmin });
+        renderLiveTimetable(event, { isStudent, isAdmin });
         $("#class-timetable").scrollIntoView({ behavior: "smooth", block: "center" });
       });
       summary.appendChild(show);
@@ -912,7 +926,7 @@
         body.appendChild(prompt);
       }
       // Opening the class shows its timetable straight away.
-      renderBlockGrid(event, { isStudent, isAdmin });
+      renderLiveTimetable(event, { isStudent, isAdmin });
       // The roster goes under the timetable rather than in the day panel:
       // email and phone columns need the width, and beside it they were
       // pushed off into a horizontal scroll nobody would find.
@@ -1160,96 +1174,64 @@
 
 
   // ------------------------------------------------------- block editor
-  // One row per block: name, which instrument column it belongs to, when it
-  // runs, and how many fit. Instrument choices follow the checkboxes above,
-  // so a block can never name an instrument the class does not teach.
-  function blockEditorRow(block = {}) {
-    const row = element("div", "block-row");
-    row.dataset.blockId = block.id || "";
+  // The dialog shows the same timetable the calendar does, so laying a class
+  // out and looking at it later are the same picture and the same gestures.
+  // The difference is only where edits go: here they collect in a draft that
+  // is written when the class itself is saved.
+  let draftBlocks = [];
 
-    const name = document.createElement("input");
-    name.type = "text";
-    name.className = "block-row-name";
-    name.placeholder = "Beginners";
-    name.value = block.label || "";
-    name.setAttribute("aria-label", "Time block name");
-
-    const instrument = document.createElement("select");
-    instrument.className = "block-row-instrument";
-    instrument.setAttribute("aria-label", "Instrument");
-
-    const start = document.createElement("input");
-    start.type = "time";
-    start.className = "block-row-time";
-    start.setAttribute("aria-label", "Starts");
-
-    const end = document.createElement("input");
-    end.type = "time";
-    end.className = "block-row-time";
-    end.setAttribute("aria-label", "Ends");
-
-    const seats = document.createElement("input");
-    seats.type = "number";
-    seats.min = "1";
-    seats.max = "99";
-    seats.className = "block-row-seats";
-    seats.value = block.capacity || 4;
-    seats.setAttribute("aria-label", "Places");
-
-    if (block.starts_at) start.value = toTimeInput(block.starts_at);
-    if (block.ends_at) end.value = toTimeInput(block.ends_at);
-    instrument.dataset.selected = block.instrument || "";
-
-    const remove = element("button", "icon-btn btn btn-sm block-row-remove", "");
-    remove.type = "button";
-    remove.setAttribute("aria-label", "Remove this time block");
-    remove.innerHTML = '<iconify-icon icon="pixelarticons:close" aria-hidden="true"></iconify-icon>';
-    remove.addEventListener("click", () => row.remove());
-
-    row.append(name, instrument, start, end, seats, remove);
-    return row;
+  // Built from whatever the form currently says, so the grid follows the
+  // instruments ticked and the start and end typed above it.
+  function draftClass() {
+    const start = $("#f-start").value;
+    const end = $("#f-end").value;
+    const chosen = [...document.querySelectorAll("#f-instruments input:checked")];
+    return {
+      id: editingId,
+      event_type: $("#f-type").value,
+      starts_at: start ? new Date(start).toISOString() : null,
+      ends_at: end ? new Date(end).toISOString() : null,
+      instruments: chosen.map((input) => input.value),
+      instrument_names: chosen.map((input) => input.closest("label").textContent.trim()),
+      blocks: draftBlocks,
+    };
   }
 
-  const toTimeInput = (iso) => {
-    const date = new Date(iso);
-    const pad = (value) => String(value).padStart(2, "0");
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
+  function renderDraftTimetable() {
+    const host = $("#f-blocks");
+    if (!host) return;
+    const model = draftClass();
+    host.innerHTML = "";
 
-  // Instrument dropdowns are rebuilt whenever the checkboxes change, so
-  // unticking an instrument cannot leave a block stranded on it.
-  function syncBlockInstruments() {
-    const chosen = [...document.querySelectorAll("#f-instruments input:checked")]
-      .map((input) => ({ slug: input.value, name: input.closest("label").textContent.trim() }));
-    document.querySelectorAll("#f-blocks .block-row-instrument").forEach((select) => {
-      const keep = select.value || select.dataset.selected || "";
-      select.innerHTML = "";
-      chosen.forEach((item) => {
-        const option = document.createElement("option");
-        option.value = item.slug;
-        option.textContent = item.name;
-        select.appendChild(option);
-      });
-      select.value = chosen.some((item) => item.slug === keep) ? keep : (chosen[0]?.slug || "");
-      select.dataset.selected = select.value;
+    // Without a window and at least one instrument there are no columns to
+    // draw, so say what is missing rather than showing an empty frame.
+    if (!model.starts_at || !model.ends_at || new Date(model.ends_at) <= new Date(model.starts_at)) {
+      host.appendChild(element("p", "block-editor-empty", "Set the class start and end times first."));
+      return;
+    }
+    if (!model.instruments.length) {
+      host.appendChild(element("p", "block-editor-empty", "Tick at least one instrument first."));
+      return;
+    }
+
+    renderBlockGrid({
+      event: model,
+      host,
+      isStudent: false,
+      isAdmin: true,
+      allowEmpty: true,
+      commit: (blocks) => {
+        // Nothing is saved until the class is. Drop the computed extras the
+        // live listing adds so the draft stays the shape the API wants.
+        draftBlocks = blocks.map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+        renderDraftTimetable();
+      },
     });
   }
 
-  // Times are entered as clock times; the class's own date supplies the day.
+  // Blocks are handed to createEvent and updateEvent exactly as drafted.
   function collectBlocks() {
-    const day = $("#f-start").value.slice(0, 10);
-    if (!day) return [];
-    return [...document.querySelectorAll("#f-blocks .block-row")].map((row) => {
-      const [start, end] = row.querySelectorAll(".block-row-time");
-      return {
-        id: row.dataset.blockId || undefined,
-        label: row.querySelector(".block-row-name").value.trim() || "Session",
-        instrument: row.querySelector(".block-row-instrument").value,
-        starts_at: new Date(`${day}T${start.value || "00:00"}`).toISOString(),
-        ends_at: new Date(`${day}T${end.value || "00:00"}`).toISOString(),
-        capacity: parseInt(row.querySelector(".block-row-seats").value, 10) || 1,
-      };
-    });
+    return draftBlocks;
   }
 
   function syncClassFields() {
@@ -1283,10 +1265,9 @@
     $("#f-student-capacity").value = event?.student_capacity || 12;
     $("#f-enrollment-open").checked = event ? event.enrollment_open : true;
     $("#f-description").value = event?.description || "";
-    const blockHost = $("#f-blocks");
-    blockHost.innerHTML = "";
-    (event?.blocks || []).forEach((block) => blockHost.appendChild(blockEditorRow(block)));
-    syncBlockInstruments();
+    draftBlocks = (event?.blocks || [])
+      .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+    renderDraftTimetable();
     syncClassFields();
     $("#edit-backdrop").classList.add("open");
     $("#f-title").focus();
@@ -1386,12 +1367,20 @@
   $("#new-event").addEventListener("click", () => openEditor(null, "event"));
   $("#day-new-class").addEventListener("click", () => openEditor(null, "class"));
   $("#day-new-event").addEventListener("click", () => openEditor(null, "event"));
-  $("#f-type").addEventListener("change", syncClassFields);
-  $("#add-block").addEventListener("click", () => {
-    $("#f-blocks").appendChild(blockEditorRow());
-    syncBlockInstruments();
+  $("#f-type").addEventListener("change", () => {
+    syncClassFields();
+    renderDraftTimetable();
   });
-  $("#f-instruments").addEventListener("change", syncBlockInstruments);
+  // The grid is drawn from the window and instruments above it, so it has to
+  // follow them as they change.
+  $("#f-instruments").addEventListener("change", () => {
+    // An instrument that stops being taught cannot keep its column.
+    const taught = new Set([...document.querySelectorAll("#f-instruments input:checked")].map((i) => i.value));
+    draftBlocks = draftBlocks.filter((block) => taught.has(block.instrument));
+    renderDraftTimetable();
+  });
+  $("#f-start").addEventListener("change", renderDraftTimetable);
+  $("#f-end").addEventListener("change", renderDraftTimetable);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
 
   function setTimeFilter(next) {
