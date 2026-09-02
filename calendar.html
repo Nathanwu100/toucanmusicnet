@@ -21,8 +21,8 @@
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=21" defer></script>
-  <script src="js/calendar.js?v=17" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=40" />
+  <script src="js/calendar.js?v=18" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=41" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -149,6 +149,16 @@
           <div class="field block-editor-field">
             <label id="f-blocks-label">Time blocks</label>
             <p class="hint">Click a column to add a slot, or drag down to set how long it runs. Leave this empty and the class is booked as one whole-class place.</p>
+            <div class="block-fill">
+              <button class="btn btn-sm btn-quiet" type="button" id="fill-blocks"><iconify-icon icon="pixelarticons:grid" aria-hidden="true"></iconify-icon>Fill every column</button>
+              <label for="fill-length">every</label>
+              <input type="number" id="fill-length" min="5" max="240" step="5" value="30" aria-label="Block length in minutes" />
+              <span>min,</span>
+              <label class="visually-hidden" for="fill-capacity">Places per block</label>
+              <input type="number" id="fill-capacity" min="1" max="99" value="4" aria-label="Places per block" />
+              <span>places each</span>
+            </div>
+            <p class="hint block-fill-note" id="fill-note"></p>
             <div class="block-editor" id="f-blocks" role="group" aria-labelledby="f-blocks-label"></div>
           </div>
           <div class="field">

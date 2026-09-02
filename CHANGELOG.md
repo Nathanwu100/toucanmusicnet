@@ -19,6 +19,22 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.13.0] - 2026-09-02
+
+### Added
+- **"Fill every column"** in the class dialog lays the whole class out in one
+  press: back-to-back slots from the class's start to its end, in every
+  instrument column. Slot length defaults to 30 minutes and places to 4, both
+  editable beside the button.
+
+### Notes
+- It fills gaps rather than replacing anything, so pressing it on a
+  half-built class keeps the blocks already drawn.
+- If the window does not divide evenly the last slot is short rather than
+  overrunning the class; a leftover under five minutes is dropped.
+- With no class times or no instruments ticked it says which is missing
+  instead of doing nothing.
+
 ## [1.12.0] - 2026-09-02
 
 ### Changed

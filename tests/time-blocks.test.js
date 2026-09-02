@@ -249,3 +249,22 @@ test("the class dialog lays blocks out on the same timetable, in a draft", () =>
   // The old row-based editor is gone entirely.
   assert.doesNotMatch(calendar, /blockEditorRow/);
 });
+
+test("one press lays a whole class out in back-to-back slots", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../calendar.html"), "utf8");
+
+  assert.match(markup, /id="fill-blocks"/);
+  assert.match(markup, /id="fill-length"[^>]*value="30"/, "defaults to 30-minute slots");
+  assert.match(calendar, /function fillDefaultBlocks/);
+  // Runs the class's own window, column by column, with no gap between slots.
+  assert.match(calendar, /cursor = finish;/);
+  assert.match(calendar, /for \(const instrument of model\.instruments\)/);
+  // The last slot is short rather than overrunning the class.
+  assert.match(calendar, /Math\.min\(cursor \+ length \* 60000, classEnd\)/);
+  // Pressing it on a half-built class fills gaps instead of wiping work.
+  assert.match(calendar, /if \(!overlaps\(instrument, cursor, finish\)\)/);
+  // It refuses politely rather than producing nonsense.
+  assert.match(calendar, /Set the class start and end times first\./);
+  assert.match(calendar, /Tick at least one instrument first\./);
+});

@@ -1203,6 +1203,41 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 .block-editor-field .hint { margin-bottom: 0.2rem; }
 
+/* One press lays the whole class out, with the slot length and places beside
+   it so the common case needs no follow-up edits. */
+.block-fill {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0.1rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+}
+.block-fill input {
+  width: 3.4rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper-raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.82rem;
+}
+.block-fill label { font-weight: 600; }
+.block-fill-note:empty { display: none; }
+.block-fill-note { margin-top: 0.3rem; color: var(--primary-strong); font-weight: 600; }
+
+/* Available to screen readers, out of the way visually. */
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ----------------------------------------------------------------- roster */
 /* Names, contact details and which slot each student took. Only an admin
    ever sees this; list_class_roster refuses everyone else. */

@@ -1229,6 +1229,70 @@
     });
   }
 
+  // Lay a whole class out in one go: back-to-back slots of the chosen length,
+  // in every instrument column, from the class's start to its end. This is
+  // what most Saturdays look like, so it should not take twenty clicks.
+  //
+  // Existing blocks are left alone and generated slots that would land on top
+  // of one are skipped, so pressing this on a half-built class fills the gaps
+  // instead of throwing away the work.
+  function fillDefaultBlocks() {
+    const model = draftClass();
+    const note = $("#fill-note");
+    note.textContent = "";
+
+    if (!model.starts_at || !model.ends_at || new Date(model.ends_at) <= new Date(model.starts_at)) {
+      note.textContent = "Set the class start and end times first.";
+      return;
+    }
+    if (!model.instruments.length) {
+      note.textContent = "Tick at least one instrument first.";
+      return;
+    }
+
+    const length = Math.max(5, parseInt($("#fill-length").value, 10) || 30);
+    const capacity = Math.max(1, parseInt($("#fill-capacity").value, 10) || 4);
+    const classStart = new Date(model.starts_at).getTime();
+    const classEnd = new Date(model.ends_at).getTime();
+    const overlaps = (instrument, from, to) => draftBlocks.some((block) =>
+      block.instrument === instrument &&
+      new Date(block.starts_at).getTime() < to &&
+      new Date(block.ends_at).getTime() > from);
+
+    const added = [];
+    for (const instrument of model.instruments) {
+      let cursor = classStart;
+      let index = 1;
+      while (cursor < classEnd) {
+        // The last slot is short rather than overrunning the class.
+        const finish = Math.min(cursor + length * 60000, classEnd);
+        // A sliver left at the end is not worth a slot of its own.
+        if (finish - cursor < 5 * 60000) break;
+        if (!overlaps(instrument, cursor, finish)) {
+          added.push({
+            id: undefined,
+            instrument,
+            label: `Session ${index}`,
+            starts_at: new Date(cursor).toISOString(),
+            ends_at: new Date(finish).toISOString(),
+            capacity,
+          });
+        }
+        cursor = finish;
+        index += 1;
+      }
+    }
+
+    if (!added.length) {
+      note.textContent = "Every column is already full for that length.";
+      return;
+    }
+    draftBlocks = [...draftBlocks, ...added];
+    renderDraftTimetable();
+    const columns = model.instruments.length;
+    note.textContent = `Added ${added.length} slot${added.length === 1 ? "" : "s"} across ${columns} column${columns === 1 ? "" : "s"}.`;
+  }
+
   // Blocks are handed to createEvent and updateEvent exactly as drafted.
   function collectBlocks() {
     return draftBlocks;
@@ -1265,6 +1329,7 @@
     $("#f-student-capacity").value = event?.student_capacity || 12;
     $("#f-enrollment-open").checked = event ? event.enrollment_open : true;
     $("#f-description").value = event?.description || "";
+    $("#fill-note").textContent = "";
     draftBlocks = (event?.blocks || [])
       .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
     renderDraftTimetable();
@@ -1381,6 +1446,7 @@
   });
   $("#f-start").addEventListener("change", renderDraftTimetable);
   $("#f-end").addEventListener("change", renderDraftTimetable);
+  $("#fill-blocks").addEventListener("click", fillDefaultBlocks);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
 
   function setTimeFilter(next) {
