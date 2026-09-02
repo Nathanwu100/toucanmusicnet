@@ -1124,6 +1124,49 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 .block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; }
 
+/* Empty column space is a target for an admin, so it says so on hover. */
+.tt-column { cursor: default; }
+.class-timetable[data-admin="true"] .tt-column { cursor: copy; }
+.tt-hint-create { margin-top: 0.6rem; font-size: 0.8rem; }
+
+/* The slot being drawn, before the editor opens on it. */
+.tt-ghost {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* The inline editor, anchored over the column it belongs to. */
+.class-timetable { position: relative; }
+.tt-editor {
+  position: absolute;
+  z-index: 20;
+  width: min(260px, calc(100% - 16px));
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-2);
+}
+.tt-editor-title { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; margin-bottom: 0.15rem; }
+.tt-editor-row { display: grid; grid-template-columns: 4.6rem minmax(0, 1fr); align-items: center; gap: 0.5rem; }
+.tt-editor-row span { color: var(--ink-soft); font-size: 0.78rem; font-weight: 600; }
+.tt-editor input, .tt-editor select {
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper-raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.tt-editor-error { min-height: 1em; color: var(--danger); font-size: 0.78rem; }
+.tt-editor-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.15rem; }
+
 /* Narrow screens cannot hold three columns and a legible axis, so the grid
    stretches vertically instead of squeezing sideways. */
 @media (max-width: 760px) {

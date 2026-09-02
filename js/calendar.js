@@ -402,9 +402,11 @@
     const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
     const total = Math.max(30, minutesBetween(startsAt, endsAt));
 
+    closeBlockEditor();
     host.hidden = false;
     host.innerHTML = "";
     host.dataset.eventId = event.id;
+    host.dataset.admin = String(Boolean(isAdmin));
 
     const head = element("div", "timetable-head");
     const copy = element("div", "");
@@ -493,7 +495,12 @@
 
     table.appendChild(bodyRow);
     host.appendChild(table);
-    if (isAdmin) enableBlockDragging(table, event);
+    if (isAdmin) {
+      enableBlockDragging(table, event);
+      enableBlockCreation(table, event);
+      host.appendChild(element("p", "timetable-hint tt-hint-create",
+        "Click an empty spot to add a block, or drag down to set how long it runs."));
+    }
     return true;
   }
 
@@ -580,6 +587,214 @@
         toast(error.message, "error");
         await refresh();
       }
+    });
+  }
+
+
+  // ------------------------------------------------- click to add a block
+  // Empty space in an admin's timetable behaves like empty space in a day
+  // calendar: press, optionally drag to set the length, release, and a small
+  // editor opens on the slot you drew. The times it opens with are the ones
+  // you drew, and they stay editable, so "roughly here" and "exactly 3:35"
+  // are both one gesture.
+
+  const pad2 = (value) => String(value).padStart(2, "0");
+  const toClock = (iso) => {
+    const date = new Date(iso);
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  };
+
+  function closeBlockEditor() {
+    document.querySelector(".tt-editor")?.remove();
+    document.querySelector(".tt-ghost")?.remove();
+  }
+
+  // The popover. `block` is null when creating.
+  function openBlockEditor(context) {
+    const { event, block, instrument, startsAt, endsAt, column } = context;
+    closeBlockEditor();
+
+    const form = document.createElement("form");
+    form.className = "tt-editor";
+    form.innerHTML = `
+      <p class="tt-editor-title"></p>
+      <label class="tt-editor-row"><span>Name</span><input type="text" name="label" required></label>
+      <label class="tt-editor-row"><span>Instrument</span><select name="instrument"></select></label>
+      <label class="tt-editor-row"><span>From</span><input type="time" name="start" required></label>
+      <label class="tt-editor-row"><span>To</span><input type="time" name="end" required></label>
+      <label class="tt-editor-row"><span>Places</span><input type="number" name="capacity" min="1" max="99" required></label>
+      <p class="tt-editor-error" role="alert"></p>
+      <div class="tt-editor-actions">
+        <button class="btn btn-primary btn-sm" type="submit">Save</button>
+        <button class="btn btn-quiet btn-sm" type="button" data-cancel>Cancel</button>
+        <button class="btn btn-sm btn-danger" type="button" data-delete hidden>Delete</button>
+      </div>`;
+
+    form.querySelector(".tt-editor-title").textContent = block ? "Edit time block" : "New time block";
+    const fields = form.elements;
+    fields.label.value = block?.label || "Session";
+    fields.start.value = toClock(startsAt);
+    fields.end.value = toClock(endsAt);
+    fields.capacity.value = block?.capacity || 4;
+
+    (event.instruments || []).forEach((slug, index) => {
+      const option = document.createElement("option");
+      option.value = slug;
+      option.textContent = (event.instrument_names || [])[index] || slug;
+      fields.instrument.appendChild(option);
+    });
+    fields.instrument.value = block?.instrument || instrument;
+
+    const remove = form.querySelector("[data-delete]");
+    if (block) remove.hidden = false;
+
+    // Anchored to the column it belongs to, and nudged back inside the
+    // timetable if it would hang off the right edge.
+    const host = $("#class-timetable");
+    const hostBox = host.getBoundingClientRect();
+    const columnBox = column.getBoundingClientRect();
+    host.appendChild(form);
+    const width = form.offsetWidth || 260;
+    let left = columnBox.left - hostBox.left;
+    left = Math.min(left, hostBox.width - width - 8);
+    form.style.left = `${Math.max(8, left)}px`;
+    form.style.top = `${columnBox.top - hostBox.top + 8}px`;
+    fields.label.focus();
+    fields.label.select();
+
+    const fail = (message) => {
+      form.querySelector(".tt-editor-error").textContent = message;
+    };
+
+    const dayOf = (iso) => new Date(iso).toISOString().slice(0, 10);
+    const atClock = (clock) => {
+      const base = new Date(event.starts_at);
+      const [hours, minutes] = clock.split(":").map(Number);
+      base.setHours(hours, minutes, 0, 0);
+      return base.toISOString();
+    };
+
+    const save = async (blocks, message) => {
+      try {
+        await api.updateEvent(event.id, { ...eventFields(event), blocks });
+        closeBlockEditor();
+        toast(message, "success");
+        await refresh();
+      } catch (error) {
+        fail(error.message);
+      }
+    };
+
+    const stripped = () => blocksOf(event)
+      .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+
+    form.addEventListener("submit", async (submitEvent) => {
+      submitEvent.preventDefault();
+      fail("");
+      const next = {
+        id: block?.id,
+        label: fields.label.value.trim() || "Session",
+        instrument: fields.instrument.value,
+        starts_at: atClock(fields.start.value),
+        ends_at: atClock(fields.end.value),
+        capacity: parseInt(fields.capacity.value, 10) || 1,
+      };
+      if (new Date(next.ends_at) <= new Date(next.starts_at)) {
+        fail("The end has to come after the start.");
+        return;
+      }
+      const blocks = block
+        ? stripped().map((row) => (row.id === block.id ? { ...row, ...next } : row))
+        : [...stripped(), next];
+      await save(blocks, block ? `Updated "${next.label}".` : `Added "${next.label}".`);
+    });
+
+    remove.addEventListener("click", async () => {
+      await save(stripped().filter((row) => row.id !== block.id), `Removed "${block.label}".`);
+    });
+
+    form.querySelector("[data-cancel]").addEventListener("click", closeBlockEditor);
+    form.addEventListener("keydown", (keyEvent) => {
+      if (keyEvent.key === "Escape") { keyEvent.stopPropagation(); closeBlockEditor(); }
+    });
+  }
+
+  // Press-and-drag on empty column space to draw a new block.
+  function enableBlockCreation(table, event) {
+    const startsAt = event.starts_at;
+    const endsAt = event.ends_at || new Date(new Date(startsAt).getTime() + 3600000).toISOString();
+    const total = Math.max(30, minutesBetween(startsAt, endsAt));
+    const classStart = new Date(startsAt).getTime();
+
+    const minutesAt = (column, clientY) => {
+      const box = column.getBoundingClientRect();
+      const raw = ((clientY - box.top) / box.height) * total;
+      return Math.max(0, Math.min(total, Math.round(raw / SNAP_MINUTES) * SNAP_MINUTES));
+    };
+
+    table.addEventListener("pointerdown", (pointerEvent) => {
+      if (pointerEvent.button !== 0) return;
+      const column = pointerEvent.target.closest(".tt-column");
+      // Pressing on an existing block is a drag or an edit, not a new block.
+      if (!column || pointerEvent.target.closest(".tt-block")) return;
+      closeBlockEditor();
+
+      const anchor = minutesAt(column, pointerEvent.clientY);
+      const ghost = element("div", "tt-block tt-ghost");
+      ghost.appendChild(element("strong", "tt-block-name", "New block"));
+      column.appendChild(ghost);
+
+      let from = anchor;
+      let to = anchor + 30;
+      const paint = () => {
+        const top = Math.min(from, to);
+        const height = Math.max(SNAP_MINUTES, Math.abs(to - from));
+        ghost.style.top = `${(top / total) * 100}%`;
+        ghost.style.height = `${(Math.min(height, total - top) / total) * 100}%`;
+      };
+      paint();
+
+      const onMove = (moveEvent) => {
+        to = minutesAt(column, moveEvent.clientY);
+        if (to === from) to = from + SNAP_MINUTES;
+        paint();
+      };
+      const onUp = () => {
+        table.removeEventListener("pointermove", onMove);
+        table.removeEventListener("pointerup", onUp);
+        const top = Math.min(from, to);
+        // A plain click, with no drag, means the usual half hour.
+        const length = Math.max(SNAP_MINUTES, Math.abs(to - from) || 30);
+        const clamped = Math.min(length, total - top);
+        ghost.remove();
+        openBlockEditor({
+          event,
+          block: null,
+          instrument: column.dataset.instrument,
+          startsAt: new Date(classStart + top * 60000).toISOString(),
+          endsAt: new Date(classStart + (top + clamped) * 60000).toISOString(),
+          column,
+        });
+      };
+      table.addEventListener("pointermove", onMove);
+      table.addEventListener("pointerup", onUp);
+    });
+
+    // Clicking an existing block opens it for editing. Dragging one moves it,
+    // and a drag never ends in a click, so the two do not collide.
+    table.addEventListener("click", (clickEvent) => {
+      const card = clickEvent.target.closest(".tt-block");
+      if (!card || card.classList.contains("tt-ghost")) return;
+      const block = blocksOf(event).find((row) => row.id === card.dataset.blockId);
+      if (!block) return;
+      openBlockEditor({
+        event,
+        block,
+        instrument: block.instrument,
+        startsAt: block.starts_at,
+        endsAt: block.ends_at,
+        column: card.closest(".tt-column"),
+      });
     });
   }
 

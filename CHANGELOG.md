@@ -19,6 +19,18 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.11.0] - 2026-09-02
+
+### Added
+- **Click an empty spot in the timetable to add a block**, the way you would
+  in a day calendar. Press for the usual half hour, or drag down to draw the
+  length you want. Whatever you drew opens in a small editor over that
+  column, prefilled with those times -- and they stay editable, so "roughly
+  here" and "exactly 3:35" are the same gesture.
+- **Clicking an existing block opens it for editing**, with a Delete button.
+  Dragging still moves it; a drag never ends in a click, so the two do not
+  collide.
+
 ## [1.10.1] - 2026-09-02
 
 ### Changed

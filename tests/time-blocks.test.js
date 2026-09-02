@@ -208,3 +208,22 @@ test("the migration ships the table, the guards and the roster gate", () => {
   // The schedule stays public, but only for reading.
   assert.match(sql, /for select to anon, authenticated using \(true\)/);
 });
+
+test("the timetable lets an admin draw a block and type exact times", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+
+  // Press on empty column space starts a new block; pressing an existing one
+  // is a drag or an edit instead.
+  assert.match(calendar, /pointerEvent\.target\.closest\("\.tt-block"\)/);
+  assert.match(calendar, /enableBlockCreation/);
+  // Dragging down sets the length; a plain click falls back to half an hour.
+  assert.match(calendar, /Math\.abs\(to - from\) \|\| 30/);
+  // Whatever was drawn opens in an editor whose times stay editable.
+  assert.match(calendar, /openBlockEditor/);
+  assert.match(calendar, /name="start" required/);
+  assert.match(calendar, /name="end" required/);
+  // Clicking an existing block edits it, and that editor can delete it.
+  assert.match(calendar, /data-delete/);
+  // Everything lands on the five-minute grid.
+  assert.match(calendar, /Math\.round\(raw \/ SNAP_MINUTES\) \* SNAP_MINUTES/);
+});
