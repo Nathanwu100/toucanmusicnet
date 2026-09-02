@@ -252,10 +252,12 @@ test("join_class cannot hit the class_id ambiguity again", () => {
   // join aborted. Both the schema and the migration must carry the pragma.
   const schema = fs.readFileSync(path.join(__dirname, "../supabase/schema.sql"), "utf8");
   const migration = fs.readFileSync(
-    path.join(__dirname, "../supabase/migrations/20260829000000_fix_join_class_ambiguity.sql"), "utf8");
+    path.join(__dirname, "../supabase/migrations/20260902000000_class_time_blocks.sql"), "utf8");
 
   for (const [label, sql] of [["schema.sql", schema], ["migration", migration]]) {
-    const start = sql.indexOf("create or replace function public.join_class");
+    // Dropped and recreated rather than replaced, because the signature and
+    // return columns changed when blocks arrived.
+    const start = sql.search(/create (?:or replace )?function public\.join_class/);
     assert.ok(start >= 0, `${label} should define join_class`);
     const body = sql.slice(start, sql.indexOf("$$;", start));
     assert.match(body, /#variable_conflict use_column/, `${label} needs the pragma`);

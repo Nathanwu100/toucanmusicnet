@@ -1033,6 +1033,143 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .toast-link { text-decoration: none; cursor: pointer; }
 .toast-link:hover { border-color: var(--primary); }
 
+/* -------------------------------------------------------- class timetable */
+.class-timetable {
+  margin-top: clamp(1.2rem, 3vw, 2rem);
+  padding: clamp(1.1rem, 3vw, 1.6rem);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-1);
+}
+.timetable-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.timetable-head h2 { font-size: clamp(1.15rem, 2.4vw, 1.5rem); margin-top: 0.15rem; }
+.timetable-when { margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.88rem; }
+.timetable-hint { color: var(--ink-soft); font-size: 0.82rem; }
+
+/* -------------------------------------------------------------- block grid */
+/* A class split into time blocks reads as one column per instrument, its
+   named sessions running down it. Same shape for everyone: a student books
+   in their own column, an admin drags blocks between any of them. */
+.block-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--block-columns, 3), minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.9rem 0 0.4rem;
+}
+.block-column { min-width: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.block-column-head { display: flex; justify-content: center; padding-bottom: 0.2rem; }
+.block-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 3.5rem;
+  padding: 0.35rem;
+  border: 1px dashed transparent;
+  border-radius: 8px;
+}
+/* Only visible mid-drag, so a column shows it will accept the block. */
+.block-stack.is-target { border-color: var(--primary); background: var(--primary-soft); }
+.block-empty { padding: 0.6rem 0.2rem; color: var(--ink-soft); font-size: 0.8rem; text-align: center; }
+
+.block-card {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.6rem 0.65rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  background: var(--paper-raise);
+}
+.block-card.is-mine { border-color: var(--success); border-left-color: var(--success); background: var(--success-soft); }
+.block-card.is-full { opacity: 0.72; }
+.block-card.is-draggable { cursor: grab; }
+.block-card.is-draggable:active { cursor: grabbing; }
+.block-card.is-dragging { opacity: 0.45; }
+.block-time { color: var(--ink-soft); font-size: 0.72rem; font-weight: 700; }
+.block-name { font-size: 0.9rem; line-height: 1.25; }
+.block-spots { color: var(--ink-soft); font-size: 0.74rem; }
+.block-spots.full { color: var(--danger); font-weight: 700; }
+.block-card .btn { margin-top: 0.35rem; width: 100%; }
+.block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; }
+
+/* The columns get narrow fast; below this they stack per instrument. */
+@media (max-width: 700px) {
+  .block-grid { grid-template-columns: minmax(0, 1fr); }
+  .block-column-head { justify-content: flex-start; }
+}
+
+/* ------------------------------------------------------------ block editor */
+.block-editor { display: grid; gap: 0.4rem; margin: 0.5rem 0 0.6rem; }
+/* Six controls will not fit across a modal, and squeezing them turned the
+   name and instrument fields into slivers. Two lines per block instead:
+   what it is called on top, when and how many underneath. */
+.block-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto 3.6rem;
+  grid-template-areas:
+    "name  name  name remove"
+    "inst  start end  seats";
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-raise);
+}
+.block-row-name { grid-area: name; font-weight: 600; }
+.block-row-instrument { grid-area: inst; }
+.block-row > .block-row-time:nth-of-type(2) { grid-area: start; }
+.block-row > .block-row-time:nth-of-type(3) { grid-area: end; }
+.block-row-remove { grid-area: remove; }
+.block-row-seats { grid-area: seats; }
+.block-row input, .block-row select {
+  min-width: 0;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper-raise);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.85rem;
+}
+.block-row-remove { width: 34px; height: 34px; flex: 0 0 34px; }
+.block-editor-field .hint { margin-bottom: 0.2rem; }
+@media (max-width: 520px) {
+  .block-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "name  remove"
+      "inst  inst"
+      "start end"
+      "seats seats";
+  }
+}
+
+/* ----------------------------------------------------------------- roster */
+/* Names, contact details and which slot each student took. Only an admin
+   ever sees this; list_class_roster refuses everyone else. */
+.roster { margin-top: 0.9rem; }
+.roster-head { color: var(--ink-soft); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.roster-table { width: 100%; margin-top: 0.5rem; border-collapse: collapse; font-size: 0.84rem; display: block; overflow-x: auto; }
+.roster-table th {
+  padding: 0.4rem 0.6rem 0.4rem 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  white-space: nowrap;
+}
+.roster-table td { padding: 0.5rem 0.6rem 0.5rem 0; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.roster-table tr:last-child td { border-bottom: 0; }
+.roster-name { font-weight: 700; }
+.roster-slot { color: var(--ink-soft); }
+.roster-table a { color: var(--primary-strong); }
+
 /* ------------------------------------------------------------ past archive */
 /* A closed drawer under the calendar holding everything that has already
    happened, newest first and grouped by month. */

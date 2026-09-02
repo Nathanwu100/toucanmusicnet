@@ -285,8 +285,359 @@
   // Every logged-in account sees the live student spot count; only students
   // get join/leave controls and only the admin sees the roster (capacity
   // itself is set in the admin editor).
+
+  // ------------------------------------------------------------ block grid
+  // A class with time blocks is shown as one column per instrument, its
+  // sessions running down it in time order -- the same shape for everybody.
+  // A student sees only their own column as bookable; an admin can drag any
+  // block to a new time.
+
+  const blocksOf = (event) => (Array.isArray(event.blocks) ? event.blocks : []);
+
+  // Snapping keeps dragged blocks on a tidy grid instead of landing on 3:07.
+  const SNAP_MINUTES = 5;
+
+  function instrumentColumns(event) {
+    const blocks = blocksOf(event);
+    const order = event.instruments || [];
+    return order.map((slug, index) => ({
+      slug,
+      name: (event.instrument_names || [])[index] || slug,
+      blocks: blocks
+        .filter((block) => block.instrument === slug)
+        .sort((left, right) => left.starts_at.localeCompare(right.starts_at)),
+    }));
+  }
+
+  function blockCard(event, block, { isStudent, isAdmin, mine, joinable }) {
+    const card = element("div", "block-card");
+    card.dataset.blockId = block.id;
+    card.dataset.instrument = block.instrument;
+    if (block.is_mine) card.classList.add("is-mine");
+    if (!block.spots_left) card.classList.add("is-full");
+
+    card.append(
+      element("span", "block-time", `${fmtTime(block.starts_at)} - ${fmtTime(block.ends_at)}`),
+      element("strong", "block-name", block.label || "Session")
+    );
+    const left = Number(block.spots_left) || 0;
+    card.appendChild(element(
+      "span",
+      `block-spots${left === 0 ? " full" : ""}`,
+      block.is_mine ? "You are in this one" : left === 0 ? "Full" : `${left} of ${block.capacity} left`
+    ));
+
+    if (isAdmin) {
+      card.draggable = true;
+      card.classList.add("is-draggable");
+      card.title = "Drag to move this block";
+    } else if (isStudent && joinable) {
+      const action = element("button", `btn btn-sm ${mine ? "btn-quiet" : "btn-primary"}`,
+        mine ? "Leave" : "Take this slot");
+      action.disabled = !mine && left === 0;
+      action.addEventListener("click", async () => {
+        action.disabled = true;
+        try {
+          if (mine) {
+            await api.leaveClass(event.id);
+            toast(`You left the ${block.label} slot.`);
+          } else {
+            await api.joinClass(event.id, block.id);
+            toast(`You are in ${block.label}, ${fmtTime(block.starts_at)}.`, "success");
+          }
+          await refresh();
+        } catch (error) {
+          toast(error.message, "error");
+          action.disabled = false;
+        }
+      });
+      card.appendChild(action);
+    }
+    return card;
+  }
+
+  function renderBlockGrid(event, { isStudent, isAdmin }) {
+    const host = $("#class-timetable");
+    const columns = instrumentColumns(event);
+    if (!host || !columns.some((column) => column.blocks.length)) return false;
+
+    host.hidden = false;
+    host.innerHTML = "";
+    host.dataset.eventId = event.id;
+
+    const head = element("div", "timetable-head");
+    const copy = element("div", "");
+    copy.append(
+      element("p", "eyebrow", "Timetable"),
+      element("h2", "", event.title),
+      element("p", "timetable-when",
+        `${new Date(event.starts_at).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · ${fmtRange(event)}` +
+        (event.location ? ` · ${event.location}` : ""))
+    );
+    head.appendChild(copy);
+    if (isAdmin) {
+      head.appendChild(element("p", "timetable-hint", "Drag a block to move it, or to another instrument's column."));
+    } else if (isStudent) {
+      head.appendChild(element("p", "timetable-hint", "Pick a slot in your instrument's column."));
+    }
+    host.appendChild(head);
+
+    const body = host;
+    const grid = element("div", "block-grid");
+    grid.style.setProperty("--block-columns", String(columns.length));
+    const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
+    const open = event.enrollment_open && !hasEnded(event);
+
+    for (const column of columns) {
+      const lane = element("div", "block-column");
+      lane.dataset.instrument = column.slug;
+      const head = element("div", "block-column-head");
+      head.appendChild(element("span", "instrument-badge", column.name));
+      head.dataset.instrument = column.slug;
+      lane.appendChild(head);
+
+      const stack = element("div", "block-stack");
+      stack.dataset.instrument = column.slug;
+      if (!column.blocks.length) {
+        stack.appendChild(element("p", "block-empty", "Nothing scheduled"));
+      }
+      for (const block of column.blocks) {
+        stack.appendChild(blockCard(event, block, {
+          isStudent,
+          isAdmin,
+          mine: block.id === enrolledBlockId,
+          // Students only book in their own instrument's column.
+          joinable: open && isStudent && column.slug === user?.instrument,
+        }));
+      }
+      lane.appendChild(stack);
+      grid.appendChild(lane);
+    }
+
+    if (isStudent && !columns.some((column) => column.slug === user?.instrument)) {
+      body.appendChild(element("p", "block-note",
+        "This class does not have a column for your instrument."));
+    }
+    body.appendChild(grid);
+    if (isAdmin) enableBlockDragging(grid, event);
+    return true;
+  }
+
+
+  // Dragging a block moves it in time, and moving it into another column
+  // changes which instrument it is for. The drop target is a gap between
+  // cards, so the block takes the start time of whatever it lands in front
+  // of and keeps its own length. Everything is validated server-side too --
+  // this only ever proposes a change.
+  function enableBlockDragging(grid, event) {
+    let dragging = null;
+
+    grid.addEventListener("dragstart", (dragEvent) => {
+      const card = dragEvent.target.closest(".block-card");
+      if (!card) return;
+      dragging = card;
+      card.classList.add("is-dragging");
+      dragEvent.dataTransfer.effectAllowed = "move";
+      // Firefox will not start a drag without payload.
+      dragEvent.dataTransfer.setData("text/plain", card.dataset.blockId);
+    });
+
+    grid.addEventListener("dragend", () => {
+      dragging?.classList.remove("is-dragging");
+      grid.querySelectorAll(".block-stack").forEach((stack) => stack.classList.remove("is-target"));
+      dragging = null;
+    });
+
+    grid.addEventListener("dragover", (dragEvent) => {
+      if (!dragging) return;
+      const stack = dragEvent.target.closest(".block-stack");
+      if (!stack) return;
+      dragEvent.preventDefault();
+      dragEvent.dataTransfer.dropEffect = "move";
+      grid.querySelectorAll(".block-stack").forEach((other) => {
+        other.classList.toggle("is-target", other === stack);
+      });
+    });
+
+    grid.addEventListener("drop", async (dragEvent) => {
+      if (!dragging) return;
+      const stack = dragEvent.target.closest(".block-stack");
+      if (!stack) return;
+      dragEvent.preventDefault();
+
+      const moved = blocksOf(event).find((block) => block.id === dragging.dataset.blockId);
+      if (!moved) return;
+      const instrument = stack.dataset.instrument;
+
+      // Where in the column did it land? The card it was dropped in front of
+      // donates its start time; dropping past the end appends after the last.
+      const siblings = [...stack.querySelectorAll(".block-card")].filter((card) => card !== dragging);
+      const before = siblings.find((card) => {
+        const box = card.getBoundingClientRect();
+        return dragEvent.clientY < box.top + box.height / 2;
+      });
+
+      const length = new Date(moved.ends_at) - new Date(moved.starts_at);
+      const classStart = new Date(event.starts_at).getTime();
+      const classEnd = new Date(event.ends_at || event.starts_at).getTime();
+
+      let startsAt;
+      if (before) {
+        const target = blocksOf(event).find((block) => block.id === before.dataset.blockId);
+        startsAt = new Date(target.starts_at).getTime();
+      } else {
+        const last = siblings[siblings.length - 1];
+        const target = last && blocksOf(event).find((block) => block.id === last.dataset.blockId);
+        startsAt = target ? new Date(target.ends_at).getTime() : classStart;
+      }
+      const snap = SNAP_MINUTES * 60000;
+      startsAt = Math.round(startsAt / snap) * snap;
+      // Never let a drag push a block outside the class it belongs to.
+      startsAt = Math.max(classStart, Math.min(startsAt, classEnd - length));
+
+      const next = blocksOf(event)
+        .map((block) => (block.id === moved.id
+          ? {
+              ...block,
+              instrument,
+              starts_at: new Date(startsAt).toISOString(),
+              ends_at: new Date(startsAt + length).toISOString(),
+            }
+          : block))
+        .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+
+      try {
+        await api.updateEvent(event.id, { ...eventFields(event), blocks: next });
+        toast(`Moved "${moved.label}" to ${fmtTime(new Date(startsAt).toISOString())}.`, "success");
+        await refresh();
+      } catch (error) {
+        toast(error.message, "error");
+        await refresh();
+      }
+    });
+  }
+
+  // The columns updateEvent expects, without the computed extras the listing
+  // adds on the way out.
+  function eventFields(event) {
+    return {
+      title: event.title,
+      event_type: event.event_type,
+      instruments: event.instruments,
+      starts_at: event.starts_at,
+      ends_at: event.ends_at,
+      location: event.location,
+      volunteer_capacity: event.volunteer_capacity,
+      student_capacity: event.student_capacity,
+      enrollment_open: event.enrollment_open,
+      description: event.description,
+    };
+  }
+
+
+  // Everything an admin needs to reach a student, and which slot they took.
+  // Contact details only ever come from list_class_roster, which refuses
+  // anyone who is not an admin.
+  function rosterTable(roster, event) {
+    const wrap = element("div", "roster");
+    const total = event.student_capacity || roster.length;
+    wrap.appendChild(element("p", "roster-head",
+      roster.length ? `Enrolled students (${roster.length}${total ? ` of ${total}` : ""})`
+                    : "No students enrolled yet"));
+    if (!roster.length) return wrap;
+
+    const table = element("table", "roster-table");
+    const head = element("tr", "");
+    ["Student", "Instrument", "Slot", "Email", "Phone"].forEach((label) => {
+      head.appendChild(element("th", "", label));
+    });
+    table.appendChild(element("thead", "")).appendChild(head);
+    const tbody = element("tbody", "");
+
+    for (const entry of roster) {
+      const row = element("tr", "");
+      row.appendChild(element("td", "roster-name", entry.student_name || "Student"));
+
+      const instrumentCell = element("td", "");
+      const badge = element("span", "instrument-badge", entry.instrument_name || entry.instrument || "-");
+      if (entry.instrument) badge.dataset.instrument = entry.instrument;
+      instrumentCell.appendChild(badge);
+      row.appendChild(instrumentCell);
+
+      row.appendChild(element("td", "roster-slot", entry.block_label
+        ? `${entry.block_label} · ${fmtTime(entry.block_starts_at)}`
+        : "Whole class"));
+
+      const emailCell = element("td", "");
+      if (entry.email) {
+        const link = element("a", "", entry.email);
+        link.href = `mailto:${entry.email}`;
+        emailCell.appendChild(link);
+      } else {
+        emailCell.textContent = "-";
+      }
+      row.appendChild(emailCell);
+
+      const phoneCell = element("td", "");
+      if (entry.phone_number) {
+        const link = element("a", "", entry.phone_number);
+        link.href = `tel:${entry.phone_number}`;
+        phoneCell.appendChild(link);
+      } else {
+        phoneCell.textContent = "-";
+      }
+      row.appendChild(phoneCell);
+      tbody.appendChild(row);
+    }
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+    return wrap;
+  }
+
+  async function appendRoster(body, event, isAdmin, renderId) {
+    if (!isAdmin) return;
+    try {
+      const roster = await api.listClassEnrollments(event.id);
+      if (renderId !== panelRenderId) return;
+      body.appendChild(rosterTable(roster, event));
+    } catch (error) {
+      body.appendChild(element("p", "day-panel-error", error.message));
+    }
+  }
+
   async function addStudentEnrollmentControls(body, event, isStudent, isAdmin, renderId) {
     if (event.event_type !== "class") return;
+
+    // A class split into blocks is booked one block at a time, so the grid
+    // replaces the single whole-class spot counter entirely. It is drawn in
+    // the full-width section under the calendar, where the columns fit.
+    const blocks = blocksOf(event);
+    if (blocks.length) {
+      const open = blocks.reduce((total, block) => total + (Number(block.spots_left) || 0), 0);
+      const summary = element("div", "day-enrollment-row");
+      summary.appendChild(element("span", "spots",
+        `${blocks.length} slot${blocks.length === 1 ? "" : "s"}, ${open} place${open === 1 ? "" : "s"} open`));
+      const show = element("button", "btn btn-sm btn-quiet", "See the timetable");
+      show.type = "button";
+      show.addEventListener("click", () => {
+        renderBlockGrid(event, { isStudent, isAdmin });
+        $("#class-timetable").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      summary.appendChild(show);
+      body.appendChild(summary);
+      if (!user) {
+        const prompt = element("a", "btn btn-sm", "Sign in to take a slot");
+        prompt.href = "login.html";
+        body.appendChild(prompt);
+      }
+      // Opening the class shows its timetable straight away.
+      renderBlockGrid(event, { isStudent, isAdmin });
+      // The roster goes under the timetable rather than in the day panel:
+      // email and phone columns need the width, and beside it they were
+      // pushed off into a horizontal scroll nobody would find.
+      await appendRoster($("#class-timetable"), event, isAdmin, renderId);
+      return;
+    }
     const left = Math.max(0, Number(event.spots_left) || 0);
     const capacity = Math.max(0, Number(event.student_capacity) || 0);
     const past = hasEnded(event);
@@ -359,25 +710,16 @@
     }
     body.appendChild(capacityRow);
 
-    if (isAdmin) {
-      try {
-        const roster = await api.listClassEnrollments(event.id);
-        if (renderId !== panelRenderId) return;
-        body.appendChild(element(
-          "p",
-          "day-roster student-roster",
-          roster.length
-            ? `Students (${roster.length}/${event.student_capacity}): ${roster.map((entry) => entry.student_name).join(", ")}`
-            : `Students (0/${event.student_capacity}): no active enrollments`
-        ));
-      } catch (error) {
-        body.appendChild(element("p", "day-panel-error", error.message));
-      }
-    }
+    await appendRoster(body, event, isAdmin, renderId);
   }
 
   async function renderDayPanel() {
     const renderId = ++panelRenderId;
+    const timetable = $("#class-timetable");
+    if (timetable) {
+      timetable.hidden = true;
+      timetable.innerHTML = "";
+    }
     const dayEvents = eventsForDate(selectedDate);
     $("#selected-day-title").textContent = selectedDate.toLocaleDateString([], {
       weekday: "long", month: "long", day: "numeric",
@@ -535,6 +877,100 @@
     pendingEventId = null;
   }
 
+
+  // ------------------------------------------------------- block editor
+  // One row per block: name, which instrument column it belongs to, when it
+  // runs, and how many fit. Instrument choices follow the checkboxes above,
+  // so a block can never name an instrument the class does not teach.
+  function blockEditorRow(block = {}) {
+    const row = element("div", "block-row");
+    row.dataset.blockId = block.id || "";
+
+    const name = document.createElement("input");
+    name.type = "text";
+    name.className = "block-row-name";
+    name.placeholder = "Beginners";
+    name.value = block.label || "";
+    name.setAttribute("aria-label", "Time block name");
+
+    const instrument = document.createElement("select");
+    instrument.className = "block-row-instrument";
+    instrument.setAttribute("aria-label", "Instrument");
+
+    const start = document.createElement("input");
+    start.type = "time";
+    start.className = "block-row-time";
+    start.setAttribute("aria-label", "Starts");
+
+    const end = document.createElement("input");
+    end.type = "time";
+    end.className = "block-row-time";
+    end.setAttribute("aria-label", "Ends");
+
+    const seats = document.createElement("input");
+    seats.type = "number";
+    seats.min = "1";
+    seats.max = "99";
+    seats.className = "block-row-seats";
+    seats.value = block.capacity || 4;
+    seats.setAttribute("aria-label", "Places");
+
+    if (block.starts_at) start.value = toTimeInput(block.starts_at);
+    if (block.ends_at) end.value = toTimeInput(block.ends_at);
+    instrument.dataset.selected = block.instrument || "";
+
+    const remove = element("button", "icon-btn btn btn-sm block-row-remove", "");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Remove this time block");
+    remove.innerHTML = '<iconify-icon icon="pixelarticons:close" aria-hidden="true"></iconify-icon>';
+    remove.addEventListener("click", () => row.remove());
+
+    row.append(name, instrument, start, end, seats, remove);
+    return row;
+  }
+
+  const toTimeInput = (iso) => {
+    const date = new Date(iso);
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
+  // Instrument dropdowns are rebuilt whenever the checkboxes change, so
+  // unticking an instrument cannot leave a block stranded on it.
+  function syncBlockInstruments() {
+    const chosen = [...document.querySelectorAll("#f-instruments input:checked")]
+      .map((input) => ({ slug: input.value, name: input.closest("label").textContent.trim() }));
+    document.querySelectorAll("#f-blocks .block-row-instrument").forEach((select) => {
+      const keep = select.value || select.dataset.selected || "";
+      select.innerHTML = "";
+      chosen.forEach((item) => {
+        const option = document.createElement("option");
+        option.value = item.slug;
+        option.textContent = item.name;
+        select.appendChild(option);
+      });
+      select.value = chosen.some((item) => item.slug === keep) ? keep : (chosen[0]?.slug || "");
+      select.dataset.selected = select.value;
+    });
+  }
+
+  // Times are entered as clock times; the class's own date supplies the day.
+  function collectBlocks() {
+    const day = $("#f-start").value.slice(0, 10);
+    if (!day) return [];
+    return [...document.querySelectorAll("#f-blocks .block-row")].map((row) => {
+      const [start, end] = row.querySelectorAll(".block-row-time");
+      return {
+        id: row.dataset.blockId || undefined,
+        label: row.querySelector(".block-row-name").value.trim() || "Session",
+        instrument: row.querySelector(".block-row-instrument").value,
+        starts_at: new Date(`${day}T${start.value || "00:00"}`).toISOString(),
+        ends_at: new Date(`${day}T${end.value || "00:00"}`).toISOString(),
+        capacity: parseInt(row.querySelector(".block-row-seats").value, 10) || 1,
+      };
+    });
+  }
+
   function syncClassFields() {
     const isClass = $("#f-type").value === "class";
     $("#class-enrollment-fields").hidden = !isClass;
@@ -566,6 +1002,10 @@
     $("#f-student-capacity").value = event?.student_capacity || 12;
     $("#f-enrollment-open").checked = event ? event.enrollment_open : true;
     $("#f-description").value = event?.description || "";
+    const blockHost = $("#f-blocks");
+    blockHost.innerHTML = "";
+    (event?.blocks || []).forEach((block) => blockHost.appendChild(blockEditorRow(block)));
+    syncBlockInstruments();
     syncClassFields();
     $("#edit-backdrop").classList.add("open");
     $("#f-title").focus();
@@ -603,6 +1043,7 @@
       student_capacity: studentCapacity,
       enrollment_open: eventType === "class" && $("#f-enrollment-open").checked,
       description: $("#f-description").value.trim(),
+      blocks: eventType === "class" ? collectBlocks() : [],
     };
 
     if (editingId) {
@@ -665,6 +1106,11 @@
   $("#day-new-class").addEventListener("click", () => openEditor(null, "class"));
   $("#day-new-event").addEventListener("click", () => openEditor(null, "event"));
   $("#f-type").addEventListener("change", syncClassFields);
+  $("#add-block").addEventListener("click", () => {
+    $("#f-blocks").appendChild(blockEditorRow());
+    syncBlockInstruments();
+  });
+  $("#f-instruments").addEventListener("change", syncBlockInstruments);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
 
   function setTimeFilter(next) {

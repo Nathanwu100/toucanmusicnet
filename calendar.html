@@ -15,14 +15,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="js/config.js?v=2" defer></script>
   <script src="js/phone.js?v=1" defer></script>
-  <script src="js/api.js?v=16" defer></script>
+  <script src="js/api.js?v=17" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/driver.js@1.7.0/dist/driver.js.iife.js" defer></script>
   <script src="js/parallax.js?v=3" defer></script>
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=21" defer></script>
-  <script src="js/calendar.js?v=12" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=33" />
+  <script src="js/calendar.js?v=14" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=36" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -92,6 +92,11 @@
       </aside>
     </div>
 
+    <!-- A class split into time blocks needs real width for its per-instrument
+         columns, so its timetable opens here rather than in the narrow day
+         panel beside the calendar. -->
+    <section class="class-timetable" id="class-timetable" aria-live="polite" hidden></section>
+
     <details class="past-log" id="past-log">
       <summary class="past-log-summary">
         <span class="past-log-heading">Past classes &amp; events</span>
@@ -141,6 +146,12 @@
           <p class="hint">Volunteers can only sign up until this many spots are taken.</p>
         </div>
         <div class="class-enrollment-fields" id="class-enrollment-fields">
+          <div class="field block-editor-field">
+            <label id="f-blocks-label">Time blocks</label>
+            <p class="hint">Split the class into named slots, one column per instrument. Leave this empty and the class is booked as a single whole-class place.</p>
+            <div class="block-editor" id="f-blocks" role="group" aria-labelledby="f-blocks-label"></div>
+            <button class="btn btn-sm btn-quiet" type="button" id="add-block"><iconify-icon icon="pixelarticons:plus" aria-hidden="true"></iconify-icon>Add a time block</button>
+          </div>
           <div class="field">
             <label for="f-student-capacity">Student capacity</label>
             <input type="number" id="f-student-capacity" min="1" max="999" value="12" required />

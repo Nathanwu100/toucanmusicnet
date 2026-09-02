@@ -19,6 +19,37 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.10.0] - 2026-09-02
+
+### Added
+- **Time blocks inside a class.** A class can be split into named slots, each
+  belonging to one instrument, and students book a slot rather than the class
+  as a whole. A class reads as one column per instrument with its sessions
+  running down it -- the same view for admins and students.
+- **Admins drag blocks to move them**, including into another instrument's
+  column. Times snap to five minutes and a block can never be dragged outside
+  the class that owns it.
+- **A real roster.** Name, instrument, which slot they took, email and phone,
+  shown under the timetable where the columns have room.
+- `list_class_roster` -- the one door contact details leave the database
+  through. Email lives in `auth.users` and phones in `profiles`, neither
+  client-readable, so this is security definer and refuses non-admins.
+
+### Fixed
+- **`column reference "class_id" is ambiguous` (42702), which blocked every
+  class join.** Folded into this migration so there is one thing to run.
+
+### Database
+- Migration `20260902000000_class_time_blocks.sql` **must be applied.**
+  Enrollment is broken until it runs. It adds `class_time_blocks`, a
+  `block_id` on enrollments, triggers keeping blocks inside their class and
+  on an instrument it teaches, a guard against deleting a block people are
+  booked into, and rebuilds `list_visible_events` and `join_class`.
+
+### Notes
+- Blocks are optional. A class with none behaves exactly as before, so
+  nothing already stored changes meaning.
+
 ## [1.9.1] - 2026-08-29
 
 ### Fixed

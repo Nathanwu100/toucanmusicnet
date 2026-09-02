@@ -212,6 +212,48 @@
   // Mirrors the enforce_supported_instrument trigger: every slug must be an
   // active catalog instrument, duplicates collapse, and the result is stored
   // in catalog order so badge order is the same everywhere.
+  // Mirrors the class_time_blocks_within_class trigger: a block belongs to a
+  // class, sits inside that class's window, and runs forwards. Validating
+  // here too means the demo refuses exactly what the database would.
+  function normalizeBlocks(blocks, event) {
+    const rows = Array.isArray(blocks) ? blocks : [];
+    if (!rows.length) return [];
+    if (event.event_type !== "class") {
+      throw new Error("Only classes can be divided into time blocks.");
+    }
+    const classStart = new Date(event.starts_at).getTime();
+    const classEnd = new Date(event.ends_at || event.starts_at).getTime();
+    const taught = event.instruments || [];
+    return rows
+      .map((block) => {
+        const startsAt = new Date(block.starts_at).getTime();
+        const endsAt = new Date(block.ends_at).getTime();
+        if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) {
+          throw new Error("Give every time block a start and an end.");
+        }
+        if (endsAt <= startsAt) throw new Error("A time block has to end after it starts.");
+        if (startsAt < classStart || endsAt > classEnd) {
+          throw new Error("Every time block has to sit inside the class's own start and end times.");
+        }
+        // A block lives in one instrument's column, and only a column the
+        // class actually teaches. The enforce_block_within_class trigger
+        // says the same thing on the server.
+        if (!block.instrument || !taught.includes(block.instrument)) {
+          throw new Error("Every time block has to be for an instrument this class teaches.");
+        }
+        return {
+          id: block.id || uid(),
+          instrument: block.instrument,
+          label: (block.label || "").trim() || "Session",
+          starts_at: new Date(startsAt).toISOString(),
+          ends_at: new Date(endsAt).toISOString(),
+          capacity: Math.max(1, parseInt(block.capacity, 10) || 0),
+        };
+      })
+      .sort((left, right) =>
+        left.instrument.localeCompare(right.instrument) || left.starts_at.localeCompare(right.starts_at));
+  }
+
   function normalizeInstruments(slugs, db) {
     const requested = new Set(Array.isArray(slugs) ? slugs : []);
     const normalized = db.instruments
@@ -617,6 +659,16 @@
           const active = activeStudentEnrollments(db, event.id);
           return {
             ...event,
+            blocks: (event.blocks || []).map((block) => {
+              const booked = active.filter((row) => row.block_id === block.id);
+              return {
+                ...block,
+                instrument_name: instrumentName(block.instrument, db),
+                taken: booked.length,
+                spots_left: Math.max(0, block.capacity - booked.length),
+                is_mine: Boolean(viewer) && booked.some((row) => row.student_id === viewer.id),
+              };
+            }),
             instrument_names: instrumentNames(event.instruments, db),
             active_enrollments: active.length,
             spots_left: Math.max(0, event.student_capacity - active.length),
@@ -635,31 +687,71 @@
     },
 
     async createEvent(event) {
+      const { blocks, ...fields } = event;
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("admin");
-        const instruments = normalizeInstruments(event.instruments, db);
-        const row = { id: uid(), time_slot_id: uid(), ...event, instruments, created_by: currentUser.id };
+        const instruments = normalizeInstruments(fields.instruments, db);
+        const row = {
+          id: uid(), time_slot_id: uid(), ...fields, instruments,
+          blocks: normalizeBlocks(blocks, fields), created_by: currentUser.id,
+        };
         db.events.push(row);
         saveDb(db);
         return row;
       }
       const authUser = await requireSupabaseSession();
-      const { data, error } = await sb.from("events").insert({ ...event, created_by: authUser.id }).select().single();
+      const { data, error } = await sb.from("events").insert({ ...fields, created_by: authUser.id }).select().single();
+      if (error) throw new Error(error.message);
+      await this.saveClassBlocks(data.id, normalizeBlocks(blocks, fields));
+      return data;
+    },
+
+    // Blocks live in their own table, so they are written separately. The
+    // rows a student is booked into are kept: deleting one is refused by
+    // guard_block_deletion, and re-sending it unchanged would be a no-op
+    // anyway, so only genuinely removed blocks are deleted.
+    async saveClassBlocks(classId, blocks) {
+      if (DEMO) {
+        const { db } = requireDemoUser("admin");
+        const event = db.events.find((row) => row.id === classId);
+        if (!event) throw new Error("Event not found.");
+        const keep = new Set(blocks.map((block) => block.id));
+        const booked = activeStudentEnrollments(db, classId)
+          .filter((row) => row.block_id && !keep.has(row.block_id));
+        if (booked.length) {
+          throw new Error("A time block you removed still has students booked in. They have to leave it first.");
+        }
+        event.blocks = blocks;
+        saveDb(db);
+        return blocks;
+      }
+      await requireSupabaseSession();
+      const keep = blocks.map((block) => block.id).filter(Boolean);
+      let removal = sb.from("class_time_blocks").delete().eq("class_id", classId);
+      if (keep.length) removal = removal.not("id", "in", `(${keep.join(",")})`);
+      const { error: deleteError } = await removal;
+      if (deleteError) throw new Error(deleteError.message);
+      if (!blocks.length) return [];
+      const { data, error } = await sb
+        .from("class_time_blocks")
+        .upsert(blocks.map((block) => ({ ...block, class_id: classId })))
+        .select();
       if (error) throw new Error(error.message);
       return data;
     },
 
     async updateEvent(id, event) {
+      const { blocks, ...event_ } = event;
       if (DEMO) {
         const { db } = requireDemoUser("admin");
         const index = db.events.findIndex((candidate) => candidate.id === id);
         if (index < 0) throw new Error("Event not found.");
         const previous = db.events[index];
-        const sameInstruments = JSON.stringify(previous.instruments) === JSON.stringify(event.instruments);
-        const instruments = sameInstruments ? previous.instruments : normalizeInstruments(event.instruments, db);
+        const sameInstruments = JSON.stringify(previous.instruments) === JSON.stringify(event_.instruments);
+        const instruments = sameInstruments ? previous.instruments : normalizeInstruments(event_.instruments, db);
         const activeRows = activeStudentEnrollments(db, id);
-        const scheduleChanged = previous.starts_at !== event.starts_at ||
-          previous.ends_at !== event.ends_at || previous.event_type !== event.event_type;
+        const scheduleChanged = previous.starts_at !== event_.starts_at ||
+          previous.ends_at !== event_.ends_at || previous.event_type !== event_.event_type;
         if (activeRows.length && scheduleChanged) {
           throw new Error("This class has active student enrollments. Students must leave or transfer before its time slot can change.");
         }
@@ -668,16 +760,20 @@
         if (activeRows.some((row) => !instruments.includes(row.instrument))) {
           throw new Error("An active student is enrolled for an instrument this class would no longer teach. Students must leave or transfer first.");
         }
-        if (activeRows.length > event.student_capacity) {
+        if (activeRows.length > event_.student_capacity) {
           throw new Error(`Student capacity cannot be lower than the active enrollment count (${activeRows.length}).`);
         }
-        db.events[index] = { ...previous, ...event, instruments };
+        db.events[index] = { ...previous, ...event_, instruments };
         saveDb(db);
+        if (blocks !== undefined) {
+          await this.saveClassBlocks(id, normalizeBlocks(blocks, db.events[index]));
+        }
         return db.events[index];
       }
       await requireSupabaseSession();
-      const { data, error } = await sb.from("events").update(event).eq("id", id).select().single();
+      const { data, error } = await sb.from("events").update(event_).eq("id", id).select().single();
       if (error) throw new Error(error.message);
+      if (blocks !== undefined) await this.saveClassBlocks(id, normalizeBlocks(blocks, data));
       return data;
     },
 
@@ -699,26 +795,42 @@
       if (error) throw new Error(error.message);
     },
 
+    // Who is in a class, with the contact details an admin needs to reach
+    // them. Email lives in auth.users and phone numbers in profiles, neither
+    // of which a client can read, so this goes through list_class_roster --
+    // one narrow, admin-gated door rather than broad table access.
     async listClassEnrollments(eventId) {
       if (DEMO) {
         const { db } = requireDemoUser("admin");
-        return activeStudentEnrollments(db, eventId).map((row) => ({
-          ...row,
-          student_name: db.users.find((user) => user.id === row.student_id)?.name || "Student",
-        }));
+        return activeStudentEnrollments(db, eventId).map((row) => {
+          const student = db.users.find((user) => user.id === row.student_id);
+          const event = db.events.find((item) => item.id === eventId);
+          const block = (event?.blocks || []).find((item) => item.id === row.block_id);
+          return {
+            enrollment_id: row.id,
+            student_id: row.student_id,
+            student_name: student?.name || "Student",
+            email: student?.email || null,
+            phone_number: student?.phone_number || null,
+            instrument: row.instrument,
+            instrument_name: instrumentName(row.instrument, db),
+            block_id: row.block_id || null,
+            block_label: block?.label || null,
+            block_starts_at: block?.starts_at || null,
+            block_ends_at: block?.ends_at || null,
+            joined_at: row.joined_at,
+          };
+        }).sort((left, right) =>
+          String(left.block_starts_at || "").localeCompare(String(right.block_starts_at || "")) ||
+          left.student_name.localeCompare(right.student_name));
       }
       await requireSupabaseSession();
-      const { data, error } = await sb
-        .from("student_enrollments")
-        .select("id, student_id, instrument, time_slot_id, class_starts_at, class_ends_at, status, profiles!student_enrollments_student_id_fkey(full_name)")
-        .eq("class_id", eventId)
-        .eq("status", "active")
-        .order("joined_at");
+      const { data, error } = await sb.rpc("list_class_roster", { target_class_id: eventId });
       if (error) throw new Error(error.message);
-      return data.map((row) => ({ ...row, student_name: row.profiles?.full_name || "Student" }));
+      return data || [];
     },
 
-    async joinClass(eventId) {
+    async joinClass(eventId, blockId = null) {
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("student");
         const target = db.events.find((event) => event.id === eventId);
@@ -728,37 +840,68 @@
         if (!target.enrollment_open || new Date(target.starts_at).getTime() <= Date.now()) {
           throw new Error("This class is not open for enrollment.");
         }
+
+        // A class carrying blocks is booked block by block; one without them
+        // keeps behaving as a single whole-class place.
+        const blocks = target.blocks || [];
+        let block = null;
+        let capacity = target.student_capacity;
+        let slotStart = target.starts_at;
+        let slotEnd = target.ends_at;
+        if (blocks.length) {
+          if (!blockId) throw new Error("Choose a time block for this class.");
+          block = blocks.find((row) => row.id === blockId);
+          if (!block) throw new Error("That time block is not part of this class.");
+          if (block.instrument !== currentUser.instrument) {
+            throw new Error(`That time block is for ${instrumentName(block.instrument, db)}, not your instrument.`);
+          }
+          if (new Date(block.starts_at).getTime() <= Date.now()) {
+            throw new Error("That time block has already started.");
+          }
+          capacity = block.capacity;
+          slotStart = block.starts_at;
+          slotEnd = block.ends_at;
+        } else if (blockId) {
+          throw new Error("This class is not divided into time blocks.");
+        }
+
         const existing = db.studentEnrollments.find((row) => row.student_id === currentUser.id && row.class_id === eventId);
         if (existing?.status === "active") throw new Error("You are already enrolled in this class.");
         const conflict = db.studentEnrollments.find((row) =>
           row.student_id === currentUser.id && row.status === "active" && row.class_id !== eventId &&
-          overlaps(row.class_starts_at, row.class_ends_at, target.starts_at, target.ends_at)
+          overlaps(row.class_starts_at, row.class_ends_at, slotStart, slotEnd)
         );
         if (conflict) throw new Error("This class conflicts with another class on your schedule.");
-        const taken = activeStudentEnrollments(db, eventId).length;
-        if (taken >= target.student_capacity) throw new Error("Class full.");
+        const taken = block
+          ? activeStudentEnrollments(db, eventId).filter((row) => row.block_id === block.id).length
+          : activeStudentEnrollments(db, eventId).length;
+        if (taken >= capacity) throw new Error(block ? "That time block is full." : "Class full.");
 
         // The snapshot records the student's own instrument -- the one of the
         // class's taught instruments they are actually enrolled for.
+        const snapshot = {
+          block_id: block ? block.id : null,
+          instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
+          class_starts_at: slotStart, class_ends_at: slotEnd,
+          status: "active", joined_at: new Date().toISOString(), left_at: null,
+        };
         if (existing) {
-          Object.assign(existing, {
-            instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
-            class_starts_at: target.starts_at, class_ends_at: target.ends_at,
-            status: "active", joined_at: new Date().toISOString(), left_at: null,
-          });
+          Object.assign(existing, snapshot);
         } else {
-          db.studentEnrollments.push({
-            id: uid(), student_id: currentUser.id, class_id: target.id,
-            instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
-            class_starts_at: target.starts_at, class_ends_at: target.ends_at,
-            status: "active", joined_at: new Date().toISOString(), left_at: null,
-          });
+          db.studentEnrollments.push({ id: uid(), student_id: currentUser.id, class_id: target.id, ...snapshot });
         }
         saveDb(db);
-        return { class_id: eventId, spots_left: Math.max(0, target.student_capacity - taken - 1) };
+        return {
+          class_id: eventId,
+          block_id: block ? block.id : null,
+          spots_left: Math.max(0, capacity - taken - 1),
+        };
       }
-      const { data, error } = await sb.rpc("join_class", { target_class_id: eventId });
-      if (error) throw new Error(error.message);
+      const { data, error } = await sb.rpc("join_class", {
+        target_class_id: eventId,
+        target_block_id: blockId,
+      });
+      if (error) throw authError(error);
       return normalizeRpcRow(data);
     },
 
