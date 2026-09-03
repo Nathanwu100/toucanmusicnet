@@ -514,8 +514,8 @@ test("the timetable lives in the day panel, and the panel is sized for it", () =
   // down the page.
   const panel = markup.slice(markup.indexOf('id="day-panel"'), markup.indexOf("</aside>"));
   assert.ok(panel.includes('id="class-timetable"'), "the timetable belongs inside the day panel");
-  // Which means the panel needs the width a three-column grid asks for.
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(380px, 520px\)/);
+  // The panel is sized for the grid, without starving the month beside it.
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(\d+px, \d+px\)/);
 });
 
 test("a stacked layout takes you to the day you tapped", () => {
@@ -652,4 +652,20 @@ test("a student sees only the column they can actually book", () => {
   assert.match(calendar, /See the other instruments/);
   // Filtering must not mutate the listing it was handed.
   assert.match(calendar, /\.map\(\(column\) => \(\{\s*\.\.\.column,/);
+});
+
+test("a long class scrolls its timetable instead of growing the page", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  assert.match(css, /\.tt-scroll \{[\s\S]*?overflow-y: auto/);
+  assert.match(css, /\.tt-scroll \{[\s\S]*?max-height/);
+  // The headings scroll with the columns, so a scrollbar cannot push them
+  // out of line with what they label.
+  assert.match(calendar, /scroller\.appendChild\(headings\)/);
+  assert.match(calendar, /scroller\.appendChild\(bodyRow\)/);
+  assert.match(css, /\.tt-headings \{[\s\S]*?position: sticky/);
+  // The body keeps its true height inside the scroller, or the blocks -- which
+  // are positioned as percentages of it -- would squash instead of scrolling.
+  assert.match(css, /\.tt-body \{ height: calc\(var\(--tt-minutes\) \* var\(--tt-px-per-minute\)\)/);
 });

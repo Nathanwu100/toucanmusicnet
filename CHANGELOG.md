@@ -19,6 +19,23 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.20.0] - 2026-09-03
+
+### Changed
+- **The timetable is compressed**: shorter rows, a narrower time axis, tighter
+  gutters and smaller type throughout.
+- **It scrolls rather than growing.** A long class used to make a very tall
+  grid that pushed everything under it down the page; the grid is now capped
+  and scrolls inside itself. The instrument headings sit inside that scroller
+  and stick to its top, so a scrollbar cannot knock them out of line with the
+  columns they label.
+- **The month grid gets more of the row back** -- the day panel narrowed from
+  380-520px to 330-420px now that the timetable inside it needs less width.
+
+### Fixed
+- The first and last time labels hung half outside the grid, so the top one
+  was clipped by the sticky headings. Both now sit fully inside.
+
 ## [1.19.0] - 2026-09-03
 
 ### Changed

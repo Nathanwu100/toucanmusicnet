@@ -554,6 +554,7 @@
     table.style.setProperty("--tt-minutes", String(total));
 
     // Column headings sit above the scrolling body so they stay readable.
+    const scroller = element("div", "tt-scroll");
     const headings = element("div", "tt-headings");
     headings.appendChild(element("span", "tt-axis-head", ""));
     shown.forEach((column) => {
@@ -563,7 +564,7 @@
       cell.appendChild(badge);
       headings.appendChild(cell);
     });
-    table.appendChild(headings);
+    scroller.appendChild(headings);
 
     const bodyRow = element("div", "tt-body");
 
@@ -617,7 +618,8 @@
       bodyRow.appendChild(lane);
     }
 
-    table.appendChild(bodyRow);
+    scroller.appendChild(bodyRow);
+    table.appendChild(scroller);
     host.appendChild(table);
 
     if ((focusOwn && columns.length > shown.length) || onlyMine) {

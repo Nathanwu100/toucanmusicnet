@@ -982,7 +982,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    room, and the month grid reads fine narrower. */
 .calendar-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 420px);
   align-items: start;
   gap: clamp(1rem, 2.5vw, 2rem);
 }
@@ -1146,11 +1146,12 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 /* Inside the panel the grid has less room, so the axis narrows and the
    per-block detail shrinks rather than the columns. */
-.class-timetable .tt { --tt-axis: 52px; --tt-px-per-minute: 2.2px; }
-.class-timetable .tt-block { padding: 0.45rem 0.55rem; }
-.class-timetable .tt-block-name { font-size: 0.84rem; }
-.class-timetable .tt-block-time { font-size: 0.7rem; }
-.class-timetable .tt-block-spots { font-size: 0.7rem; }
+.class-timetable .tt { --tt-axis: 44px; --tt-px-per-minute: 1.4px; }
+.class-timetable .tt-scroll { max-height: clamp(180px, 34vh, 320px); }
+.class-timetable .tt-block { padding: 0.28rem 0.36rem; }
+.class-timetable .tt-block-name { font-size: 0.74rem; }
+.class-timetable .tt-block-time { font-size: 0.62rem; }
+.class-timetable .tt-block-spots { font-size: 0.62rem; }
 .class-timetable .tt-tick { font-size: 0.65rem; }
 .class-timetable .instrument-badge { font-size: 0.6rem; padding: 0.1rem 0.32rem; }
 .timetable-head { margin-bottom: 0.5rem; }
@@ -1166,29 +1167,45 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    Blocks are positioned by their real times, so a half-hour slot is half the
    height of an hour one and a gap in the schedule looks like a gap. */
 .tt {
-  --tt-axis: 62px;
+  --tt-axis: 48px;
   /* Height comes from the class's own length, so an hour always reads as an
-     hour whichever class you are looking at. */
-  --tt-px-per-minute: 2.5px;
-  margin-top: 0.8rem;
+     hour whichever class you are looking at. A long class therefore makes a
+     tall grid, which is why the scroller below caps it. */
+  --tt-px-per-minute: 1.5px;
+  margin-top: 0.6rem;
+}
+
+/* The grid is capped and scrolls rather than pushing the rest of the panel
+   down. The instrument headings live inside the scroller and stick to its
+   top, so a scrollbar can never knock them out of line with their columns. */
+.tt-scroll {
+  max-height: clamp(200px, 42vh, 380px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.tt-headings {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 0.3rem;
+  background: var(--paper-raise);
 }
 .tt-headings,
 .tt-body {
   display: grid;
   grid-template-columns: var(--tt-axis) repeat(var(--tt-columns, 3), minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: 0.35rem;
 }
-.tt-headings { margin-bottom: 0.5rem; }
 .tt-heading { display: flex; justify-content: center; }
 
-.tt-body { height: calc(var(--tt-minutes) * var(--tt-px-per-minute)); min-height: 180px; }
+.tt-body { height: calc(var(--tt-minutes) * var(--tt-px-per-minute)); min-height: 140px; }
 
 /* The time axis. Labels hang off each rule rather than sitting in a row, so
    they line up with the lines exactly. */
 .tt-axis { position: relative; }
 .tt-tick {
   position: absolute;
-  right: 0.45rem;
+  right: 0.35rem;
   transform: translateY(-50%);
   color: var(--ink-soft);
   font-size: 0.7rem;
@@ -1196,6 +1213,12 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   white-space: nowrap;
 }
 .tt-tick-edge { color: var(--ink); font-weight: 700; }
+.tt-tick { font-size: 0.64rem; }
+/* Ticks are centred on their line, which would leave the first and last ones
+   hanging half outside the grid -- the first under the sticky headings, the
+   last past the bottom edge. Those two sit fully inside instead. */
+.tt-axis .tt-tick:first-child { transform: none; }
+.tt-axis .tt-tick:last-child { transform: translateY(-100%); }
 
 .tt-column {
   position: relative;
@@ -1221,10 +1244,10 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   flex-direction: column;
   gap: 0.05rem;
   width: 100%;
-  padding: 0.5rem 0.6rem;
+  padding: 0.3rem 0.4rem;
   border: 0;
-  border-left: 4px solid var(--block-ink, var(--primary));
-  border-radius: 6px;
+  border-left: 3px solid var(--block-ink, var(--primary));
+  border-radius: 5px;
   background: var(--block-wash, var(--primary-soft));
   color: var(--ink);
   font: inherit;
@@ -1233,9 +1256,9 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .tt-block[data-instrument="piano"]  { --block-ink: var(--piano);  --block-wash: var(--piano-soft); }
 .tt-block[data-instrument="violin"] { --block-ink: var(--violin); --block-wash: var(--violin-soft); }
 .tt-block[data-instrument="viola"]  { --block-ink: var(--viola);  --block-wash: var(--viola-soft); }
-.tt-block-name { font-size: 0.9rem; line-height: 1.25; color: var(--block-ink, var(--ink)); }
-.tt-block-time { margin-top: 0.1rem; color: var(--ink-soft); font-size: 0.74rem; }
-.tt-block-spots { color: var(--ink-soft); font-size: 0.74rem; margin-top: auto; }
+.tt-block-name { font-size: 0.78rem; line-height: 1.2; color: var(--block-ink, var(--ink)); }
+.tt-block-time { color: var(--ink-soft); font-size: 0.66rem; }
+.tt-block-spots { color: var(--ink-soft); font-size: 0.66rem; margin-top: auto; }
 .tt-block-spots.full { color: var(--danger); font-weight: 700; }
 
 /* A slot a student can take says so: it lifts on hover, the way a button
