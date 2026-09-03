@@ -291,6 +291,11 @@ test("the security headers cover every origin the site loads from", () => {
   // The directives that actually matter, and the values they must have.
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /script-src 'self' https:\/\/cdn\.jsdelivr\.net/);
+  // Cloudflare Web Analytics injects its beacon at the edge, so these two
+  // origins are in no source file. A tidy-up that removes "unused" origins
+  // would silently break analytics, hence the test.
+  assert.match(csp, /script-src[^;]*https:\/\/static\.cloudflareinsights\.com/);
+  assert.match(csp, /connect-src[^;]*https:\/\/cloudflareinsights\.com/);
   assert.doesNotMatch(csp.match(/script-src[^;]*/)[0], /unsafe-inline|unsafe-eval/,
     "script-src must not allow inline or eval");
   assert.match(csp, /frame-ancestors 'none'/, "the site should not be framable");

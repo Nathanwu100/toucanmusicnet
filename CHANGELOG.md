@@ -19,6 +19,16 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.21.1] - 2026-09-03
+
+### Fixed
+- **The CSP blocked Cloudflare Web Analytics.** Its beacon is injected at the
+  edge, after `_headers` has been served, so it appears in no source file and
+  the audit that built the policy never saw it. `script-src` now allows
+  `static.cloudflareinsights.com` and `connect-src` allows
+  `cloudflareinsights.com`, with a note in `_headers` and a test saying why
+  two origins that match nothing in the repo have to stay.
+
 ## [1.21.0] - 2026-09-03
 
 ### Security

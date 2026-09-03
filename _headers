@@ -7,9 +7,16 @@
 #
 # If you add a script tag, a font, or a third-party service, it has to be
 # added here too or the browser will refuse it. That refusal is the point.
+#
+# Two origins here appear nowhere in the source: Cloudflare Web Analytics
+# injects its beacon at the edge, after this file has been served. Searching
+# the repo for them finds nothing, so do not remove them as unused --
+# static.cloudflareinsights.com serves the beacon and cloudflareinsights.com
+# receives what it reports. Turning Web Analytics off is the only reason to
+# drop them.
 
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://vxjewlbbsdvhzpibkppg.supabase.co wss://vxjewlbbsdvhzpibkppg.supabase.co; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://vxjewlbbsdvhzpibkppg.supabase.co wss://vxjewlbbsdvhzpibkppg.supabase.co https://cloudflareinsights.com; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()
