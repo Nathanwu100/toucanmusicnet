@@ -537,13 +537,13 @@ test("once a student has a place, a narrow screen shows just that slot", () => {
   const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
 
-  assert.match(calendar, /const onlyMine = Boolean\(enrolledBlockId\) && narrow && isStudent/);
+  assert.match(calendar, /const onlyMine = focusOwn && Boolean\(enrolledBlockId\) && narrow/);
   // shown must be computed before the column count and headings read it.
   const fn = calendar.slice(calendar.indexOf("function renderBlockGrid(ctx)"));
   assert.ok(fn.indexOf("const shown =") < fn.indexOf("shown.length"),
     "shown has to be declared before its first use");
   // And there is always a way back to the whole grid.
-  assert.match(calendar, /See the whole timetable/);
+  assert.match(calendar, /See every slot|See the other instruments/);
   assert.match(calendar, /showWholeTimetable = true/);
   // Collapsed, the one block that matters keeps its detail.
   assert.match(css, /\.tt\.is-focused \.tt-block-time/);
@@ -637,4 +637,19 @@ test("a student is told which instrument they may book, and where to change it",
   // Pressing somebody else's column explains itself rather than doing nothing.
   assert.match(calendar, /is-other-instrument/);
   assert.match(calendar, /Change your instrument in Settings/);
+});
+
+test("a student sees only the column they can actually book", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+
+  // Their own instrument's column, and only when the class teaches it.
+  assert.match(calendar, /const ownColumn = isStudent && user\?\.instrument/);
+  assert.match(calendar, /columns\.some\(\(column\) => column\.slug === user\.instrument\)/);
+  assert.match(calendar, /column\.slug === user\.instrument/);
+  // Admins and signed-out visitors keep the whole grid.
+  assert.match(calendar, /let shown = columns;/);
+  // There is always a way to see the rest.
+  assert.match(calendar, /See the other instruments/);
+  // Filtering must not mutate the listing it was handed.
+  assert.match(calendar, /\.map\(\(column\) => \(\{\s*\.\.\.column,/);
 });

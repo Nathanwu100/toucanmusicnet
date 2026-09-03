@@ -524,18 +524,28 @@
     const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
     const open = event.enrollment_open && !hasEnded(event);
 
-    // Once a student has a place, the other columns are just context. On a
-    // narrow screen there is no room for context, so the grid collapses to
-    // the slot they hold, with a way back to the whole thing.
+    // A student can only book their own instrument, so by default that is the
+    // only column they are shown -- the other two were three quarters of the
+    // grid they could do nothing with. "See the other instruments" brings
+    // them back for anyone who wants the whole picture.
+    const ownColumn = isStudent && user?.instrument
+      && columns.some((column) => column.slug === user.instrument);
+    const focusOwn = ownColumn && !showWholeTimetable;
+
+    // Narrower still: once they hold a place, a phone shows just that slot.
     const narrow = window.matchMedia("(max-width: 620px)").matches;
-    const onlyMine = Boolean(enrolledBlockId) && narrow && isStudent && !showWholeTimetable;
-    const shown = onlyMine
-      ? columns.filter((column) => column.blocks.some((block) => block.id === enrolledBlockId))
-      : columns;
-    if (onlyMine) {
-      shown.forEach((column) => {
-        column.blocks = column.blocks.filter((block) => block.id === enrolledBlockId);
-      });
+    const onlyMine = focusOwn && Boolean(enrolledBlockId) && narrow;
+
+    let shown = columns;
+    if (focusOwn) {
+      shown = columns
+        .filter((column) => column.slug === user.instrument)
+        .map((column) => ({
+          ...column,
+          blocks: onlyMine
+            ? column.blocks.filter((block) => block.id === enrolledBlockId)
+            : column.blocks,
+        }));
     }
 
     const table = element("div", "tt");
@@ -597,9 +607,11 @@
         const offset = minutesBetween(startsAt, block.starts_at);
         const length = Math.max(10, minutesBetween(block.starts_at, block.ends_at));
         card.style.top = `${(offset / total) * 100}%`;
-        card.style.height = `${(length / total) * 100}%`;
+        // A few pixels off the height and width, so back-to-back slots read
+        // as separate boxes rather than one long band of colour.
+        card.style.height = `calc(${(length / total) * 100}% - 4px)`;
         card.style.left = `${(index / lanes) * 100}%`;
-        card.style.width = `${(1 / lanes) * 100}%`;
+        card.style.width = `calc(${(1 / lanes) * 100}% - ${lanes > 1 ? 4 : 0}px)`;
         lane.appendChild(card);
       }
       bodyRow.appendChild(lane);
@@ -608,8 +620,9 @@
     table.appendChild(bodyRow);
     host.appendChild(table);
 
-    if (onlyMine) {
-      const showAll = element("button", "btn btn-sm btn-quiet tt-show-all", "See the whole timetable");
+    if ((focusOwn && columns.length > shown.length) || onlyMine) {
+      const showAll = element("button", "btn btn-sm btn-quiet tt-show-all",
+        onlyMine && columns.length === 1 ? "See every slot" : "See the other instruments");
       showAll.type = "button";
       showAll.addEventListener("click", () => {
         showWholeTimetable = true;
@@ -630,8 +643,9 @@
           `This class does not teach ${user.instrument_name}, the instrument on your account. You can change that in `),
           settingsLink(), document.createTextNode("."));
       } else if (columns.length > 1) {
-        note.append(document.createTextNode(
-          `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
+        note.append(document.createTextNode(focusOwn
+          ? `Showing ${user.instrument_name} only, the instrument on your account. Change it in `
+          : `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
           settingsLink(), document.createTextNode("."));
       }
       if (note.childNodes.length) host.appendChild(note);

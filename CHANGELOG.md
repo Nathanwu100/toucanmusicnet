@@ -19,6 +19,18 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.19.0] - 2026-09-03
+
+### Changed
+- **A student sees only their own instrument's column.** The other two were
+  three quarters of a grid they could do nothing with. "See the other
+  instruments" brings the whole thing back for anyone who wants it. Admins
+  and signed-out visitors are unaffected.
+- **The timetable is roomier**: taller rows, wider gutters between columns,
+  and more padding inside each block. Back-to-back slots now leave a few
+  pixels between them, so a run of them reads as separate boxes rather than
+  one band of colour.
+
 ## [1.18.0] - 2026-09-03
 
 ### Added
