@@ -1603,6 +1603,7 @@ declare
   gone record;
   changed record;
   item jsonb;
+  booked_now int;
 begin
   if not public.is_admin() then
     raise exception 'Only an admin can change a class timetable.';
@@ -1650,6 +1651,20 @@ begin
         coalesce((item ->> 'capacity')::int, 4)
       );
     else
+      -- Capacity may be raised at will. Lowering it below the number of
+      -- students already in the slot would leave it oversubscribed, so that
+      -- is refused rather than silently accepted -- and refused before the
+      -- write, so an admin is told which slot and by how much instead of
+      -- discovering it later.
+      select count(*) into booked_now
+      from public.student_enrollments se
+      where se.block_id = (item ->> 'id')::uuid and se.status = 'active';
+      if coalesce((item ->> 'capacity')::int, 4) < booked_now then
+        raise exception 'The % slot already has % student% in it, so it cannot hold fewer than %.',
+          coalesce(nullif(item ->> 'label', ''), 'Session'), booked_now,
+          case when booked_now = 1 then '' else 's' end, booked_now;
+      end if;
+
       update public.class_time_blocks b
       set instrument = item ->> 'instrument',
           label = coalesce(nullif(item ->> 'label', ''), 'Session'),

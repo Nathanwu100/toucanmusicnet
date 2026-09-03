@@ -1874,6 +1874,10 @@
       row.append(input, element("span", "", instrument.name));
       $("#f-instruments").appendChild(row);
     });
+    // A signed-in account already names an instrument, so the filter only
+    // means something to a visitor browsing without one.
+    $("#instrument-filter-field").hidden = Boolean(user);
+
     if (user?.role === "admin") {
       $("#new-class").hidden = false;
       $("#new-event").hidden = false;

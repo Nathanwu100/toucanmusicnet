@@ -757,6 +757,19 @@
         const before = new Map((event.blocks || []).map((block) => [block.id, block]));
         const keep = new Set(blocks.map((block) => block.id));
 
+        // Capacity may be raised at will; lowering it below what is already
+        // booked would oversubscribe the slot, so it is refused up front.
+        for (const block of blocks) {
+          const booked = activeStudentEnrollments(db, classId)
+            .filter((row) => row.block_id === block.id).length;
+          if (block.capacity < booked) {
+            throw new Error(
+              `The ${block.label} slot already has ${booked} student${booked === 1 ? "" : "s"} in it, ` +
+              `so it cannot hold fewer than ${booked}.`
+            );
+          }
+        }
+
         for (const row of activeStudentEnrollments(db, classId)) {
           if (!row.block_id) continue;
           const kept = blocks.find((block) => block.id === row.block_id);

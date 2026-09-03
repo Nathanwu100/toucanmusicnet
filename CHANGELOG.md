@@ -19,6 +19,25 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.24.0] - 2026-09-03
+
+### Changed
+- **The instrument filter is hidden for anyone signed in.** An account already
+  names an instrument, so the control only means anything to a visitor
+  browsing the public schedule without one.
+
+### Fixed
+- **A slot's capacity could be dropped below the number of students already in
+  it**, quietly oversubscribing it. Raising it is still free and needs nobody
+  moved; lowering it as far as the booking count is fine; below that is
+  refused, and the refusal names the slot and the number.
+
+### Database
+- The guard is in `save_class_blocks`, so
+  `20260903000000_student_notices.sql` has to be **applied again** for it to
+  take effect on the server. The function is written with
+  `create or replace`, so re-running the whole migration is safe.
+
 ## [1.23.0] - 2026-09-03
 
 ### Changed

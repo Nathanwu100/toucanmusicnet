@@ -719,3 +719,75 @@ test("how many places are left is shown to the right of each slot", () => {
   // And it stays readable on the filled-in states.
   assert.match(css, /\.tt-block\.is-mine \.tt-block-spots \{[^}]*color: #fff/);
 });
+
+test("a slot's capacity can be raised freely but not below its bookings", async () => {
+  const { api } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
+  const currentBlocks = async () => (await api.listEvents())
+    .find((event) => event.id === created.id).blocks
+    .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+  const { id, time_slot_id, created_by, blocks, ...fields } = created;
+
+  // Two violin students take the four-place "Grade 3" slot.
+  const grade3 = (await currentBlocks()).find((row) => row.label === "Grade 3");
+  await api.login("ari@example.com", "toucan2026");
+  await api.joinClass(created.id, grade3.id);
+  await api.logout();
+  await api.signup({
+    name: "Second Violin", email: "second@example.com", password: "password1",
+    role: "student", instrument: "violin",
+  });
+  await api.joinClass(created.id, grade3.id);
+  await api.logout();
+
+  await api.login("admin", "toucan2026");
+  assert.equal((await api.listClassEnrollments(created.id)).length, 2);
+
+  // Raising it needs nobody moved, and the two already in it stay in it.
+  const raised = (await currentBlocks()).map((row) =>
+    (row.id === grade3.id ? { ...row, capacity: 9 } : row));
+  await api.updateEvent(created.id, { ...fields, blocks: raised });
+  let slot = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.id === grade3.id);
+  assert.equal(slot.capacity, 9);
+  assert.equal(slot.spots_left, 7);
+  assert.equal((await api.listClassEnrollments(created.id)).length, 2);
+
+  // Down to exactly what is booked is still fine.
+  const toTwo = (await currentBlocks()).map((row) =>
+    (row.id === grade3.id ? { ...row, capacity: 2 } : row));
+  await api.updateEvent(created.id, { ...fields, blocks: toTwo });
+  slot = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.id === grade3.id);
+  assert.equal(slot.capacity, 2);
+  assert.equal(slot.spots_left, 0);
+
+  // Below it is refused, and the refusal names the slot and the number.
+  const toOne = (await currentBlocks()).map((row) =>
+    (row.id === grade3.id ? { ...row, capacity: 1 } : row));
+  await assert.rejects(
+    api.updateEvent(created.id, { ...fields, blocks: toOne }),
+    /Grade 3 slot already has 2 students in it, so it cannot hold fewer than 2/
+  );
+
+  // Nobody was removed by the attempt.
+  assert.equal((await api.listClassEnrollments(created.id)).length, 2);
+});
+
+test("the migration refuses to shrink a slot below what is booked", () => {
+  const sql = fs.readFileSync(
+    path.join(__dirname, "../supabase/migrations/20260903000000_student_notices.sql"), "utf8");
+  assert.match(sql, /cannot hold fewer than/);
+  // Checked before the write, so the message can name the slot.
+  assert.match(sql, /select count\(\*\) into booked_now/);
+  assert.match(sql, /booked_now int;/);
+});
+
+test("the instrument filter is only for visitors without an account", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../calendar.html"), "utf8");
+  assert.match(markup, /id="instrument-filter-field" hidden/);
+  assert.match(calendar, /\$\("#instrument-filter-field"\)\.hidden = Boolean\(user\)/);
+});
