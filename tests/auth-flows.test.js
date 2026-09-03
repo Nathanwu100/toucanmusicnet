@@ -169,7 +169,7 @@ test("resending to an already-confirmed address is not treated as an error", asy
 });
 
 test("the signup page offers a way in when the address is taken", () => {
-  const page = fs.readFileSync(path.join(__dirname, "../signup.html"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "../js/page-signup.js"), "utf8");
   assert.match(page, /ex\.code === "email_exists"/);
   assert.match(page, /Log in instead/);
   // Whether the mail left has to travel to the verification page.
@@ -177,7 +177,8 @@ test("the signup page offers a way in when the address is taken", () => {
 });
 
 test("the verification page does not promise mail that was never sent", () => {
-  const page = fs.readFileSync(path.join(__dirname, "../verify-email.html"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "../js/page-verify-email.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../verify-email.html"), "utf8");
   assert.match(page, /pending\.sent === false/);
   assert.match(page, /did not go out/);
   assert.match(page, /email_rate_limited/);
@@ -234,11 +235,12 @@ test("reset refuses passwords that are too short", async () => {
 });
 
 test("the reset page checks the link before offering the form", () => {
-  const page = fs.readFileSync(path.join(__dirname, "../reset-password.html"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "../js/page-reset-password.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../reset-password.html"), "utf8");
   assert.match(page, /hasValidRecovery/);
   assert.match(page, /expired or has already been used/);
   assert.match(page, /do not match/, "should compare the two password fields");
-  assert.match(page, /<meta name="robots" content="noindex"/);
+  assert.match(markup, /<meta name="robots" content="noindex"/);
 });
 
 test("login offers a way to recover a forgotten password", () => {
@@ -267,4 +269,66 @@ test("join_class cannot hit the class_id ambiguity again", () => {
     // The upsert is what made this atomic under a race; it must survive.
     assert.match(body, /on conflict \(student_id, class_id\)/, `${label} lost the upsert`);
   }
+});
+
+test("no page carries an inline script, so the CSP can refuse them all", () => {
+  const pages = fs.readdirSync(path.join(__dirname, "..")).filter((f) => f.endsWith(".html"));
+  assert.ok(pages.length >= 8, "should be checking every page");
+  for (const page of pages) {
+    const html = fs.readFileSync(path.join(__dirname, "..", page), "utf8");
+    // A <script> with a body, as opposed to one with a src.
+    const inline = html.match(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/g) || [];
+    assert.equal(inline.length, 0,
+      `${page} has an inline script, which would force script-src 'unsafe-inline'`);
+  }
+});
+
+test("the security headers cover every origin the site loads from", () => {
+  const root = path.join(__dirname, "..");
+  const headers = fs.readFileSync(path.join(root, "_headers"), "utf8");
+  const csp = headers.match(/Content-Security-Policy: (.+)/)[1];
+
+  // The directives that actually matter, and the values they must have.
+  assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /script-src 'self' https:\/\/cdn\.jsdelivr\.net/);
+  assert.doesNotMatch(csp.match(/script-src[^;]*/)[0], /unsafe-inline|unsafe-eval/,
+    "script-src must not allow inline or eval");
+  assert.match(csp, /frame-ancestors 'none'/, "the site should not be framable");
+  assert.match(csp, /object-src 'none'/);
+  assert.match(csp, /base-uri 'self'/, "a stray <base> should not be able to redirect relative URLs");
+  assert.match(csp, /form-action 'self'/, "forms should not be able to post elsewhere");
+
+  for (const header of ["X-Content-Type-Options: nosniff", "Referrer-Policy:",
+                        "Permissions-Policy:", "X-Frame-Options: DENY"]) {
+    assert.ok(headers.includes(header), `missing ${header}`);
+  }
+
+  // Anything the site actually fetches has to be in connect/script/style/font.
+  const allowed = new Set(csp.match(/https:\/\/[a-z0-9.-]+/g) || []);
+  const linkOnly = new Set(["https://www.pexels.com", "https://opengameart.org",
+                            "https://toucan-music.com", "https://api.iconify.design",
+                            "https://semver.org"]);
+  const sources = ["css/style.css", ...fs.readdirSync(path.join(root, "js")).map((f) => `js/${f}`),
+                   ...fs.readdirSync(root).filter((f) => f.endsWith(".html"))];
+  for (const file of sources) {
+    for (const origin of fs.readFileSync(path.join(root, file), "utf8").match(/https:\/\/[a-z0-9.-]+/g) || []) {
+      assert.ok(allowed.has(origin) || linkOnly.has(origin),
+        `${file} loads from ${origin}, which the CSP does not allow`);
+    }
+  }
+});
+
+test("external links cannot reach back through window.opener", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  for (const link of app.match(/<a [^>]*target="_blank"[^>]*>/g) || []) {
+    assert.match(link, /rel="noopener noreferrer"/, `${link} needs noopener`);
+  }
+});
+
+test("a skipped page transition does not surface as a page error", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  assert.match(app, /unhandledrejection/);
+  assert.match(app, /transition was skipped/i);
+  // Narrow on purpose: only that rejection is swallowed, never anything else.
+  assert.match(app, /reason\?\.name === "AbortError"/);
 });

@@ -98,6 +98,19 @@
     });
   };
 
+  // Cross-document view transitions reject an internal promise with
+  // "AbortError: Transition was skipped" when a navigation interrupts one --
+  // clicking a second link while the first is still animating, most often.
+  // Nothing here started that transition and nothing can await it, so it
+  // surfaces as an unhandled rejection and looks like a broken page. Swallow
+  // exactly that one and let everything else through.
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    const skipped = reason?.name === "AbortError"
+      && /transition was skipped/i.test(String(reason?.message || ""));
+    if (skipped) event.preventDefault();
+  });
+
   window.escapeHtml = function (value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -183,8 +196,8 @@
       <div class="footer-base">
         <span>&copy; 2026 Toucan Music</span>
         <span class="footer-credits">
-          <a href="https://www.pexels.com" target="_blank" rel="noreferrer">Photography: Pexels</a>
-          <a href="https://opengameart.org/content/bird-2" target="_blank" rel="noreferrer">CC0 pixel bird: rmazanek</a>
+          <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">Photography: Pexels</a>
+          <a href="https://opengameart.org/content/bird-2" target="_blank" rel="noopener noreferrer">CC0 pixel bird: rmazanek</a>
         </span>
       </div>`;
   }

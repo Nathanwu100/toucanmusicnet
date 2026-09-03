@@ -19,6 +19,35 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.21.0] - 2026-09-03
+
+### Security
+- **A Content-Security-Policy, and the headers that go with it**, in a new
+  `_headers` file: `frame-ancestors 'none'` and `X-Frame-Options: DENY` so the
+  site cannot be framed, `object-src 'none'`, `base-uri 'self'`,
+  `form-action 'self'`, `nosniff`, a referrer policy, and a permissions policy
+  turning off geolocation, camera, microphone and payment.
+- **`script-src` carries no `'unsafe-inline'`.** The seven inline page scripts
+  moved into `js/page-*.js` so the policy can refuse inline script outright,
+  which is what makes a CSP worth having. `settings.html` lost its inline
+  redirect entirely -- the meta refresh above it already did the job.
+- External links get `rel="noopener noreferrer"` rather than `noreferrer`
+  alone, which matters on older browsers.
+
+### Fixed
+- `Uncaught (in promise) AbortError: Transition was skipped` in the console.
+  Cross-document view transitions reject an internal promise when a
+  navigation interrupts one; nothing here starts that transition or can await
+  it, so it surfaced as an unhandled rejection. That one rejection is now
+  swallowed, and only that one.
+
+### Notes
+- Reviewed the rest and found it sound: every dynamic value reaching
+  `innerHTML` is escaped or set through `textContent`, all fifteen
+  security-definer functions pin `search_path`, RLS is on for all eight
+  tables, `anon` has read access and nothing more, and the only function it
+  may execute is the public calendar listing.
+
 ## [1.20.0] - 2026-09-03
 
 ### Changed

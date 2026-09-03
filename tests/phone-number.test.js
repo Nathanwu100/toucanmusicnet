@@ -147,7 +147,7 @@ test("demo signup needs no verification, so it never diverts to the prompt", asy
 });
 
 test("the signup form only diverts to verification when it is pending", () => {
-  const signup = fs.readFileSync(path.join(__dirname, "../signup.html"), "utf8");
+  const signup = fs.readFileSync(path.join(__dirname, "../js/page-signup.js"), "utf8");
   assert.match(signup, /if \(user\.needs_verification\)/);
   assert.match(signup, /window\.location\.href = "verify-email\.html"/);
   // The address travels in sessionStorage, never the URL: it must not end up
@@ -157,14 +157,15 @@ test("the signup form only diverts to verification when it is pending", () => {
 });
 
 test("the verification page resends only to a pending address", () => {
-  const page = fs.readFileSync(path.join(__dirname, "../verify-email.html"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "../js/page-verify-email.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../verify-email.html"), "utf8");
   assert.match(page, /toucan_pending_verification_v1/);
   assert.match(page, /ToucanAPI\.resendConfirmation\(pending\.email\)/);
   // Arriving with nothing pending must disable the button rather than throw.
   assert.match(page, /resend\.disabled = true;/);
   // Supabase rate-limits these, so the button has to hold after a send.
   assert.match(page, /COOLDOWN_MS/);
-  assert.match(page, /<meta name="robots" content="noindex"/);
+  assert.match(markup, /<meta name="robots" content="noindex"/);
 });
 
 test("demo mode is distinguished from a broken Supabase connection", () => {
@@ -207,12 +208,13 @@ test("a configured deployment running on local data shows a banner", () => {
 });
 
 test("the diagnostics page names the failure modes that break signup", () => {
-  const page = fs.readFileSync(path.join(__dirname, "../diagnostics.html"), "utf8");
+  const page = fs.readFileSync(path.join(__dirname, "../js/page-diagnostics.js"), "utf8");
+  const markup = fs.readFileSync(path.join(__dirname, "../diagnostics.html"), "utf8");
   for (const check of ["Configuration", "Supabase client script", "Data layer", "Database", "Sign-ups", "Email confirmation", "Current session"]) {
     assert.ok(page.includes(check), `diagnostics should check ${check}`);
   }
   // The two that silently kill account creation.
   assert.match(page, /disable_signup/);
   assert.match(page, /mailer_autoconfirm/);
-  assert.match(page, /<meta name="robots" content="noindex"/);
+  assert.match(markup, /<meta name="robots" content="noindex"/);
 });
