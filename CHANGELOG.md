@@ -19,6 +19,18 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.15.0] - 2026-09-03
+
+### Changed
+- **Students take a slot by pressing the block itself**, the way you press an
+  event in a day calendar. The "Take this slot" button inside each block is
+  gone -- the block is the control. Leaving asks first, so a stray click
+  cannot drop a place.
+- **Blocks are coloured by instrument** -- piano green, violin coral, viola
+  plum -- tinted with a solid edge in the same hue, so a column reads at a
+  glance. The slot you are in is filled solid rather than tinted, and a full
+  one greys out and stops inviting a press.
+
 ## [1.14.1] - 2026-09-03
 
 ### Fixed

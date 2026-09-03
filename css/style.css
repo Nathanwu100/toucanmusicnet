@@ -1139,29 +1139,69 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .tt-rule { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
 .tt-rule-hour { background: var(--line-strong); }
 
+/* A block is filled in its instrument's colour, the way an event in a day
+   calendar carries its calendar's colour. --block-ink is the instrument hue
+   and --block-wash its tint; each column sets the pair, and everything below
+   reads from them. */
 .tt-block {
   position: absolute;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.05rem;
+  width: 100%;
   padding: 0.35rem 0.45rem;
-  border: 1px solid var(--primary);
-  border-left: 3px solid var(--primary);
+  border: 0;
+  border-left: 3px solid var(--block-ink, var(--primary));
   border-radius: 5px;
-  background: var(--primary-soft);
+  background: var(--block-wash, var(--primary-soft));
   color: var(--ink);
+  font: inherit;
+  text-align: left;
 }
-.tt-block.is-mine { border-color: var(--success); border-left-color: var(--success); background: var(--success-soft); }
-.tt-block.is-full { background: var(--paper-raise); border-color: var(--line-strong); border-left-color: var(--ink-soft); }
-.tt-block.is-draggable { cursor: grab; }
-.tt-block.is-draggable:active { cursor: grabbing; }
-.tt-block.is-dragging { opacity: 0.4; }
-.tt-block-name { font-size: 0.85rem; line-height: 1.2; }
+.tt-block[data-instrument="piano"]  { --block-ink: var(--piano);  --block-wash: var(--piano-soft); }
+.tt-block[data-instrument="violin"] { --block-ink: var(--violin); --block-wash: var(--violin-soft); }
+.tt-block[data-instrument="viola"]  { --block-ink: var(--viola);  --block-wash: var(--viola-soft); }
+.tt-block-name { font-size: 0.85rem; line-height: 1.2; color: var(--block-ink, var(--ink)); }
 .tt-block-time { color: var(--ink-soft); font-size: 0.7rem; }
 .tt-block-spots { color: var(--ink-soft); font-size: 0.7rem; margin-top: auto; }
 .tt-block-spots.full { color: var(--danger); font-weight: 700; }
-.tt-block .btn { margin-top: auto; padding: 0.2rem 0.5rem; font-size: 0.75rem; min-height: 0; }
+
+/* A slot a student can take says so: it lifts on hover, the way a button
+   does, because it is one. */
+.tt-block.is-bookable { cursor: pointer; transition: none; }
+.tt-block.is-bookable:hover {
+  background: var(--block-ink, var(--primary));
+  border-color: var(--block-ink, var(--primary));
+}
+.tt-block.is-bookable:hover .tt-block-name,
+.tt-block.is-bookable:hover .tt-block-time,
+.tt-block.is-bookable:hover .tt-block-spots { color: #fff; }
+.tt-block.is-bookable:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* The one you are in is filled solid, so your own place is unmistakable in a
+   grid of otherwise similar boxes. */
+.tt-block.is-mine {
+  background: var(--block-ink, var(--primary));
+  border-color: var(--block-ink, var(--primary));
+}
+.tt-block.is-mine .tt-block-name,
+.tt-block.is-mine .tt-block-time,
+.tt-block.is-mine .tt-block-spots { color: #fff; }
+.tt-block.is-mine .tt-block-time,
+.tt-block.is-mine .tt-block-spots { opacity: 0.86; }
+
+/* A full slot recedes and stops inviting a press. */
+.tt-block.is-full {
+  background: var(--paper-sunk);
+  border-left-color: var(--line-strong);
+  cursor: not-allowed;
+}
+.tt-block.is-full .tt-block-name { color: var(--ink-soft); }
+
+.tt-block.is-draggable { cursor: grab; }
+.tt-block.is-draggable:active { cursor: grabbing; }
+.tt-block.is-dragging { opacity: 0.4; }
 
 .block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; }
 

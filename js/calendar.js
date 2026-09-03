@@ -357,34 +357,53 @@
     }).map((entry, _, all) => ({ ...entry, lanes: Math.max(...all.map((row) => row.lane)) + 1 }));
   }
 
+  // A block reads like an event in a day calendar: filled in its instrument's
+  // colour, with the name and time inside it. For a student it is the button
+  // -- you click the slot you want, not a control tucked inside it.
   function blockCard(event, block, { isStudent, isAdmin, mine, joinable }) {
-    const card = element("div", "tt-block");
+    const left = Number(block.spots_left) || 0;
+    const full = left === 0 && !mine;
+    // Students press the block itself; admins get a div they can drag.
+    const interactive = isStudent && joinable && !full;
+    const card = element(interactive ? "button" : "div", "tt-block");
+    if (interactive) card.type = "button";
     card.dataset.blockId = blockKey(block);
     card.dataset.instrument = block.instrument;
-    if (block.is_mine) card.classList.add("is-mine");
-    if (!block.spots_left) card.classList.add("is-full");
+    if (mine) card.classList.add("is-mine");
+    if (full) card.classList.add("is-full");
 
     card.append(
       element("strong", "tt-block-name", block.label || "Session"),
       element("span", "tt-block-time", `${fmtTime(block.starts_at)} - ${fmtTime(block.ends_at)}`)
     );
-    const left = Number(block.spots_left) || 0;
     card.appendChild(element(
       "span",
-      `tt-block-spots${left === 0 ? " full" : ""}`,
-      block.is_mine ? "You are in this one" : left === 0 ? "Full" : `${left} of ${block.capacity} left`
+      `tt-block-spots${full ? " full" : ""}`,
+      mine ? "You are in this one" : full ? "Full" : `${left} of ${block.capacity} left`
     ));
 
     if (isAdmin) {
       card.draggable = true;
       card.classList.add("is-draggable");
-      card.title = "Drag to move this block";
-    } else if (isStudent && joinable) {
-      const action = element("button", `btn btn-sm ${mine ? "btn-quiet" : "btn-primary"}`,
-        mine ? "Leave" : "Take this slot");
-      action.disabled = !mine && left === 0;
-      action.addEventListener("click", async () => {
-        action.disabled = true;
+      card.title = "Drag to move this block, or click to edit it";
+      return card;
+    }
+
+    if (isStudent && joinable) {
+      card.classList.add("is-bookable");
+      // A screen reader gets the whole sentence, not three loose fragments.
+      card.setAttribute("aria-label", mine
+        ? `Leave ${block.label} at ${fmtTime(block.starts_at)}`
+        : full
+          ? `${block.label} at ${fmtTime(block.starts_at)} is full`
+          : `Take ${block.label} at ${fmtTime(block.starts_at)}, ${left} of ${block.capacity} places left`);
+      if (full) {
+        card.setAttribute("aria-disabled", "true");
+        return card;
+      }
+      card.addEventListener("click", async () => {
+        if (mine && !confirm(`Leave the ${block.label} slot at ${fmtTime(block.starts_at)}?`)) return;
+        card.disabled = true;
         try {
           if (mine) {
             await api.leaveClass(event.id);
@@ -396,10 +415,9 @@
           await refresh();
         } catch (error) {
           toast(error.message, "error");
-          action.disabled = false;
+          card.disabled = false;
         }
       });
-      card.appendChild(action);
     }
     return card;
   }

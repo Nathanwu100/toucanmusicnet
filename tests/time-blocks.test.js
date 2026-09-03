@@ -474,3 +474,25 @@ test("the grid never sends its local drafting key to the server", () => {
   assert.match(calendar, /const blockKey = \(block\) => block\.id \|\| block\._key/);
   assert.match(calendar, /card\.dataset\.blockId = blockKey\(block\)/);
 });
+
+test("a student presses the block itself to take a slot", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  // The block is the control, not a container with a control inside it.
+  assert.match(calendar, /element\(interactive \? "button" : "div", "tt-block"\)/);
+  assert.doesNotMatch(calendar, /Take this slot/, "no separate button inside the block");
+  // A full slot is not pressable, and says so to a screen reader.
+  assert.match(calendar, /aria-disabled/);
+  // Leaving your own slot asks first -- a stray click should not drop it.
+  assert.match(calendar, /Leave the \$\{block\.label\} slot/);
+  // Each instrument colours its own blocks.
+  for (const instrument of ["piano", "violin", "viola"]) {
+    assert.ok(
+      css.includes(`.tt-block[data-instrument="${instrument}"]`),
+      `${instrument} blocks need their own colour`
+    );
+  }
+  // The slot you are in is filled solid so it cannot be mistaken.
+  assert.match(css, /\.tt-block\.is-mine \{[^}]*background: var\(--block-ink/);
+});
