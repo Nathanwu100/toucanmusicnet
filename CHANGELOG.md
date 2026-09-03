@@ -19,6 +19,16 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.23.0] - 2026-09-03
+
+### Changed
+- **How many places are left now sits to the right of each slot's name**, as a
+  small pill in that instrument's colour, so a column of them lines up and can
+  be read straight down. "Full" is red, and the slot you hold reads "Yours".
+- The label is short -- "4 left" rather than "4 of 6 places left" -- because a
+  grid column is narrow and the long form wrapped. The full sentence is still
+  the tooltip and what a screen reader announces.
+
 ## [1.22.0] - 2026-09-03
 
 ### Fixed

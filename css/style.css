@@ -1240,9 +1240,16 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .tt-block {
   position: absolute;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
+  /* Name and remaining count share the first line, the count pushed right so
+     a column of them lines up and can be read straight down. The time sits
+     under both. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name  spots"
+    "time  time";
+  align-content: start;
+  gap: 0.05rem 0.35rem;
   width: 100%;
   padding: 0.3rem 0.4rem;
   border: 0;
@@ -1256,10 +1263,21 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .tt-block[data-instrument="piano"]  { --block-ink: var(--piano);  --block-wash: var(--piano-soft); }
 .tt-block[data-instrument="violin"] { --block-ink: var(--violin); --block-wash: var(--violin-soft); }
 .tt-block[data-instrument="viola"]  { --block-ink: var(--viola);  --block-wash: var(--viola-soft); }
-.tt-block-name { font-size: 0.78rem; line-height: 1.2; color: var(--block-ink, var(--ink)); }
-.tt-block-time { color: var(--ink-soft); font-size: 0.66rem; }
-.tt-block-spots { color: var(--ink-soft); font-size: 0.66rem; margin-top: auto; }
-.tt-block-spots.full { color: var(--danger); font-weight: 700; }
+.tt-block-name { grid-area: name; font-size: 0.78rem; line-height: 1.2; color: var(--block-ink, var(--ink)); min-width: 0; }
+.tt-block-time { grid-area: time; color: var(--ink-soft); font-size: 0.66rem; }
+.tt-block-spots {
+  grid-area: spots;
+  justify-self: end;
+  align-self: start;
+  white-space: nowrap;
+  padding: 0.02rem 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--block-ink, var(--primary)) 14%, transparent);
+  color: var(--block-ink, var(--ink-soft));
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.tt-block-spots.full { background: var(--danger-soft); color: var(--danger); }
 
 /* A slot a student can take says so: it lifts on hover, the way a button
    does, because it is one. */
@@ -1269,8 +1287,8 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   border-color: var(--block-ink, var(--primary));
 }
 .tt-block.is-bookable:hover .tt-block-name,
-.tt-block.is-bookable:hover .tt-block-time,
-.tt-block.is-bookable:hover .tt-block-spots { color: #fff; }
+.tt-block.is-bookable:hover .tt-block-time { color: #fff; }
+.tt-block.is-bookable:hover .tt-block-spots { background: rgba(255, 255, 255, 0.24); color: #fff; }
 .tt-block.is-bookable:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
 /* The one you are in is filled solid, so your own place is unmistakable in a
@@ -1280,8 +1298,8 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   border-color: var(--block-ink, var(--primary));
 }
 .tt-block.is-mine .tt-block-name,
-.tt-block.is-mine .tt-block-time,
-.tt-block.is-mine .tt-block-spots { color: #fff; }
+.tt-block.is-mine .tt-block-time { color: #fff; }
+.tt-block.is-mine .tt-block-spots { background: rgba(255, 255, 255, 0.22); color: #fff; }
 .tt-block.is-mine .tt-block-time,
 .tt-block.is-mine .tt-block-spots { opacity: 0.86; }
 
@@ -1376,15 +1394,15 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   height: auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "name time" "spots spots";
-  align-items: baseline;
-  gap: 0.15rem 0.6rem;
+  grid-template-areas: "name spots" "time spots";
+  align-items: center;
+  gap: 0.1rem 0.7rem;
   padding: 0.6rem 0.7rem;
 }
-.tt-block-row .tt-block-name { grid-area: name; font-size: 0.92rem; }
+.tt-block-row .tt-block-name { font-size: 0.92rem; }
 /* The whole point of the list: the time is always on the row. */
-.tt-block-row .tt-block-time { grid-area: time; font-size: 0.78rem; white-space: nowrap; }
-.tt-block-row .tt-block-spots { grid-area: spots; font-size: 0.76rem; margin-top: 0.1rem; }
+.tt-block-row .tt-block-time { font-size: 0.78rem; white-space: nowrap; }
+.tt-block-row .tt-block-spots { align-self: center; font-size: 0.72rem; padding: 0.1rem 0.45rem; }
 
 /* ------------------------------------------------------------ block editor */
 /* The dialog embeds the same timetable the calendar shows, at a smaller

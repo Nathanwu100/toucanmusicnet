@@ -408,11 +408,23 @@
       element("strong", "tt-block-name", block.label || "Session"),
       element("span", "tt-block-time", `${fmtTime(block.starts_at)} - ${fmtTime(block.ends_at)}`)
     );
-    card.appendChild(element(
+    // The count sits to the right of the name, where it can be compared down
+    // a column at a glance. Short on purpose: "2 left" reads at the width a
+    // grid column actually has, where "2 of 3 places left" would wrap.
+    const count = element(
       "span",
       `tt-block-spots${full ? " full" : ""}`,
-      mine ? "You are in this one" : full ? "Full" : `${left} of ${block.capacity} left`
-    ));
+      mine ? "Yours" : full ? "Full" : `${left} left`
+    );
+    // The long form is what a screen reader gets, and what shows on a tooltip.
+    const spoken = mine
+      ? "You are in this one"
+      : full
+        ? `Full, ${block.capacity} of ${block.capacity} taken`
+        : `${left} of ${block.capacity} place${block.capacity === 1 ? "" : "s"} left`;
+    count.title = spoken;
+    count.setAttribute("aria-label", spoken);
+    card.append(count);
 
     if (isAdmin) {
       card.draggable = true;
