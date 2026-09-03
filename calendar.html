@@ -21,8 +21,8 @@
   <script src="js/tutorial.js" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=22" defer></script>
-  <script src="js/calendar.js?v=21" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=43" />
+  <script src="js/calendar.js?v=24" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=47" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -89,13 +89,11 @@
           <button class="btn btn-primary btn-sm" id="day-new-event" hidden><iconify-icon icon="pixelarticons:calendar-plus" aria-hidden="true"></iconify-icon>Add event</button>
         </div>
         <div class="day-event-list" id="day-event-list"></div>
+        <!-- A class's timetable opens here, under the day it belongs to,
+             rather than in a separate slab further down the page. -->
+        <section class="class-timetable" id="class-timetable" aria-live="polite" hidden></section>
       </aside>
     </div>
-
-    <!-- A class split into time blocks needs real width for its per-instrument
-         columns, so its timetable opens here rather than in the narrow day
-         panel beside the calendar. -->
-    <section class="class-timetable" id="class-timetable" aria-live="polite" hidden></section>
 
     <details class="past-log" id="past-log">
       <summary class="past-log-summary">

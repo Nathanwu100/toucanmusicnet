@@ -496,3 +496,46 @@ test("a student presses the block itself to take a slot", () => {
   // The slot you are in is filled solid so it cannot be mistaken.
   assert.match(css, /\.tt-block\.is-mine \{[^}]*background: var\(--block-ink/);
 });
+
+test("the timetable lives in the day panel, and the panel is sized for it", () => {
+  const markup = fs.readFileSync(path.join(__dirname, "../calendar.html"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  // The timetable opens under the day it belongs to, not in a slab further
+  // down the page.
+  const panel = markup.slice(markup.indexOf('id="day-panel"'), markup.indexOf("</aside>"));
+  assert.ok(panel.includes('id="class-timetable"'), "the timetable belongs inside the day panel");
+  // Which means the panel needs the width a three-column grid asks for.
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(380px, 520px\)/);
+});
+
+test("a stacked layout takes you to the day you tapped", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  assert.match(calendar, /const stackedLayout = \(\) => window\.matchMedia\("\(max-width: 1000px\)"\)/);
+  assert.match(calendar, /function revealDayPanel/);
+  assert.match(calendar, /selectDate\(date, \{ reveal: true \}\)/);
+  // The stylesheet has to agree about when the layout stacks.
+  assert.match(css, /@media \(max-width: 1000px\)/);
+  // Qualified, or the sticky rule further down the file wins on source order.
+  assert.match(css, /\.calendar-layout \.day-panel \{[^}]*position: static/);
+  // Scrolled-to panels should clear the sticky nav.
+  assert.match(css, /scroll-margin-top/);
+});
+
+test("once a student has a place, a narrow screen shows just that slot", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  assert.match(calendar, /const onlyMine = Boolean\(enrolledBlockId\) && narrow && isStudent/);
+  // shown must be computed before the column count and headings read it.
+  const fn = calendar.slice(calendar.indexOf("function renderBlockGrid(ctx)"));
+  assert.ok(fn.indexOf("const shown =") < fn.indexOf("shown.length"),
+    "shown has to be declared before its first use");
+  // And there is always a way back to the whole grid.
+  assert.match(calendar, /See the whole timetable/);
+  assert.match(calendar, /showWholeTimetable = true/);
+  // Collapsed, the one block that matters keeps its detail.
+  assert.match(css, /\.tt\.is-focused \.tt-block-time/);
+});

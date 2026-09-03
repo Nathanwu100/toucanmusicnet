@@ -931,13 +931,31 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .instrument-filter label { font-size: 0.78rem; font-weight: 700; }
 .instrument-filter select { min-width: 150px; padding: 0.42rem 0.6rem; border: 1px solid var(--line); border-radius: 5px; background: var(--paper-raise); color: var(--ink); font: inherit; }
 
+/* The day panel carries the timetable now, so it takes a larger share of the
+   row than a sidebar would: three instrument columns and a time axis need
+   room, and the month grid reads fine narrower. */
 .calendar-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
   align-items: start;
   gap: clamp(1rem, 2.5vw, 2rem);
 }
 .calendar-main { min-width: 0; }
+
+/* Stacked: the month grid, then the day you tapped underneath it. The script
+   scrolls to the panel on selection, because otherwise a tap near the top of
+   the month looks like it did nothing at all. This breakpoint is duplicated
+   in stackedLayout() in js/calendar.js -- move both together. */
+@media (max-width: 1000px) {
+  .calendar-layout { grid-template-columns: 1fr; }
+  /* Qualified so it beats the .day-panel sticky rule further down the file,
+     which would otherwise win on source order alone. */
+  .calendar-layout .day-panel {
+    position: static;
+    max-height: none;
+    scroll-margin-top: 4.8rem;
+  }
+}
 
 .cal-grid {
   display: block;
@@ -1076,18 +1094,25 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 /* -------------------------------------------------------- class timetable */
 .class-timetable {
-  margin-top: clamp(1.2rem, 3vw, 2rem);
-  padding: clamp(1.1rem, 3vw, 1.6rem);
-  border: 1px solid var(--line);
-  border-left: 4px solid var(--primary);
-  border-radius: 8px;
-  background: var(--paper-raise);
-  box-shadow: var(--shadow-1);
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
 }
-.timetable-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
-.timetable-head h2 { font-size: clamp(1.15rem, 2.4vw, 1.5rem); margin-top: 0.15rem; }
+/* Inside the panel the grid has less room, so the axis narrows and the
+   per-block detail shrinks rather than the columns. */
+.class-timetable .tt { --tt-axis: 46px; --tt-px-per-minute: 1.6px; }
+.class-timetable .tt-block { padding: 0.28rem 0.4rem; }
+.class-timetable .tt-block-name { font-size: 0.78rem; }
+.class-timetable .tt-block-time { font-size: 0.65rem; }
+.class-timetable .tt-block-spots { font-size: 0.65rem; }
+.class-timetable .tt-tick { font-size: 0.65rem; }
+.class-timetable .instrument-badge { font-size: 0.6rem; padding: 0.1rem 0.32rem; }
+.timetable-head { margin-bottom: 0.5rem; }
+.timetable-head h2 { font-size: 1.05rem; margin-top: 0.1rem; }
+/* The panel heading already names the day, so the timetable does not repeat it. */
+.class-timetable .timetable-when { display: none; }
 .timetable-when { margin-top: 0.25rem; color: var(--ink-soft); font-size: 0.88rem; }
-.timetable-hint { color: var(--ink-soft); font-size: 0.82rem; }
+.timetable-hint { margin-top: 0.3rem; color: var(--ink-soft); font-size: 0.78rem; }
 
 /* ---------------------------------------------------------- timetable grid */
 /* A slice of a day calendar. The class's start sits at the top, its end at
@@ -1199,6 +1224,8 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 .tt-block.is-full .tt-block-name { color: var(--ink-soft); }
 
+.tt-show-all { margin-top: 0.6rem; width: 100%; }
+
 .tt-block.is-draggable { cursor: grab; }
 .tt-block.is-draggable:active { cursor: grabbing; }
 .tt-block.is-dragging { opacity: 0.4; }
@@ -1254,6 +1281,11 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .tt { --tt-axis: 46px; --tt-px-per-minute: 2.6px; }
   .tt-block-time, .tt-block-spots { display: none; }
   .tt-block-name { font-size: 0.78rem; }
+  /* Collapsed to a single slot there is room for the detail again, and it is
+     the one block whose time actually matters to the reader. */
+  .tt.is-focused .tt-block-time,
+  .tt.is-focused .tt-block-spots { display: block; }
+  .tt.is-focused .tt-block-name { font-size: 0.9rem; }
 }
 
 /* ------------------------------------------------------------ block editor */
@@ -1821,8 +1853,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .program-track p { grid-column: 3; }
   .cta-band { grid-template-columns: auto minmax(0, 1fr); }
   .cta-band .btn { grid-column: 2; justify-self: start; }
-  .calendar-layout { grid-template-columns: 1fr; }
-  .day-panel { position: static; max-height: none; }
   .home-summary { grid-template-columns: 1fr; }
   .home-summary-actions { justify-content: flex-start; }
   .mission-band, .about-band { grid-template-columns: 1fr; }

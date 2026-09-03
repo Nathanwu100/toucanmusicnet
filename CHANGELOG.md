@@ -19,6 +19,25 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.16.0] - 2026-09-03
+
+### Changed
+- **The timetable moved into the selected-day panel**, under the class it
+  belongs to, instead of a separate slab further down the page. The panel is
+  wider to hold it (380-520px) and the grid is compressed to fit.
+- **On a stacked layout the day panel sits under the month grid and tapping a
+  day scrolls you to it.** A tap near the top of the month used to look like
+  it had done nothing. The calendar now stacks at 1000px rather than 900,
+  because the wider panel runs out of room sooner.
+- **A student who already has a place sees only that slot on a narrow
+  screen**, filled solid in their instrument's colour, with the time and
+  status kept because there is room for them once the other columns are gone.
+  "See the whole timetable" brings the rest back.
+
+### Fixed
+- The day panel stayed sticky on a stacked layout: the rule that unsticks it
+  sat above the rule that sticks it, and lost on source order.
+
 ## [1.15.0] - 2026-09-03
 
 ### Changed

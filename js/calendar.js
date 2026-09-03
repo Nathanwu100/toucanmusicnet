@@ -23,6 +23,8 @@
   // Set from ?event= on arrival, consumed by the first render, then cleared.
   // A reminder or a card on the home page links here naming its event.
   let pendingEventId = new URLSearchParams(window.location.search).get("event");
+  // Set when a student asks to see past their own slot on a narrow screen.
+  let showWholeTimetable = false;
 
   const grid = $("#cal-grid");
   const title = $("#cal-title");
@@ -62,10 +64,27 @@
     return node;
   }
 
-  function selectDate(date) {
+  // Below the breakpoint the day panel sits under the month grid, far enough
+  // down that tapping a day looks like it did nothing. Same query the
+  // stylesheet uses, so the two cannot disagree about when that is true.
+  const stackedLayout = () => window.matchMedia("(max-width: 1000px)").matches;
+
+  function revealDayPanel() {
+    if (!stackedLayout()) return;
+    const panel = $("#day-panel");
+    if (!panel) return;
+    // After the panel has been redrawn, not before, or it scrolls to the
+    // height the old contents happened to have.
+    requestAnimationFrame(() => {
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function selectDate(date, options = {}) {
     selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     current = new Date(date.getFullYear(), date.getMonth(), 1);
     render();
+    if (options.reveal) revealDayPanel();
   }
 
   // The scope line says what is on screen. It is never a login wall: the
@@ -168,7 +187,7 @@
         cell.appendChild(chip);
       });
       if (dayEvents.length > 1) cell.appendChild(element("span", "chip-more", `+${dayEvents.length - 1} more`));
-      cell.addEventListener("click", () => selectDate(date));
+      cell.addEventListener("click", () => selectDate(date, { reveal: true }));
       daysGrid.appendChild(cell);
     }
 
@@ -460,14 +479,32 @@
     }
     host.appendChild(head);
 
+    const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
+    const open = event.enrollment_open && !hasEnded(event);
+
+    // Once a student has a place, the other columns are just context. On a
+    // narrow screen there is no room for context, so the grid collapses to
+    // the slot they hold, with a way back to the whole thing.
+    const narrow = window.matchMedia("(max-width: 620px)").matches;
+    const onlyMine = Boolean(enrolledBlockId) && narrow && isStudent && !showWholeTimetable;
+    const shown = onlyMine
+      ? columns.filter((column) => column.blocks.some((block) => block.id === enrolledBlockId))
+      : columns;
+    if (onlyMine) {
+      shown.forEach((column) => {
+        column.blocks = column.blocks.filter((block) => block.id === enrolledBlockId);
+      });
+    }
+
     const table = element("div", "tt");
-    table.style.setProperty("--tt-columns", String(columns.length));
+    table.style.setProperty("--tt-columns", String(shown.length));
+    if (onlyMine) table.classList.add("is-focused");
     table.style.setProperty("--tt-minutes", String(total));
 
     // Column headings sit above the scrolling body so they stay readable.
     const headings = element("div", "tt-headings");
     headings.appendChild(element("span", "tt-axis-head", ""));
-    columns.forEach((column) => {
+    shown.forEach((column) => {
       const cell = element("span", "tt-heading", "");
       const badge = element("span", "instrument-badge", column.name);
       badge.dataset.instrument = column.slug;
@@ -493,10 +530,8 @@
     axis.appendChild(label(endsAt, "tt-tick-edge"));
     bodyRow.appendChild(axis);
 
-    const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
-    const open = event.enrollment_open && !hasEnded(event);
 
-    for (const column of columns) {
+    for (const column of shown) {
       const lane = element("div", "tt-column");
       lane.dataset.instrument = column.slug;
 
@@ -530,6 +565,16 @@
 
     table.appendChild(bodyRow);
     host.appendChild(table);
+
+    if (onlyMine) {
+      const showAll = element("button", "btn btn-sm btn-quiet tt-show-all", "See the whole timetable");
+      showAll.type = "button";
+      showAll.addEventListener("click", () => {
+        showWholeTimetable = true;
+        renderBlockGrid(ctx);
+      });
+      host.appendChild(showAll);
+    }
     if (isAdmin) {
       enableBlockDragging(table, ctx);
       enableBlockCreation(table, ctx);
@@ -1169,6 +1214,7 @@
       timetable.hidden = true;
       timetable.innerHTML = "";
     }
+    showWholeTimetable = false;
     const dayEvents = eventsForDate(selectedDate);
     $("#selected-day-title").textContent = selectedDate.toLocaleDateString([], {
       weekday: "long", month: "long", day: "numeric",
