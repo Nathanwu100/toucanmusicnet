@@ -421,7 +421,13 @@
         return card;
       }
       card.addEventListener("click", async () => {
-        if (mine && !confirm(`Leave the ${block.label} slot at ${fmtTime(block.starts_at)}?`)) return;
+        if (mine && !(await confirmDialog({
+          title: "Leave this slot?",
+          body: `You are booked into ${block.label} at ${fmtTime(block.starts_at)}. Leaving frees the place for somebody else.`,
+          confirmLabel: "Leave the slot",
+          cancelLabel: "Stay in it",
+          tone: "danger",
+        }))) return;
         card.disabled = true;
         try {
           if (mine) {
@@ -971,7 +977,12 @@
       const drop = element("button", "btn btn-sm btn-danger", "Remove");
       drop.type = "button";
       drop.addEventListener("click", async () => {
-        if (!confirm(`Remove ${entry.student_name} from this class? They will be told, and asked to pick another time.`)) return;
+        if (!(await confirmDialog({
+          title: `Remove ${entry.student_name}?`,
+          body: "Their place is cancelled. They will be told the next time they open the site, and asked to pick another time.",
+          confirmLabel: "Remove them",
+          tone: "danger",
+        }))) return;
         drop.disabled = true;
         try {
           await api.removeEnrollment(entry.enrollment_id, "An admin removed you from this class.");
@@ -1346,7 +1357,12 @@
             toast(`This class has ${active} active student enrollment${active === 1 ? "" : "s"}. Students must leave or transfer before deletion.`, "error");
             return;
           }
-          if (!confirm(`Delete “${event.title}”? Volunteer signups will also be removed.`)) return;
+          if (!(await confirmDialog({
+            title: `Delete “${event.title}”?`,
+            body: "The class and every volunteer signup on it are removed. This cannot be undone.",
+            confirmLabel: "Delete it",
+            tone: "danger",
+          }))) return;
           remove.disabled = true;
           try {
             await api.deleteEvent(event.id);

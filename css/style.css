@@ -752,6 +752,52 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   display: grid;
   gap: 0.6rem;
 }
+
+/* A notice that has to be answered takes the middle of the screen. */
+.notice-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(16, 42, 29, 0.42);
+  backdrop-filter: blur(2px);
+}
+.notice-stack.notice-centred {
+  position: static;
+  width: min(440px, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+}
+.notice-centred .notice-card { padding: 1.4rem 1.5rem; border-left-width: 5px; }
+.notice-centred .notice-card strong { font-size: 1.15rem; }
+.notice-centred .notice-card p { font-size: 0.94rem; }
+.notice-centred .notice-actions { margin-top: 1.1rem; }
+
+/* ------------------------------------------------------- confirm dialog */
+/* Replaces window.confirm, so a destructive question looks like the rest of
+   the site and can say what it is actually about to do. */
+.dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(16, 42, 29, 0.42);
+  backdrop-filter: blur(2px);
+}
+.dialog {
+  width: min(420px, 100%);
+  padding: 1.5rem;
+  border-radius: 10px;
+  background: var(--paper-raise);
+  box-shadow: var(--shadow-2);
+}
+.dialog h2 { font-size: 1.2rem; }
+.dialog p { margin-top: 0.5rem; color: var(--ink-soft); font-size: 0.94rem; line-height: 1.6; }
+.dialog-actions { display: flex; gap: 0.6rem; justify-content: flex-end; flex-wrap: wrap; margin-top: 1.4rem; }
 .notice-card {
   padding: 0.95rem 1.05rem;
   border: 1px solid var(--line);

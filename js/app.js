@@ -32,6 +32,72 @@
     }, 5200);
   };
 
+  // A styled confirmation, in place of the browser's own. Resolves true or
+  // false, so callers read the same way `confirm()` did. Centred, because a
+  // question worth interrupting for should not be off in a corner.
+  window.confirmDialog = function ({ title, body, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "primary" }) {
+    return new Promise((resolve) => {
+      const scrim = document.createElement("div");
+      scrim.className = "dialog-scrim";
+      const panel = document.createElement("div");
+      panel.className = "dialog";
+      panel.setAttribute("role", "alertdialog");
+      panel.setAttribute("aria-modal", "true");
+
+      const heading = document.createElement("h2");
+      heading.textContent = title;
+      panel.appendChild(heading);
+      if (body) {
+        const copy = document.createElement("p");
+        copy.textContent = body;
+        panel.appendChild(copy);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "dialog-actions";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.className = "btn btn-quiet";
+      cancel.textContent = cancelLabel;
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = `btn ${tone === "danger" ? "btn-danger" : "btn-primary"}`;
+      go.textContent = confirmLabel;
+      actions.append(cancel, go);
+      panel.appendChild(actions);
+      scrim.appendChild(panel);
+      document.body.appendChild(scrim);
+
+      const previouslyFocused = document.activeElement;
+      go.focus();
+
+      const close = (answer) => {
+        document.removeEventListener("keydown", onKey, true);
+        scrim.remove();
+        // Put focus back where it was, or it lands on <body> and the next
+        // Tab starts from the top of the page.
+        if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+        resolve(answer);
+      };
+      const onKey = (event) => {
+        if (event.key === "Escape") { event.preventDefault(); close(false); }
+        // A modal that lets Tab wander behind it is not modal.
+        if (event.key === "Tab") {
+          const focusable = [cancel, go];
+          const index = focusable.indexOf(document.activeElement);
+          event.preventDefault();
+          focusable[(index + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length].focus();
+        }
+      };
+      document.addEventListener("keydown", onKey, true);
+      cancel.addEventListener("click", () => close(false));
+      go.addEventListener("click", () => close(true));
+      scrim.addEventListener("click", (event) => {
+        if (event.target === scrim) close(false);
+      });
+    });
+  };
+
   window.escapeHtml = function (value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -573,9 +639,14 @@
     }
     if (!notices.length) return;
 
+    // Losing a place is news that needs answering, so it interrupts: a
+    // centred dialog over a scrim rather than a card in the corner. Being
+    // moved is only worth knowing, so that stays out of the way.
+    const needsAnswer = notices.some((notice) => notice.kind !== "moved");
     const host = document.createElement("div");
-    host.className = "notice-stack";
-    host.setAttribute("role", "alert");
+    host.className = needsAnswer ? "notice-stack notice-centred" : "notice-stack";
+    host.setAttribute("role", needsAnswer ? "alertdialog" : "alert");
+    if (needsAnswer) host.setAttribute("aria-modal", "true");
 
     for (const notice of notices) {
       const card = document.createElement("div");
@@ -623,7 +694,7 @@
         try {
           await api.resolveNotice(notice.id);
           card.remove();
-          if (!host.querySelector(".notice-card")) host.remove();
+          if (!host.querySelector(".notice-card")) (host.closest(".notice-scrim") || host).remove();
         } catch (error) {
           toast(error.message, "error");
           dismiss.disabled = false;
@@ -632,6 +703,17 @@
       actions.appendChild(dismiss);
       card.appendChild(actions);
       host.appendChild(card);
+    }
+
+    if (needsAnswer) {
+      // Clicking the backdrop does not dismiss it -- the notice is the only
+      // place they are told, and a stray click should not lose it.
+      const scrim = document.createElement("div");
+      scrim.className = "notice-scrim";
+      scrim.appendChild(host);
+      document.body.appendChild(scrim);
+      host.querySelector("a, button")?.focus();
+      return;
     }
     document.body.appendChild(host);
   }

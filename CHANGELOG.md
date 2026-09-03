@@ -19,6 +19,31 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.17.0] - 2026-09-03
+
+### Added
+- **A proper confirmation dialog** in place of `window.confirm`. Leaving a
+  slot, removing a student, and deleting a class each say what is about to
+  happen and name the button after the action. Escape cancels, Tab stays
+  inside it, and focus returns where it came from.
+
+### Changed
+- **A notice that needs answering is centred over the page.** Losing a place
+  interrupts, because the notice is the only place a student is told; being
+  moved keeps its place still, so that one stays in the corner. The backdrop
+  does not dismiss it -- a stray click should not lose the message.
+
+### Performance
+- **Icons ship with the site.** They came from the Iconify CDN at runtime: a
+  script, then an API call asking for whichever icons the page used, about
+  800 ms of the load and the reason icons appeared late. The 21 in use are
+  bundled in `js/icons.js` behind the same `<iconify-icon>` element, so no
+  markup changed.
+- **driver.js loads only when the walkthrough runs**, rather than on every
+  calendar visit, for a tour that runs once per account.
+- Calendar page: **479 ms to 202 ms** to DOMContentLoaded, 493 ms to 257 ms
+  to load, 18 requests down to 14, and two fewer third-party origins.
+
 ## [1.16.0] - 2026-09-03
 
 ### Changed

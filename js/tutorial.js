@@ -15,6 +15,31 @@
     window.location.href = "calendar.html?v=3";
   }
 
+  // driver.js is a walkthrough library most visits never need, and it used to
+  // load on every calendar page anyway -- about 200ms of script and a
+  // stylesheet, for a tour that runs once per account. It is fetched the
+  // first time somebody actually starts the tour instead.
+  const DRIVER_VERSION = "1.7.0";
+  let driverLoading = null;
+
+  function loadDriver() {
+    if (window.driver?.js?.driver) return Promise.resolve(true);
+    if (driverLoading) return driverLoading;
+    driverLoading = new Promise((resolve) => {
+      const styles = document.createElement("link");
+      styles.rel = "stylesheet";
+      styles.href = `https://cdn.jsdelivr.net/npm/driver.js@${DRIVER_VERSION}/dist/driver.css`;
+      document.head.appendChild(styles);
+
+      const script = document.createElement("script");
+      script.src = `https://cdn.jsdelivr.net/npm/driver.js@${DRIVER_VERSION}/dist/driver.js.iife.js`;
+      script.onload = () => resolve(Boolean(window.driver?.js?.driver));
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+    return driverLoading;
+  }
+
   function waitForCalendar(attempt = 0) {
     const grid = document.querySelector("#cal-grid .cal-cell");
     if (grid || attempt > 40) return Promise.resolve(Boolean(grid));
@@ -28,7 +53,7 @@
     // driver.js comes from a CDN. If it did not arrive the walkthrough cannot
     // run, and silently doing nothing reads as a broken button -- say so and
     // leave it queued so the next load can try again.
-    if (!window.driver?.js?.driver) {
+    if (!(await loadDriver())) {
       window.toast?.("The guided tour could not load. Check your connection and try Settings again.", "error");
       return;
     }

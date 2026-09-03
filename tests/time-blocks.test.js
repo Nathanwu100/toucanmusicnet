@@ -484,8 +484,10 @@ test("a student presses the block itself to take a slot", () => {
   assert.doesNotMatch(calendar, /Take this slot/, "no separate button inside the block");
   // A full slot is not pressable, and says so to a screen reader.
   assert.match(calendar, /aria-disabled/);
-  // Leaving your own slot asks first -- a stray click should not drop it.
-  assert.match(calendar, /Leave the \$\{block\.label\} slot/);
+  // Leaving your own slot asks first -- a stray click should not drop it --
+  // through the site's own dialog rather than the browser's.
+  assert.match(calendar, /await confirmDialog\(\{[\s\S]*?title: "Leave this slot\?"/);
+  assert.doesNotMatch(calendar, /[^.\w]confirm\(`/, "no native confirm() left");
   // Each instrument colours its own blocks.
   for (const instrument of ["piano", "violin", "viola"]) {
     assert.ok(
@@ -538,4 +540,74 @@ test("once a student has a place, a narrow screen shows just that slot", () => {
   assert.match(calendar, /showWholeTimetable = true/);
   // Collapsed, the one block that matters keeps its detail.
   assert.match(css, /\.tt\.is-focused \.tt-block-time/);
+});
+
+test("destructive questions use the site's dialog, not the browser's", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+
+  assert.match(app, /window\.confirmDialog = function/);
+  // Escape cancels, and Tab cannot wander out of a modal.
+  assert.match(app, /event\.key === "Escape"/);
+  assert.match(app, /event\.key === "Tab"/);
+  // Focus goes back where it came from, or the next Tab starts from the top.
+  assert.match(app, /previouslyFocused instanceof HTMLElement/);
+
+  // Every destructive path asks through it.
+  assert.equal((calendar.match(/await confirmDialog\(/g) || []).length, 3);
+  assert.match(calendar, /title: `Remove \$\{entry\.student_name\}\?`/);
+  assert.match(calendar, /confirmLabel: "Delete it"/);
+});
+
+test("a notice that needs answering takes the middle of the screen", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  // Losing a place interrupts; being moved does not.
+  assert.match(app, /notices\.some\(\(notice\) => notice\.kind !== "moved"\)/);
+  assert.match(app, /notice-centred/);
+  assert.match(app, /aria-modal/);
+  assert.match(css, /\.notice-scrim \{[\s\S]*?place-items: center/);
+  // Dismissing the last card takes the backdrop with it.
+  assert.match(app, /host\.closest\("\.notice-scrim"\) \|\| host/);
+});
+
+test("icons ship with the site instead of being fetched at runtime", () => {
+  const icons = fs.readFileSync(path.join(__dirname, "../js/icons.js"), "utf8");
+  const pages = ["index.html", "calendar.html", "about.html", "mission.html",
+                 "login.html", "signup.html", "verify-email.html", "diagnostics.html"];
+
+  // The element the markup already uses, rendered from a bundled map.
+  assert.match(icons, /customElements\.define\("iconify-icon"/);
+  assert.match(icons, /pixelarticons:calendar/);
+
+  for (const page of pages) {
+    const html = fs.readFileSync(path.join(__dirname, "..", page), "utf8");
+    assert.ok(!html.includes("code.iconify.design"),
+      `${page} should not reach the icon CDN at runtime`);
+    assert.ok(html.includes("js/icons.js"), `${page} should bundle its icons`);
+  }
+
+  // Every icon the markup asks for has to be in the bundle, or it renders blank.
+  const used = new Set();
+  for (const file of [...pages, "js/app.js", "js/calendar.js", "js/team.js"]) {
+    const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+    for (const match of source.matchAll(/icon="([^"]+)"/g)) used.add(match[1]);
+  }
+  for (const name of used) {
+    assert.ok(icons.includes(`"${name}"`), `${name} is used but not bundled`);
+  }
+});
+
+test("the walkthrough library loads only when the walkthrough runs", () => {
+  const tutorial = fs.readFileSync(path.join(__dirname, "../js/tutorial.js"), "utf8");
+  const calendar = fs.readFileSync(path.join(__dirname, "../calendar.html"), "utf8");
+
+  assert.ok(!calendar.includes("driver.js.iife.js"),
+    "driver.js should not load on every calendar visit");
+  assert.ok(!calendar.includes("driver.css"));
+  assert.match(tutorial, /function loadDriver/);
+  assert.match(tutorial, /await loadDriver\(\)/);
+  // A failed fetch is reported, not silently ignored.
+  assert.match(tutorial, /could not load/);
 });
