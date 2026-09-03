@@ -1360,16 +1360,31 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 /* Narrow screens cannot hold three columns and a legible axis, so the grid
    stretches vertically instead of squeezing sideways. */
-@media (max-width: 760px) {
-  .tt { --tt-axis: 46px; --tt-px-per-minute: 2.6px; }
-  .tt-block-time, .tt-block-spots { display: none; }
-  .tt-block-name { font-size: 0.78rem; }
-  /* Collapsed to a single slot there is room for the detail again, and it is
-     the one block whose time actually matters to the reader. */
-  .tt.is-focused .tt-block-time,
-  .tt.is-focused .tt-block-spots { display: block; }
-  .tt.is-focused .tt-block-name { font-size: 0.9rem; }
+/* ---------------------------------------------------------------- agenda */
+/* Below 700px the grid is replaced by a list of the same slots. A time grid
+   needs its axis beside the columns, and on a phone that either scrolls
+   sideways or squeezes the columns until the times have to be hidden to fit
+   -- which is exactly what used to happen. A list carries the time on each
+   row instead, and only ever scrolls down. */
+.tt-agenda { display: grid; gap: 0.4rem; margin-top: 0.6rem; }
+.tt-agenda-heading { margin-top: 0.5rem; }
+.tt-agenda-heading:first-child { margin-top: 0; }
+
+.tt-block-row {
+  position: static;
+  width: 100%;
+  height: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name time" "spots spots";
+  align-items: baseline;
+  gap: 0.15rem 0.6rem;
+  padding: 0.6rem 0.7rem;
 }
+.tt-block-row .tt-block-name { grid-area: name; font-size: 0.92rem; }
+/* The whole point of the list: the time is always on the row. */
+.tt-block-row .tt-block-time { grid-area: time; font-size: 0.78rem; white-space: nowrap; }
+.tt-block-row .tt-block-spots { grid-area: spots; font-size: 0.76rem; margin-top: 0.1rem; }
 
 /* ------------------------------------------------------------ block editor */
 /* The dialog embeds the same timetable the calendar shows, at a smaller

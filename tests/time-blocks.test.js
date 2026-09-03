@@ -481,10 +481,12 @@ test("a student presses the block itself to take a slot", () => {
 
   // The block is the control, not a container with a control inside it.
   assert.match(calendar, /element\(interactive \? "button" : "div", "tt-block"\)/);
-  const blockCard = calendar.slice(
-    calendar.indexOf("function blockCard("),
-    calendar.indexOf("// A slice of a day calendar")
-  );
+  // Just this function's body, closing at the first line that is its own
+  // closing brace -- slicing to the next landmark picked up whatever happened
+  // to follow it.
+  const blockCard = calendar
+    .slice(calendar.indexOf("function blockCard("))
+    .match(/^[\s\S]*?\n  \}\n/)[0];
   assert.doesNotMatch(blockCard, /element\("button"/,
     "the card must not build a button inside itself");
   // A full slot is not pressable, and says so to a screen reader.
@@ -545,8 +547,11 @@ test("once a student has a place, a narrow screen shows just that slot", () => {
   // And there is always a way back to the whole grid.
   assert.match(calendar, /See every slot|See the other instruments/);
   assert.match(calendar, /showWholeTimetable = true/);
-  // Collapsed, the one block that matters keeps its detail.
-  assert.match(css, /\.tt\.is-focused \.tt-block-time/);
+  // Times are never hidden any more: below the agenda breakpoint the grid is
+  // replaced by a list that writes the time on every row.
+  assert.match(css, /\.tt-block-row \.tt-block-time \{ grid-area: time/);
+  assert.doesNotMatch(css, /\.tt-block-time, \.tt-block-spots \{ display: none/,
+    "a slot with no visible time is not worth showing");
 });
 
 test("destructive questions use the site's dialog, not the browser's", () => {
@@ -668,4 +673,29 @@ test("a long class scrolls its timetable instead of growing the page", () => {
   // The body keeps its true height inside the scroller, or the blocks -- which
   // are positioned as percentages of it -- would squash instead of scrolling.
   assert.match(css, /\.tt-body \{ height: calc\(var\(--tt-minutes\) \* var\(--tt-px-per-minute\)\)/);
+});
+
+test("a phone gets an agenda, not a grid that scrolls sideways", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+
+  assert.match(calendar, /const AGENDA_QUERY = "\(max-width: 700px\)"/);
+  assert.match(calendar, /function renderAgenda/);
+  // The agenda is taken instead of the grid, not in addition to it.
+  assert.match(calendar, /if \(window\.matchMedia\(AGENDA_QUERY\)\.matches\) \{[\s\S]*?renderAgenda/);
+
+  // Rows are laid out by the list, so none of the grid's positioning applies.
+  assert.match(css, /\.tt-block-row \{[\s\S]*?position: static/);
+  assert.match(css, /\.tt-block-row \{[\s\S]*?height: auto/);
+  // And every row carries its own time, which is the whole point.
+  assert.match(css, /\.tt-block-row \.tt-block-time/);
+
+  // The two layouts are different DOM, so crossing the breakpoint redraws.
+  assert.match(calendar, /matchMedia\(AGENDA_QUERY\)\.addEventListener\("change"/);
+  assert.match(calendar, /lastTimetableCtx/);
+
+  // Both layouts share the footer, so neither loses the way back or the note.
+  assert.match(calendar, /function appendTimetableFooter/);
+  // Two call sites -- one per layout -- not counting the definition.
+  assert.equal((calendar.match(/appendTimetableFooter\(host, \{/g) || []).length, 2);
 });

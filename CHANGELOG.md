@@ -19,6 +19,27 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.22.0] - 2026-09-03
+
+### Fixed
+- **Time blocks were unusable on a phone.** A time grid needs its axis beside
+  its columns, and below about 700px that either scrolled sideways or
+  squeezed the columns until the times had to be hidden to fit -- which is
+  what the stylesheet was doing, leaving slots with no time on them.
+- Narrow screens now get an **agenda**: the same slots as a list, in time
+  order, each row carrying its own name, time and places left. It scrolls
+  down and never sideways, and no time is ever hidden.
+
+### Changed
+- Crossing the breakpoint -- rotating a phone, dragging a window narrow --
+  redraws the timetable, since the two layouts are different markup rather
+  than the same markup restyled.
+- Both layouts share one footer, so neither can lose the way back to the
+  other instruments or the note about which column is yours.
+- On a phone an admin edits a slot by pressing it; drawing new ones needs a
+  pointer, and the page says so rather than offering a gesture that will not
+  work.
+
 ## [1.21.1] - 2026-09-03
 
 ### Fixed

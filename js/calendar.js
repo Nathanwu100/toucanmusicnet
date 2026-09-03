@@ -25,6 +25,9 @@
   let pendingEventId = new URLSearchParams(window.location.search).get("event");
   // Set when a student asks to see past their own slot on a narrow screen.
   let showWholeTimetable = false;
+  // The last thing the timetable was asked to draw, so a breakpoint change
+  // can redraw it without the caller being involved.
+  let lastTimetableCtx = null;
 
   const grid = $("#cal-grid");
   const title = $("#cal-title");
@@ -483,6 +486,111 @@
     return card;
   }
 
+  // Everything under the timetable that both the grid and the agenda need:
+  // the way back to the other instruments, the note explaining whose column
+  // is whose, and the admin controls. `table` is absent on the agenda, which
+  // has nothing to drag.
+  function appendTimetableFooter(host, options) {
+    const { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin, table } = options;
+
+    if ((focusOwn && columns.length > shown.length) || onlyMine) {
+      const showAll = element("button", "btn btn-sm btn-quiet tt-show-all",
+        onlyMine && columns.length === 1 ? "See every slot" : "See the other instruments");
+      showAll.type = "button";
+      showAll.addEventListener("click", () => {
+        showWholeTimetable = true;
+        renderBlockGrid(ctx);
+      });
+      host.appendChild(showAll);
+    }
+
+    // Say the rule where it applies, rather than leaving a student to work out
+    // for themselves why two of the three columns ignore them.
+    if (isStudent && !onlyMine) {
+      const note = element("p", "block-note");
+      const teachesMine = columns.some((column) => column.slug === user?.instrument);
+      if (!user?.instrument) {
+        note.append(document.createTextNode("Choose an instrument in "), settingsLink(),
+          document.createTextNode(" before you can take a slot."));
+      } else if (!teachesMine) {
+        note.append(document.createTextNode(
+          `This class does not teach ${user.instrument_name}, the instrument on your account. You can change that in `),
+          settingsLink(), document.createTextNode("."));
+      } else if (columns.length > 1) {
+        note.append(document.createTextNode(focusOwn
+          ? `Showing ${user.instrument_name} only, the instrument on your account. Change it in `
+          : `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
+          settingsLink(), document.createTextNode("."));
+      }
+      if (note.childNodes.length) host.appendChild(note);
+    }
+
+    if (isAdmin && table) {
+      enableBlockDragging(table, ctx);
+      enableBlockCreation(table, ctx);
+      host.appendChild(element("p", "timetable-hint tt-hint-create",
+        "Click an empty spot to add a block, or drag down to set how long it runs."));
+    } else if (isAdmin) {
+      // No grid to draw on, so a block is edited by pressing it and a new one
+      // is added from the class dialog.
+      host.querySelectorAll(".tt-block-row").forEach((card) => {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", () => {
+          const block = blocksOf(ctx.event).find((row) => blockKey(row) === card.dataset.blockId);
+          if (block) {
+            openBlockEditor({ ...ctx, block, instrument: block.instrument,
+              startsAt: block.starts_at, endsAt: block.ends_at, column: card });
+          }
+        });
+      });
+      host.appendChild(element("p", "timetable-hint",
+        "Press a slot to edit it. Adding slots is easier on a wider screen, or from Edit class."));
+    }
+  }
+
+  // A time grid needs a time axis beside its columns, and on a phone that
+  // does not fit -- it either scrolls sideways or squeezes the columns until
+  // the times have to be hidden to make room. Neither is worth having, so
+  // narrow screens get an agenda instead: the same slots as a list, in time
+  // order, each carrying its own time. It only ever scrolls downwards.
+  const AGENDA_QUERY = "(max-width: 700px)";
+
+  // Rotating a phone, or dragging a desktop window narrow, crosses this line.
+  // The two layouts are different DOM, not the same DOM restyled, so the
+  // timetable has to be drawn again rather than left in the wrong shape.
+  window.matchMedia(AGENDA_QUERY).addEventListener("change", () => {
+    const host = $("#class-timetable");
+    if (host && !host.hidden && lastTimetableCtx) renderBlockGrid(lastTimetableCtx);
+  });
+
+  function renderAgenda(host, columns, context) {
+    const list = element("div", "tt-agenda");
+    for (const column of columns) {
+      if (!column.blocks.length) continue;
+      if (columns.length > 1) {
+        const heading = element("p", "tt-agenda-heading");
+        const badge = element("span", "instrument-badge", column.name);
+        badge.dataset.instrument = column.slug;
+        heading.appendChild(badge);
+        list.appendChild(heading);
+      }
+      for (const block of column.blocks) {
+        const card = blockCard(context.event, block, {
+          isStudent: context.isStudent,
+          isAdmin: context.isAdmin,
+          mine: block.id === context.enrolledBlockId,
+          joinable: context.open && context.isStudent && column.slug === user?.instrument,
+        });
+        // No absolute positioning here: the row is laid out by the list, and
+        // its time is written on it rather than read off an axis.
+        card.classList.add("tt-block-row");
+        list.appendChild(card);
+      }
+    }
+    host.appendChild(list);
+    return list;
+  }
+
   // A slice of a day calendar: the class's start at the top, its end at the
   // bottom, half-hour rules across, and one column per instrument. Blocks are
   // placed by their real times, so a half-hour slot is half the height of an
@@ -499,6 +607,7 @@
     const total = Math.max(30, minutesBetween(startsAt, endsAt));
 
     closeBlockEditor();
+    lastTimetableCtx = ctx;
     host.hidden = false;
     host.innerHTML = "";
     host.dataset.eventId = event.id;
@@ -546,6 +655,12 @@
             ? column.blocks.filter((block) => block.id === enrolledBlockId)
             : column.blocks,
         }));
+    }
+
+    if (window.matchMedia(AGENDA_QUERY).matches) {
+      renderAgenda(host, shown, { event, isStudent, isAdmin, enrolledBlockId, open });
+      appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin });
+      return true;
     }
 
     const table = element("div", "tt");
@@ -622,43 +737,7 @@
     table.appendChild(scroller);
     host.appendChild(table);
 
-    if ((focusOwn && columns.length > shown.length) || onlyMine) {
-      const showAll = element("button", "btn btn-sm btn-quiet tt-show-all",
-        onlyMine && columns.length === 1 ? "See every slot" : "See the other instruments");
-      showAll.type = "button";
-      showAll.addEventListener("click", () => {
-        showWholeTimetable = true;
-        renderBlockGrid(ctx);
-      });
-      host.appendChild(showAll);
-    }
-    // Say the rule where it applies, rather than leaving a student to work out
-    // for themselves why two of the three columns ignore them.
-    if (isStudent && !onlyMine) {
-      const note = element("p", "block-note");
-      const teachesMine = columns.some((column) => column.slug === user?.instrument);
-      if (!user?.instrument) {
-        note.append(document.createTextNode("Choose an instrument in "), settingsLink(),
-          document.createTextNode(" before you can take a slot."));
-      } else if (!teachesMine) {
-        note.append(document.createTextNode(
-          `This class does not teach ${user.instrument_name}, the instrument on your account. You can change that in `),
-          settingsLink(), document.createTextNode("."));
-      } else if (columns.length > 1) {
-        note.append(document.createTextNode(focusOwn
-          ? `Showing ${user.instrument_name} only, the instrument on your account. Change it in `
-          : `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
-          settingsLink(), document.createTextNode("."));
-      }
-      if (note.childNodes.length) host.appendChild(note);
-    }
-
-    if (isAdmin) {
-      enableBlockDragging(table, ctx);
-      enableBlockCreation(table, ctx);
-      host.appendChild(element("p", "timetable-hint tt-hint-create",
-        "Click an empty spot to add a block, or drag down to set how long it runs."));
-    }
+    appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin, table });
     return true;
   }
 
