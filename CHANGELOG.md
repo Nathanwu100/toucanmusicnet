@@ -19,6 +19,18 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.14.1] - 2026-09-03
+
+### Fixed
+- **Creating a time block failed with `invalid input syntax for type uuid`.**
+  Every new block was being stamped with a locally generated id like
+  `id-jdn4qmugmtksd0r5`, which `save_class_blocks` casts straight to a uuid.
+  A block that has never been saved now arrives with no `id` field at all and
+  the database assigns one, which is what the function always expected.
+- The grid addresses an unsaved block by a local `_key` instead, and that key
+  is stripped from everything sent to the server. All four places that
+  prepared blocks for saving now share one function, so they cannot drift.
+
 ## [1.14.0] - 2026-09-03
 
 ### Added

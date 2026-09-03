@@ -373,7 +373,7 @@ test("the class dialog lays blocks out on the same timetable, in a draft", () =>
   // Edits in the dialog collect in a draft; nothing is written until the
   // class itself is saved.
   assert.match(calendar, /let draftBlocks = \[\];/);
-  assert.match(calendar, /function collectBlocks\(\) \{\s*return draftBlocks;/);
+  assert.match(calendar, /function collectBlocks\(\) \{\s*return draftBlocks\.map\(forSaving\);/);
   // The grid follows the fields it is drawn from.
   assert.match(calendar, /\$\("#f-start"\)\.addEventListener\("change", renderDraftTimetable\)/);
   assert.match(calendar, /\$\("#f-end"\)\.addEventListener\("change", renderDraftTimetable\)/);
@@ -436,4 +436,41 @@ test("the student prompt links back to the class to pick again", () => {
   assert.match(app, /user\.role !== "student"/);
   // A move leaves them with a place, so it does not ask them to choose again.
   assert.match(app, /notice\.kind !== "moved"/);
+});
+
+test("a block that has never been saved carries no id", async () => {
+  // A locally minted id like "id-jdn4qmugmtksd0r5" is not a uuid, and
+  // save_class_blocks casts this field straight to one. New blocks must
+  // therefore arrive with the field absent, and let the server assign it.
+  const { api } = loadDemoApi();
+  await api.login("admin", "toucan2026");
+
+  const drawn = {
+    label: "Beginners", instrument: "violin",
+    starts_at: inDays(3, 15), ends_at: inDays(3, 15, 30), capacity: 3,
+  };
+  assert.ok(!("id" in drawn));
+
+  const created = await api.createEvent({
+    title: "Fresh class", event_type: "class", instruments: ["violin"],
+    starts_at: inDays(3, 15), ends_at: inDays(3, 16), location: "Room A",
+    volunteer_capacity: 0, student_capacity: 6, enrollment_open: true,
+    blocks: [drawn],
+  });
+
+  // The demo store stands in for the server here and assigns one on save.
+  assert.equal(created.blocks.length, 1);
+  assert.ok(created.blocks[0].id, "saving is what gives a block its id");
+});
+
+test("the grid never sends its local drafting key to the server", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  // _key exists only so the grid can address a block it has drawn but not
+  // saved. forSaving drops it, and every outbound path goes through that.
+  assert.match(calendar, /const forSaving = \(block\) => \{/);
+  assert.match(calendar, /_key, \.\.\.keep/);
+  assert.match(calendar, /return draftBlocks\.map\(forSaving\)/);
+  // Cards are addressed by id when there is one, and by _key when there is not.
+  assert.match(calendar, /const blockKey = \(block\) => block\.id \|\| block\._key/);
+  assert.match(calendar, /card\.dataset\.blockId = blockKey\(block\)/);
 });

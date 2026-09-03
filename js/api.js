@@ -217,6 +217,12 @@
   // here too means the demo refuses exactly what the database would.
   // A booking described in words, so a notice still reads correctly after the
   // block it refers to has been deleted.
+  // Supabase mints block ids on insert. The demo store has no server to do
+  // that, so it stamps them here -- the only place a local id is created.
+  function withDemoIds(blocks) {
+    return (blocks || []).map((block) => (block.id ? block : { ...block, id: uid() }));
+  }
+
   function describeSlot(block, event) {
     if (block) {
       const when = new Date(block.starts_at)
@@ -269,7 +275,10 @@
           throw new Error("Every time block has to be for an instrument this class teaches.");
         }
         return {
-          id: block.id || uid(),
+          // A block that has never been saved has no id, and must not be
+          // given one here: the server casts this straight to uuid, and a
+          // locally minted "id-abc123" fails that cast. Absent means new.
+          ...(block.id ? { id: block.id } : {}),
           instrument: block.instrument,
           label: (block.label || "").trim() || "Session",
           starts_at: new Date(startsAt).toISOString(),
@@ -720,7 +729,7 @@
         const instruments = normalizeInstruments(fields.instruments, db);
         const row = {
           id: uid(), time_slot_id: uid(), ...fields, instruments,
-          blocks: normalizeBlocks(blocks, fields), created_by: currentUser.id,
+          blocks: withDemoIds(normalizeBlocks(blocks, fields)), created_by: currentUser.id,
         };
         db.events.push(row);
         saveDb(db);
@@ -742,6 +751,9 @@
         const { db } = requireDemoUser("admin");
         const event = db.events.find((row) => row.id === classId);
         if (!event) throw new Error("Event not found.");
+        // Supabase assigns ids on insert; the demo store has to do it here,
+        // which is the only place a local id is allowed to appear.
+        blocks = withDemoIds(blocks);
         const before = new Map((event.blocks || []).map((block) => [block.id, block]));
         const keep = new Set(blocks.map((block) => block.id));
 

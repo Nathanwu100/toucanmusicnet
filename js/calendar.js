@@ -294,6 +294,21 @@
 
   const blocksOf = (event) => (Array.isArray(event.blocks) ? event.blocks : []);
 
+  // A saved block is identified by its database id. One that has only been
+  // drawn has no id yet -- the server mints that on insert -- so it carries a
+  // local _key instead, purely so the grid can tell the cards apart. _key is
+  // stripped before anything is sent.
+  // The columns the API accepts, without the counts the listing adds on the
+  // way out or the local _key the grid uses to address an unsaved block.
+  const forSaving = (block) => {
+    const { taken, spots_left, is_mine, instrument_name, _key, ...keep } = block;
+    return keep;
+  };
+
+  let draftKeySeed = 0;
+  const nextDraftKey = () => `draft-${(draftKeySeed += 1)}`;
+  const blockKey = (block) => block.id || block._key || "";
+
   // Snapping keeps dragged blocks on a tidy grid instead of landing on 3:07.
   const SNAP_MINUTES = 5;
 
@@ -344,7 +359,7 @@
 
   function blockCard(event, block, { isStudent, isAdmin, mine, joinable }) {
     const card = element("div", "tt-block");
-    card.dataset.blockId = block.id;
+    card.dataset.blockId = blockKey(block);
     card.dataset.instrument = block.instrument;
     if (block.is_mine) card.classList.add("is-mine");
     if (!block.spots_left) card.classList.add("is-full");
@@ -559,7 +574,7 @@
       if (!column) return;
       dragEvent.preventDefault();
 
-      const moved = blocksOf(event).find((block) => block.id === dragging.dataset.blockId);
+      const moved = blocksOf(event).find((block) => blockKey(block) === dragging.dataset.blockId);
       if (!moved) return;
 
       const length = minutesBetween(moved.starts_at, moved.ends_at);
@@ -577,10 +592,10 @@
           new Date(moved.starts_at).getTime() === nextStart.getTime()) return;
 
       const next = blocksOf(event)
-        .map((block) => (block.id === moved.id
+        .map((block) => (blockKey(block) === blockKey(moved)
           ? { ...block, instrument, starts_at: nextStart.toISOString(), ends_at: nextEnd.toISOString() }
           : block))
-        .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+        .map(forSaving);
 
       try {
         await commit(next, `Moved "${moved.label}" to ${fmtTime(nextStart.toISOString())}.`);
@@ -683,13 +698,14 @@
     };
 
     const stripped = () => blocksOf(event)
-      .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+      .map(forSaving);
 
     form.addEventListener("submit", async (submitEvent) => {
       submitEvent.preventDefault();
       fail("");
       const next = {
-        id: block?.id,
+        ...(block?.id ? { id: block.id } : {}),
+        _key: block ? blockKey(block) : nextDraftKey(),
         label: fields.label.value.trim() || "Session",
         instrument: fields.instrument.value,
         starts_at: atClock(fields.start.value),
@@ -701,7 +717,7 @@
         return;
       }
       const blocks = block
-        ? stripped().map((row) => (row.id === block.id ? { ...row, ...next } : row))
+        ? stripped().map((row) => (blockKey(row) === blockKey(block) ? { ...row, ...next } : row))
         : [...stripped(), next];
       await save(blocks, block ? `Updated "${next.label}".` : `Added "${next.label}".`);
     });
@@ -783,7 +799,7 @@
     table.addEventListener("click", (clickEvent) => {
       const card = clickEvent.target.closest(".tt-block");
       if (!card || card.classList.contains("tt-ghost")) return;
-      const block = blocksOf(event).find((row) => row.id === card.dataset.blockId);
+      const block = blocksOf(event).find((row) => blockKey(row) === card.dataset.blockId);
       if (!block) return;
       openBlockEditor({
         ...ctx,
@@ -1343,7 +1359,10 @@
       commit: (blocks) => {
         // Nothing is saved until the class is. Drop the computed extras the
         // live listing adds so the draft stays the shape the API wants.
-        draftBlocks = blocks.map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+        draftBlocks = blocks.map((block) => ({
+          ...forSaving(block),
+          _key: blockKey(block) || nextDraftKey(),
+        }));
         renderDraftTimetable();
       },
     });
@@ -1415,7 +1434,7 @@
 
   // Blocks are handed to createEvent and updateEvent exactly as drafted.
   function collectBlocks() {
-    return draftBlocks;
+    return draftBlocks.map(forSaving);
   }
 
   function syncClassFields() {
@@ -1450,8 +1469,9 @@
     $("#f-enrollment-open").checked = event ? event.enrollment_open : true;
     $("#f-description").value = event?.description || "";
     $("#fill-note").textContent = "";
-    draftBlocks = (event?.blocks || [])
-      .map(({ taken, spots_left, is_mine, instrument_name, ...keep }) => keep);
+    // Saved blocks arrive with an id; that is their key. Only ones drawn in
+    // this dialog need a local one.
+    draftBlocks = (event?.blocks || []).map(forSaving);
     renderDraftTimetable();
     syncClassFields();
     $("#edit-backdrop").classList.add("open");
