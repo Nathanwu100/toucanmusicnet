@@ -311,6 +311,16 @@
   // A student sees only their own column as bookable; an admin can drag any
   // block to a new time.
 
+  // Settings is a drawer, not a page, so this opens it where the reader is.
+  function settingsLink() {
+    const link = element("button", "link-button", "Settings");
+    link.type = "button";
+    link.addEventListener("click", () => {
+      document.querySelector("[data-open-settings]")?.click();
+    });
+    return link;
+  }
+
   const blocksOf = (event) => (Array.isArray(event.blocks) ? event.blocks : []);
 
   // A saved block is identified by its database id. One that has only been
@@ -408,6 +418,21 @@
       return card;
     }
 
+    // A student pressing a slot in another instrument's column gets told why
+    // it is not theirs, rather than a card that quietly does nothing.
+    if (isStudent && !joinable && user?.instrument && block.instrument !== user.instrument) {
+      card.classList.add("is-other-instrument");
+      card.title = `For ${block.instrument_name || block.instrument} students`;
+      card.addEventListener("click", () => {
+        toast(
+          `That slot is for ${block.instrument_name || block.instrument}. Your account is set to `
+          + `${user.instrument_name}, and you can only take ${user.instrument_name} slots. `
+          + `Change your instrument in Settings.`,
+          "error"
+        );
+      });
+    }
+
     if (isStudent && joinable) {
       card.classList.add("is-bookable");
       // A screen reader gets the whole sentence, not three loose fragments.
@@ -421,12 +446,23 @@
         return card;
       }
       card.addEventListener("click", async () => {
-        if (mine && !(await confirmDialog({
-          title: "Leave this slot?",
-          body: `You are booked into ${block.label} at ${fmtTime(block.starts_at)}. Leaving frees the place for somebody else.`,
-          confirmLabel: "Leave the slot",
-          cancelLabel: "Stay in it",
-          tone: "danger",
+        const when = `${fmtTime(block.starts_at)} to ${fmtTime(block.ends_at)}`;
+        const day = new Date(block.starts_at)
+          .toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+        if (mine) {
+          if (!(await confirmDialog({
+            title: "Leave this slot?",
+            body: `You are booked into ${block.label} at ${fmtTime(block.starts_at)}. Leaving frees the place for somebody else.`,
+            confirmLabel: "Leave the slot",
+            cancelLabel: "Stay in it",
+            tone: "danger",
+          }))) return;
+        } else if (!(await confirmDialog({
+          title: `Take ${block.label}?`,
+          body: `${day}, ${when}${event.location ? `, at ${event.location}` : ""}. `
+            + `That is ${left === 1 ? "the last place" : `one of ${left} places`} in this slot.`,
+          confirmLabel: "Take this slot",
+          cancelLabel: "Not yet",
         }))) return;
         card.disabled = true;
         try {
@@ -581,6 +617,26 @@
       });
       host.appendChild(showAll);
     }
+    // Say the rule where it applies, rather than leaving a student to work out
+    // for themselves why two of the three columns ignore them.
+    if (isStudent && !onlyMine) {
+      const note = element("p", "block-note");
+      const teachesMine = columns.some((column) => column.slug === user?.instrument);
+      if (!user?.instrument) {
+        note.append(document.createTextNode("Choose an instrument in "), settingsLink(),
+          document.createTextNode(" before you can take a slot."));
+      } else if (!teachesMine) {
+        note.append(document.createTextNode(
+          `This class does not teach ${user.instrument_name}, the instrument on your account. You can change that in `),
+          settingsLink(), document.createTextNode("."));
+      } else if (columns.length > 1) {
+        note.append(document.createTextNode(
+          `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
+          settingsLink(), document.createTextNode("."));
+      }
+      if (note.childNodes.length) host.appendChild(note);
+    }
+
     if (isAdmin) {
       enableBlockDragging(table, ctx);
       enableBlockCreation(table, ctx);

@@ -481,12 +481,19 @@ test("a student presses the block itself to take a slot", () => {
 
   // The block is the control, not a container with a control inside it.
   assert.match(calendar, /element\(interactive \? "button" : "div", "tt-block"\)/);
-  assert.doesNotMatch(calendar, /Take this slot/, "no separate button inside the block");
+  const blockCard = calendar.slice(
+    calendar.indexOf("function blockCard("),
+    calendar.indexOf("// A slice of a day calendar")
+  );
+  assert.doesNotMatch(blockCard, /element\("button"/,
+    "the card must not build a button inside itself");
   // A full slot is not pressable, and says so to a screen reader.
   assert.match(calendar, /aria-disabled/);
   // Leaving your own slot asks first -- a stray click should not drop it --
   // through the site's own dialog rather than the browser's.
-  assert.match(calendar, /await confirmDialog\(\{[\s\S]*?title: "Leave this slot\?"/);
+  assert.match(calendar, /title: "Leave this slot\?"/);
+  // Taking one asks too, and says when and where before they commit.
+  assert.match(calendar, /title: `Take \$\{block\.label\}\?`/);
   assert.doesNotMatch(calendar, /[^.\w]confirm\(`/, "no native confirm() left");
   // Each instrument colours its own blocks.
   for (const instrument of ["piano", "violin", "viola"]) {
@@ -554,7 +561,8 @@ test("destructive questions use the site's dialog, not the browser's", () => {
   assert.match(app, /previouslyFocused instanceof HTMLElement/);
 
   // Every destructive path asks through it.
-  assert.equal((calendar.match(/await confirmDialog\(/g) || []).length, 3);
+  // Leave a slot, take a slot, remove a student, delete a class.
+  assert.equal((calendar.match(/await confirmDialog\(/g) || []).length, 4);
   assert.match(calendar, /title: `Remove \$\{entry\.student_name\}\?`/);
   assert.match(calendar, /confirmLabel: "Delete it"/);
 });
@@ -610,4 +618,23 @@ test("the walkthrough library loads only when the walkthrough runs", () => {
   assert.match(tutorial, /await loadDriver\(\)/);
   // A failed fetch is reported, not silently ignored.
   assert.match(tutorial, /could not load/);
+});
+
+test("a student is told which instrument they may book, and where to change it", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+
+  // The rule is stated on the timetable, not only after a refused attempt.
+  assert.match(calendar, /You can only take slots in the \$\{user\.instrument_name\} column/);
+  assert.match(calendar, /because that is the instrument on your account/);
+  // A class that does not teach their instrument says so plainly.
+  assert.match(calendar, /This class does not teach \$\{user\.instrument_name\}/);
+  // No instrument chosen yet is its own case.
+  assert.match(calendar, /Choose an instrument in /);
+  // Every one of them points at Settings, which is a drawer, not a page.
+  assert.match(calendar, /function settingsLink/);
+  assert.match(calendar, /\[data-open-settings\]/);
+
+  // Pressing somebody else's column explains itself rather than doing nothing.
+  assert.match(calendar, /is-other-instrument/);
+  assert.match(calendar, /Change your instrument in Settings/);
 });

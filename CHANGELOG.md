@@ -19,6 +19,21 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.18.0] - 2026-09-03
+
+### Added
+- **Taking a slot asks first**, the way leaving one already did. The dialog
+  names the day, the time, the place, and how many places are left, so a
+  student sees what they are committing to before they commit.
+- **The instrument rule is stated on the timetable**, rather than only
+  surfacing when something is refused: "You can only take slots in the Violin
+  column, because that is the instrument on your account. Change it in
+  Settings" -- where Settings opens the drawer in place. A class that does not
+  teach their instrument, and an account with no instrument chosen yet, each
+  get their own wording.
+- **Pressing a slot in another instrument's column explains itself** instead
+  of quietly doing nothing, and says where to change the instrument.
+
 ## [1.17.0] - 2026-09-03
 
 ### Added

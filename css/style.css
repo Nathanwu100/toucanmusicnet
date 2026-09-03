@@ -1276,7 +1276,21 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .tt-block.is-draggable:active { cursor: grabbing; }
 .tt-block.is-dragging { opacity: 0.4; }
 
-.block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; }
+.block-note { margin-top: 0.6rem; color: var(--ink-soft); font-size: 0.85rem; line-height: 1.55; }
+/* Reads as a link, but opens the settings drawer rather than navigating. */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary-strong);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+/* A slot in another instrument's column is visibly not for you, but still
+   says why when pressed. */
+.tt-block.is-other-instrument { cursor: help; opacity: 0.82; }
 
 /* Empty column space is a target for an admin, so it says so on hover. */
 .tt-column { cursor: default; }
