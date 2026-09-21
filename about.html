@@ -19,9 +19,9 @@
   <script src="js/tutorial.js?v=2" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/team.js?v=8" defer></script>
-  <script src="js/gallery.js?v=1" defer></script>
+  <script src="js/gallery.js?v=2" defer></script>
   <script src="js/app.js?v=24" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=55" />
+  <link rel="stylesheet" href="css/style.css?v=57" />
 </head>
 <body class="about-page">
   <nav class="nav" data-site-nav>
@@ -45,9 +45,21 @@
     <section class="gallery" aria-labelledby="gallery-title">
       <div class="gallery-head">
         <h2 id="gallery-title">Inside a lesson</h2>
-        <p>Weekends in Palo Alto: first bow holds, note names on the whiteboard, a quartet warming up outside. Every photo opens full size.</p>
+        <p>Weekends in Palo Alto: first bow holds, note names on the whiteboard, a quartet warming up outside. Any photo opens full size.</p>
       </div>
-      <ul class="gallery-mosaic" data-gallery></ul>
+      <ul class="gallery-strip" data-gallery aria-label="Photos from lessons"></ul>
+      <div class="gallery-controls">
+        <div class="gallery-progress" aria-hidden="true"><div class="gallery-progress-thumb" data-gallery-thumb></div></div>
+        <span class="gallery-count" data-gallery-count aria-live="polite"></span>
+        <div class="gallery-arrows">
+          <button type="button" class="gallery-arrow" data-gallery-prev aria-label="Scroll to previous photos">
+            <iconify-icon icon="pixelarticons:chevron-left" aria-hidden="true"></iconify-icon>
+          </button>
+          <button type="button" class="gallery-arrow" data-gallery-next aria-label="Scroll to next photos">
+            <iconify-icon icon="pixelarticons:chevron-right" aria-hidden="true"></iconify-icon>
+          </button>
+        </div>
+      </div>
     </section>
   </main>
 

@@ -1570,9 +1570,27 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .past-log-meta { color: var(--ink-soft); font-size: 0.8rem; }
 .past-log .event-badges { flex: 0 0 auto; display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 
+/* For an admin each item carries a second control beside the jump, and can
+   unfold the people who signed up underneath. */
+.past-log-row { display: flex; align-items: stretch; gap: 0.4rem; }
+.past-log-row .past-log-jump { flex: 1 1 auto; min-width: 0; }
+.past-log-people-toggle { flex: 0 0 auto; align-self: center; white-space: nowrap; }
+.past-log-people-toggle[aria-expanded="true"] { background: var(--primary-soft); color: var(--primary-strong); }
+.past-log-people {
+  margin: 0.35rem 0 0.4rem;
+  padding: 0.2rem 0.9rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-raise);
+}
+.past-log-people .roster { margin-top: 0.7rem; }
+.past-log-volunteers { margin-top: 0.7rem; color: var(--ink-soft); font-size: 0.84rem; }
+
 @media (max-width: 620px) {
   .past-log-jump { gap: 0.6rem; }
   .past-log-copy { flex-basis: 100%; order: 3; }
+  .past-log-row { flex-wrap: wrap; }
+  .past-log-people-toggle { flex-basis: 100%; }
 }
 
 /* ------------------------------------------------------------------ modal */
@@ -1815,16 +1833,19 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 /* ------------------------------------------------------------- gallery */
 /* Photographs from lessons, below the team on about.html.
 
-   The mosaic is a fixed composition, not a masonry that reflows: six
-   columns of square units, ten rows, and every tile placed by hand so the
-   one big landscape sits top-left and the whole thing closes into a clean
-   rectangle. Each photo is cropped to its tile with object-fit; the viewer
-   is where it is seen whole. Tiles carry no chrome -- the pictures are the
-   content and the grid is the design. */
+   One strip, scrolled sideways. Every photo stands at the same height and
+   its own width, so portraits and landscapes set the rhythm and nothing is
+   cropped: a film strip, not a slider. The strip bleeds to the viewport
+   edges while its first tile lines up with the heading, so the row reads
+   as part of the page rather than a widget dropped into it. Tiles carry no
+   chrome -- the viewer is where the pictures are seen whole. */
 .gallery {
   margin-top: clamp(4rem, 8vw, 6.5rem);
   padding-top: clamp(2.5rem, 5vw, 4rem);
   border-top: 1px solid var(--line);
+  /* Distance from the viewport edge to the page's content edge; the strip
+     uses it to bleed out and still start on the grid. */
+  --page-gutter: max(clamp(1rem, 4vw, 3rem), calc((100vw - 980px) / 2 + clamp(1rem, 4vw, 3rem)));
 }
 .gallery-head {
   display: grid;
@@ -1848,25 +1869,34 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   padding-bottom: 0.2rem;
 }
 
-.gallery-mosaic {
-  --tile-gap: 10px;
+.gallery-strip {
+  --tile-height: clamp(260px, 46vh, 520px);
+  --tile-gap: 12px;
   list-style: none;
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-rows: minmax(0, 1fr);
+  display: flex;
   gap: var(--tile-gap);
-  aspect-ratio: 6 / 10;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: var(--page-gutter);
+  padding-block: 4px; /* room for the focus ring, which overflow would clip */
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--page-gutter);
+  scrollbar-width: none;
+  cursor: grab;
 }
-.gallery-tile { min-width: 0; min-height: 0; }
-.gallery-tile:nth-child(1) { grid-area: 1 / 1 / 4 / 5; }
-.gallery-tile:nth-child(2) { grid-area: 1 / 5 / 4 / 7; }
-.gallery-tile:nth-child(3) { grid-area: 4 / 1 / 6 / 5; }
-.gallery-tile:nth-child(4) { grid-area: 4 / 5 / 6 / 7; }
-.gallery-tile:nth-child(5) { grid-area: 6 / 1 / 9 / 3; }
-.gallery-tile:nth-child(6) { grid-area: 6 / 3 / 9 / 5; }
-.gallery-tile:nth-child(7) { grid-area: 6 / 5 / 9 / 7; }
-.gallery-tile:nth-child(8) { grid-area: 9 / 1 / 11 / 4; }
-.gallery-tile:nth-child(9) { grid-area: 9 / 4 / 11 / 7; }
+.gallery-strip::-webkit-scrollbar { display: none; }
+.gallery-strip.is-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
+
+.gallery-tile {
+  flex: 0 0 auto;
+  height: var(--tile-height);
+  scroll-snap-align: start;
+}
+.gallery-tile-landscape { aspect-ratio: 4 / 3; }
+.gallery-tile-portrait { aspect-ratio: 3 / 4; }
 
 .gallery-open {
   display: block;
@@ -1877,7 +1907,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   border-radius: 10px;
   overflow: hidden;
   background: var(--paper-sunk);
-  cursor: zoom-in;
+  cursor: inherit;
 }
 .gallery-open:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .gallery-open img {
@@ -1885,29 +1915,69 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   width: 100%;
   height: 100%;
   object-fit: cover;
+  pointer-events: none; /* so a drag starts on the button, not the image */
 }
 
-/* Under 640px the hand-placed composition would give up too much of each
-   photo, so it becomes two columns: landscapes full width, portraits in
-   pairs. Dense packing lets a portrait step back to fill a half-row left
-   open ahead of a full-width landscape. */
+/* The strip's own scrollbar is hidden; this row is its replacement. The
+   bar shows how much of the strip is in view and where, the count names
+   the photo at the left edge, and the arrows page through. */
+.gallery-controls {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  margin-top: clamp(1rem, 2.5vw, 1.5rem);
+}
+.gallery-progress {
+  position: relative;
+  flex: 1 1 auto;
+  height: 2px;
+  background: var(--line);
+  border-radius: 2px;
+}
+.gallery-progress-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 20%;
+  background: var(--ink);
+  border-radius: 2px;
+  transform-origin: left;
+  transition: width 0.2s ease, transform 0.2s ease;
+}
+.gallery-count {
+  flex: 0 0 auto;
+  min-width: 4.5ch;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.gallery-arrows { display: flex; gap: 0.5rem; flex: 0 0 auto; }
+.gallery-arrow {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.gallery-arrow iconify-icon { font-size: 24px; }
+.gallery-arrow:hover { background: var(--paper-raise); border-color: var(--ink); }
+.gallery-arrow[disabled] { opacity: 0.35; cursor: default; }
+.gallery-arrow[disabled]:hover { background: transparent; border-color: var(--line-strong); }
+
 @media (max-width: 640px) {
   .gallery-head { grid-template-columns: 1fr; align-items: start; }
-  .gallery-mosaic {
-    --tile-gap: 8px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: auto;
-    grid-auto-flow: dense;
-    aspect-ratio: auto;
-  }
-  /* Selectors here carry the mosaic class so they outrank the per-tile
-     placements above, which are two classes deep themselves. */
-  .gallery-mosaic .gallery-tile { grid-area: auto; }
-  .gallery-mosaic .gallery-tile-hero, .gallery-mosaic .gallery-tile-landscape { grid-column: span 2; aspect-ratio: 4 / 3; }
-  .gallery-mosaic .gallery-tile-hero { aspect-ratio: 5 / 4; }
-  .gallery-mosaic .gallery-tile-portrait { aspect-ratio: 3 / 4; }
-  /* Five portraits pair off with one left over; it takes the full width. */
-  .gallery-mosaic .gallery-tile:nth-child(7) { grid-column: span 2; aspect-ratio: 4 / 5; }
+  .gallery-strip { --tile-height: clamp(220px, 58vw, 340px); --tile-gap: 8px; }
+  .gallery-controls { gap: 1rem; }
 }
 
 /* ------------------------------------------------------ gallery viewer */
