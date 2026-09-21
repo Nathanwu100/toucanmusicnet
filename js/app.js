@@ -190,6 +190,7 @@
         <div class="footer-links" aria-label="Contact">
           <strong>Contact</strong>
           <a href="mailto:toucanexec@gmail.com">toucanexec@gmail.com</a>
+          <a href="mailto:briprowang@gmail.com?subject=Toucan%20Music%20bug%20report">Report a bug</a>
           <button type="button" data-open-settings>Notification settings</button>
         </div>
       </div>
