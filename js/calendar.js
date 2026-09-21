@@ -272,9 +272,58 @@
         selectDate(date);
         $("#day-panel").scrollIntoView({ behavior: "smooth", block: "center" });
       });
-      row.appendChild(jump);
+
+      if (user?.role === "admin") {
+        const line = element("div", "past-log-row");
+        line.append(jump, pastPeopleToggle(event));
+        row.appendChild(line);
+      } else {
+        row.appendChild(jump);
+      }
       monthList.appendChild(row);
     }
+  }
+
+  // The archive is where an admin looks back at who came, so each item can
+  // open the same roster the day panel shows -- read-only, since the class
+  // is over -- plus the volunteers who signed up. Both are fetched on the
+  // first click rather than for every row, because the roster is the one
+  // gated call that hands out contact details and there is no reason to
+  // pull every past class's the moment the page loads.
+  function pastPeopleToggle(event) {
+    const toggle = element("button", "btn btn-sm btn-quiet past-log-people-toggle", "Who signed up");
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "false");
+    let panel = null;
+
+    toggle.addEventListener("click", async () => {
+      if (panel) {
+        panel.hidden = !panel.hidden;
+        toggle.setAttribute("aria-expanded", String(!panel.hidden));
+        return;
+      }
+      toggle.disabled = true;
+      panel = element("div", "past-log-people");
+      toggle.closest(".past-log-item").appendChild(panel);
+      toggle.setAttribute("aria-expanded", "true");
+      try {
+        if (event.event_type === "class") {
+          const roster = await api.listClassEnrollments(event.id);
+          panel.appendChild(rosterTable(roster, event, { readOnly: true }));
+        }
+        if (event.event_type !== "class" || event.volunteer_capacity > 0) {
+          const names = await api.listSignups(event.id);
+          panel.appendChild(element("p", "past-log-volunteers", names.length
+            ? `Volunteers: ${names.map((entry) => entry.user_name).join(", ")}`
+            : "Volunteers: no one signed up"));
+        }
+      } catch (error) {
+        panel.appendChild(element("p", "day-panel-error", error.message));
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+    return toggle;
   }
 
   async function refresh() {
@@ -1081,17 +1130,24 @@
   // Everything an admin needs to reach a student, and which slot they took.
   // Contact details only ever come from list_class_roster, which refuses
   // anyone who is not an admin.
-  function rosterTable(roster, event) {
+  //
+  // `readOnly` is for a class that has already happened: the same people
+  // and contact details, but no Move or Remove, since there is nothing left
+  // to move them to or remove them from.
+  function rosterTable(roster, event, { readOnly = false } = {}) {
     const wrap = element("div", "roster");
     const total = event.student_capacity || roster.length;
     wrap.appendChild(element("p", "roster-head",
-      roster.length ? `Enrolled students (${roster.length}${total ? ` of ${total}` : ""})`
-                    : "No students enrolled yet"));
+      roster.length
+        ? `${readOnly ? "Students who signed up" : "Enrolled students"} (${roster.length}${total ? ` of ${total}` : ""})`
+        : readOnly ? "No students signed up" : "No students enrolled yet"));
     if (!roster.length) return wrap;
 
     const table = element("table", "roster-table");
     const head = element("tr", "");
-    ["Student", "Instrument", "Slot", "Email", "Phone", ""].forEach((label) => {
+    const columns = ["Student", "Instrument", "Slot", "Email", "Phone"];
+    if (!readOnly) columns.push("");
+    columns.forEach((label) => {
       head.appendChild(element("th", "", label));
     });
     table.appendChild(element("thead", "")).appendChild(head);
@@ -1130,6 +1186,11 @@
         phoneCell.textContent = "-";
       }
       row.appendChild(phoneCell);
+
+      if (readOnly) {
+        tbody.appendChild(row);
+        continue;
+      }
 
       // Moving somebody keeps their place; removing takes it away. Either way
       // the student is told the next time they open the site.

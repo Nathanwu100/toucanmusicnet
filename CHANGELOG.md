@@ -19,6 +19,25 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.26.0] - 2026-09-21
+
+### Added
+- **An admin can see who signed up for a past class.** Every item in the
+  calendar's "Past classes & events" archive now carries a "Who signed up"
+  button for admins. It unfolds the same roster the day panel shows for an
+  upcoming class -- name, instrument, slot, email, and phone -- without the
+  Move and Remove controls, plus the volunteers who signed up. Nothing is
+  fetched until the button is pressed.
+
+## [1.25.1] - 2026-09-21
+
+### Changed
+- **The About page gallery scrolls sideways.** The photos now stand in one
+  strip at a shared height, each at its own width so nothing is cropped,
+  and the strip bleeds to the edge of the screen. A bar under it shows how
+  far along you are, with a count and arrows; on a computer the strip can
+  also be dragged. The full-size viewer is unchanged.
+
 ## [1.25.0] - 2026-09-21
 
 ### Added

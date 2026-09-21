@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const { loadDemoApi } = require("./helpers/load-demo-api");
+const { loadDemoApi, readDemoDb, writeDemoDb } = require("./helpers/load-demo-api");
 
 const inDays = (days, hour, minute = 0) => {
   const date = new Date();
@@ -310,6 +310,40 @@ test("the admin roster carries contact details and the slot taken", async () => 
   assert.equal(entry.block_label, "Grade 3");
   assert.ok(entry.block_starts_at, "the roster says which slot they took");
   assert.ok("phone_number" in entry);
+});
+
+// The archive on the calendar lets an admin look back at who came, so the
+// roster has to keep answering after the class is over -- and it must not
+// have quietly depended on the class still being open or upcoming.
+test("the roster still reads once the class has ended", async () => {
+  const { api, storage } = loadDemoApi();
+  const created = await classWithBlocks(api);
+  await api.logout();
+
+  await api.login("ari@example.com", "toucan2026");
+  const block = (await api.listEvents()).find((event) => event.id === created.id)
+    .blocks.find((row) => row.instrument === "violin" && row.label === "Beginners");
+  await api.joinClass(created.id, block.id);
+  await api.logout();
+
+  // Age the class straight in the store: the API refuses to reschedule a
+  // class with students in it, and time itself is what we are simulating.
+  const db = readDemoDb(storage);
+  const row = db.events.find((event) => event.id === created.id);
+  const started = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  row.starts_at = started.toISOString();
+  row.ends_at = new Date(started.getTime() + 2 * 3600000).toISOString();
+  row.enrollment_open = false;
+  writeDemoDb(storage, db);
+
+  await api.login("admin", "toucan2026");
+  const listed = (await api.listEvents()).find((event) => event.id === created.id);
+  assert.ok(new Date(listed.ends_at).getTime() < Date.now(), "the class now reads as finished");
+  const roster = await api.listClassEnrollments(created.id);
+  assert.equal(roster.length, 1);
+  assert.equal(roster[0].student_name, "Ari Chen");
+  assert.equal(roster[0].email, "ari@example.com");
+  assert.equal(roster[0].block_label, "Beginners");
 });
 
 test("only an admin can read the roster", async () => {
