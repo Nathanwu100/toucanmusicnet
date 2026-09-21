@@ -19,6 +19,14 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.27.1] - 2026-09-21
+
+### Changed
+- **The hero photos are bigger and sit at the top.** The strip behind the
+  home page headline is taller, starts just under the navigation bar, and
+  the veil over it is lighter, so the photos read clearly. The words carry
+  a soft halo of the page colour to stay legible over them.
+
 ## [1.27.0] - 2026-09-21
 
 ### Changed

@@ -365,6 +365,11 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   gap: clamp(2rem, 6vw, 6rem);
 }
 .hero-copy { min-width: 0; }
+/* The photos behind are only veiled, not hidden, so the words carry a soft
+   halo of the page colour to hold their edge over a busy picture. */
+.hero-copy .eyebrow, .hero h1, .hero-copy > p {
+  text-shadow: 0 0 14px rgba(241, 246, 241, 0.95), 0 0 28px rgba(241, 246, 241, 0.8);
+}
 .eyebrow {
   font-weight: 600;
   font-size: 0.85rem;
@@ -1847,12 +1852,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
    words in front stay legible; heaviest on the left, where they are. */
 .hero-backdrop {
   --edge: clamp(56px, 12vw, 200px);
-  --tile-height: clamp(260px, 46vh, 520px);
+  --tile-height: clamp(380px, 64vh, 760px);
   position: absolute;
   inset: 0;
   z-index: 1;
   display: grid;
-  align-items: center;
+  align-items: start;
+  padding-top: clamp(0.5rem, 2vh, 1.5rem);
   overflow: hidden;
   /* One vanishing point for the whole row, at the centre of the screen. */
   perspective: 1400px;
@@ -1894,8 +1900,8 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 .hero-backdrop::before {
   background:
-    linear-gradient(90deg, rgba(241, 246, 241, 0.94) 0%, rgba(241, 246, 241, 0.86) 42%, rgba(241, 246, 241, 0.55) 70%, rgba(241, 246, 241, 0.4) 100%),
-    linear-gradient(180deg, rgba(241, 246, 241, 0.9) 0%, rgba(241, 246, 241, 0) 22%, rgba(241, 246, 241, 0) 78%, rgba(241, 246, 241, 0.95) 100%);
+    linear-gradient(90deg, rgba(241, 246, 241, 0.8) 0%, rgba(241, 246, 241, 0.7) 42%, rgba(241, 246, 241, 0.3) 70%, rgba(241, 246, 241, 0.12) 100%),
+    linear-gradient(180deg, rgba(241, 246, 241, 0.45) 0%, rgba(241, 246, 241, 0) 12%, rgba(241, 246, 241, 0) 72%, rgba(241, 246, 241, 0.96) 100%);
 }
 .hero-backdrop::after {
   backdrop-filter: blur(14px);
@@ -1905,13 +1911,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 
 @media (max-width: 640px) {
-  .hero-backdrop { --edge: 24px; --tile-height: clamp(200px, 52vw, 340px); align-items: start; padding-top: 3rem; }
+  .hero-backdrop { --edge: 24px; --tile-height: clamp(280px, 78vw, 480px); padding-top: 0.5rem; }
   .gallery-strip { --tile-gap: 8px; }
   /* Text runs the full width on a phone, so the veil is even across it. */
   .hero-backdrop::before {
     background:
-      linear-gradient(90deg, rgba(241, 246, 241, 0.86), rgba(241, 246, 241, 0.86)),
-      linear-gradient(180deg, rgba(241, 246, 241, 0.9) 0%, rgba(241, 246, 241, 0) 20%, rgba(241, 246, 241, 0) 70%, rgba(241, 246, 241, 0.98) 100%);
+      linear-gradient(90deg, rgba(241, 246, 241, 0.74), rgba(241, 246, 241, 0.74)),
+      linear-gradient(180deg, rgba(241, 246, 241, 0.4) 0%, rgba(241, 246, 241, 0) 12%, rgba(241, 246, 241, 0) 62%, rgba(241, 246, 241, 0.98) 100%);
   }
 }
 
