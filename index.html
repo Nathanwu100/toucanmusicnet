@@ -16,10 +16,11 @@
   <script src="js/phone.js?v=1" defer></script>
   <script src="js/api.js?v=20" defer></script>
   <script src="js/parallax.js?v=3" defer></script>
+  <script src="js/gallery.js?v=5" defer></script>
   <script src="js/tutorial.js?v=2" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=24" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=58" />
+  <link rel="stylesheet" href="css/style.css?v=60" />
 </head>
 <body class="home-page">
   <nav class="nav" data-site-nav>
@@ -37,6 +38,11 @@
   </nav>
 
   <header class="hero-scene">
+    <!-- Photos from lessons drift behind the hero, curved like a wrapped
+         screen. Decorative: hidden from assistive tech, takes no input. -->
+    <div class="hero-backdrop" aria-hidden="true">
+      <ul class="gallery-strip" data-gallery></ul>
+    </div>
     <div class="hero">
       <div class="hero-copy">
         <p class="eyebrow">Free weekend lessons · Palo Alto</p>

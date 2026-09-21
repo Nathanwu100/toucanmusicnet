@@ -19,6 +19,30 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.27.0] - 2026-09-21
+
+### Changed
+- **The photo gallery now lives behind the home page hero.** The strip of
+  lesson photos drifts slowly behind "Every child deserves a soundtrack",
+  curved round the viewer and looping without end, under a veil of the page
+  colour that keeps the words legible. It is decorative: it takes no input
+  and is hidden from assistive tech. The About page is back to the team.
+- **The gallery moves on phones.** It runs on an animation frame with plain
+  transforms instead of scrolling and snapping, which phones handled badly.
+- **Two greens.** Every green element -- buttons, links, badges, chips,
+  wells, focus rings, the success state -- is now one of two colours: the
+  canopy green, and a light green a touch lighter than before. The page
+  background and its bands are untouched.
+
+## [1.26.2] - 2026-09-21
+
+### Changed
+- **The About page gallery wraps round the viewer.** Photos turn toward you
+  and come forward as they near the edge of the screen, like a curved
+  screen, and the strip now loops: the first photo has the last ones to its
+  left and the last has the first to its right, so there is never empty
+  space at either end.
+
 ## [1.26.1] - 2026-09-21
 
 ### Changed
