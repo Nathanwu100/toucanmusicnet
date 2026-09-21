@@ -38,25 +38,33 @@
   const tiles = Array.from(strip.children);
 
   // ------------------------------------------------------------- strip
-  // The strip's scrollbar is hidden, so the controls row underneath stands
-  // in for it: a bar showing how much is in view and where, the number of
-  // the photo at the left edge, and arrows that page by one tile.
+  // The current photo is the one held at the centre of the screen. The
+  // strip's scrollbar is hidden, so the controls row underneath stands in
+  // for it: a bar showing how much is in view and where, the number of the
+  // centred photo, and arrows that step to the next one.
   const thumb = document.querySelector("[data-gallery-thumb]");
   const count = document.querySelector("[data-gallery-count]");
   const prev = document.querySelector("[data-gallery-prev]");
   const next = document.querySelector("[data-gallery-next]");
 
-  // The strip's left padding is where a tile "starts" -- it is what
-  // scroll-padding snaps to, so it is what the count and arrows measure by.
-  const gutter = () => parseFloat(getComputedStyle(strip).paddingLeft) || 0;
-  const tileStart = (tile) => tile.offsetLeft - gutter();
+  // The first and last tile can only sit centred if the strip has room
+  // either side of them, so the padding is half the screen less half the
+  // tile -- and the tiles differ in width, so it is measured, not styled.
+  function fitEdges() {
+    const width = strip.clientWidth;
+    strip.style.paddingLeft = `${Math.max(0, (width - tiles[0].offsetWidth) / 2)}px`;
+    strip.style.paddingRight = `${Math.max(0, (width - tiles[tiles.length - 1].offsetWidth) / 2)}px`;
+  }
 
-  function leadingIndex() {
-    const max = strip.scrollWidth - strip.clientWidth;
-    if (strip.scrollLeft >= max - 1) return tiles.length - 1; // the end, whatever is at the left edge
-    const x = strip.scrollLeft + 2;
+  const tileCentre = (tile) => tile.offsetLeft + tile.offsetWidth / 2;
+  const scrollFor = (tile) => tileCentre(tile) - strip.clientWidth / 2;
+
+  function centredIndex() {
+    const middle = strip.scrollLeft + strip.clientWidth / 2;
     let index = 0;
-    tiles.forEach((tile, i) => { if (tileStart(tile) <= x) index = i; });
+    tiles.forEach((tile, i) => {
+      if (Math.abs(tileCentre(tile) - middle) < Math.abs(tileCentre(tiles[index]) - middle)) index = i;
+    });
     return index;
   }
 
@@ -68,9 +76,10 @@
       thumb.style.width = `${visible * 100}%`;
       thumb.style.transform = `translateX(${fraction * (1 / visible - 1) * 100}%)`;
     }
-    if (count) count.textContent = `${leadingIndex() + 1} / ${PHOTOS.length}`;
-    if (prev) prev.disabled = strip.scrollLeft <= 1;
-    if (next) next.disabled = strip.scrollLeft >= max - 1;
+    const index = centredIndex();
+    if (count) count.textContent = `${index + 1} / ${PHOTOS.length}`;
+    if (prev) prev.disabled = index === 0;
+    if (next) next.disabled = index === tiles.length - 1;
   }
 
   let pending = false;
@@ -79,22 +88,17 @@
     pending = true;
     requestAnimationFrame(() => { pending = false; sync(); });
   }, { passive: true });
-  window.addEventListener("resize", sync);
-  window.addEventListener("load", sync);
-  sync();
+  function layout() { fitEdges(); sync(); }
+  window.addEventListener("resize", layout);
+  window.addEventListener("load", layout);
+  layout();
 
   function scrollToTile(i) {
     const tile = tiles[Math.max(0, Math.min(tiles.length - 1, i))];
-    strip.scrollTo({ left: tileStart(tile), behavior: "smooth" });
+    strip.scrollTo({ left: scrollFor(tile), behavior: "smooth" });
   }
-  if (prev) prev.addEventListener("click", () => scrollToTile(leadingIndex() - 1));
-  if (next) next.addEventListener("click", () => {
-    // Step to the first tile whose start is beyond the current one, so a
-    // strip already sitting exactly on a tile moves by one.
-    const x = strip.scrollLeft + 2;
-    const target = tiles.findIndex((tile) => tileStart(tile) > x);
-    scrollToTile(target === -1 ? tiles.length - 1 : target);
-  });
+  if (prev) prev.addEventListener("click", () => scrollToTile(centredIndex() - 1));
+  if (next) next.addEventListener("click", () => scrollToTile(centredIndex() + 1));
 
   // Mouse drag scrolls the strip; touch already does. Snapping is off while
   // the pointer is down so the strip follows the hand, then the nearest
@@ -118,10 +122,7 @@
     if (!drag) return;
     const moved = drag.moved;
     drag = null;
-    const x = strip.scrollLeft;
-    const nearest = tiles.reduce((best, tile) =>
-      Math.abs(tileStart(tile) - x) < Math.abs(tileStart(best) - x) ? tile : best, tiles[0]);
-    strip.scrollTo({ left: tileStart(nearest), behavior: "smooth" });
+    strip.scrollTo({ left: scrollFor(tiles[centredIndex()]), behavior: "smooth" });
     // Snapping comes back once the settle has finished, or it would fight it.
     setTimeout(() => strip.classList.remove("is-dragging"), 400);
     swallowClick = moved;

@@ -1833,19 +1833,17 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 /* ------------------------------------------------------------- gallery */
 /* Photographs from lessons, below the team on about.html.
 
-   One strip, scrolled sideways. Every photo stands at the same height and
-   its own width, so portraits and landscapes set the rhythm and nothing is
+   One strip, scrolled sideways, with whichever photo is current held at
+   the centre of the screen. Every photo stands at the same height and its
+   own width, so portraits and landscapes set the rhythm and nothing is
    cropped: a film strip, not a slider. The strip bleeds to the viewport
-   edges while its first tile lines up with the heading, so the row reads
-   as part of the page rather than a widget dropped into it. Tiles carry no
-   chrome -- the viewer is where the pictures are seen whole. */
+   edges, and at each edge the photos blur and fade out, so the row reads
+   as passing through the page rather than being clipped by it. Tiles
+   carry no chrome -- the viewer is where the pictures are seen whole. */
 .gallery {
   margin-top: clamp(4rem, 8vw, 6.5rem);
   padding-top: clamp(2.5rem, 5vw, 4rem);
   border-top: 1px solid var(--line);
-  /* Distance from the viewport edge to the page's content edge; the strip
-     uses it to bleed out and still start on the grid. */
-  --page-gutter: max(clamp(1rem, 4vw, 3rem), calc((100vw - 980px) / 2 + clamp(1rem, 4vw, 3rem)));
 }
 .gallery-head {
   display: grid;
@@ -1869,31 +1867,65 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   padding-bottom: 0.2rem;
 }
 
+.gallery-stage {
+  --edge: clamp(56px, 12vw, 200px);
+  position: relative;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
 .gallery-strip {
   --tile-height: clamp(260px, 46vh, 520px);
   --tile-gap: 12px;
+  position: relative;
   list-style: none;
   display: flex;
   gap: var(--tile-gap);
-  width: 100vw;
-  margin-inline: calc(50% - 50vw);
-  padding-inline: var(--page-gutter);
+  width: 100%;
+  /* The side padding is set by script to half the screen less half the
+     first (and last) tile, so those can sit centred like the rest. */
+  padding-inline: 50vw;
   padding-block: 4px; /* room for the focus ring, which overflow would clip */
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
-  scroll-padding-inline: var(--page-gutter);
   scrollbar-width: none;
   cursor: grab;
+  /* The fade: photos go transparent as they reach the edge of the screen. */
+  mask-image: linear-gradient(to right, transparent, #000 var(--edge), #000 calc(100% - var(--edge)), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--edge), #000 calc(100% - var(--edge)), transparent);
 }
 .gallery-strip::-webkit-scrollbar { display: none; }
 .gallery-strip.is-dragging { scroll-snap-type: none; cursor: grabbing; user-select: none; }
 
+/* The blur: a pane over each edge that softens whatever passes under it,
+   strongest at the edge and gone by the time it meets the fade's end. */
+.gallery-stage::before, .gallery-stage::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--edge);
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.gallery-stage::before {
+  left: 0;
+  mask-image: linear-gradient(to right, #000 15%, transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 15%, transparent);
+}
+.gallery-stage::after {
+  right: 0;
+  mask-image: linear-gradient(to left, #000 15%, transparent);
+  -webkit-mask-image: linear-gradient(to left, #000 15%, transparent);
+}
+
 .gallery-tile {
   flex: 0 0 auto;
   height: var(--tile-height);
-  scroll-snap-align: start;
+  scroll-snap-align: center;
 }
 .gallery-tile-landscape { aspect-ratio: 4 / 3; }
 .gallery-tile-portrait { aspect-ratio: 3 / 4; }
@@ -1976,6 +2008,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 @media (max-width: 640px) {
   .gallery-head { grid-template-columns: 1fr; align-items: start; }
+  .gallery-stage { --edge: 36px; }
   .gallery-strip { --tile-height: clamp(220px, 58vw, 340px); --tile-gap: 8px; }
   .gallery-controls { gap: 1rem; }
 }

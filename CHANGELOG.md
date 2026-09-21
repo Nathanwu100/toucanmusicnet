@@ -19,6 +19,13 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.26.1] - 2026-09-21
+
+### Changed
+- **The About page gallery keeps the current photo centred.** The strip now
+  snaps each photo to the middle of the screen instead of the left edge,
+  and the photos blur and fade out as they reach either side.
+
 ## [1.26.0] - 2026-09-21
 
 ### Added
