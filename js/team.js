@@ -56,6 +56,12 @@
       role: "Piano Teacher",
       bio: "8 years of piano. Outside music: basketball, track and field, and games.",
     },
+    {
+      name: "Joshua",
+      photo: "assets/team/joshua.webp",
+      role: "Piano Teacher",
+      bio: "10 years of piano. Outside music: tennis and volunteering.",
+    },
   ];
 
   const escape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
