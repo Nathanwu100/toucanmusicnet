@@ -19,6 +19,17 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.25.0] - 2026-09-21
+
+### Added
+- **A photo gallery on the About page.** Nine photographs from lessons, laid
+  out as a fixed mosaic under the team, each opening into a full-screen
+  viewer with captions, arrow keys, and swipe. Photos live in
+  `assets/art/gallery/` as two WebP sizes each; adding one is an entry in
+  `js/gallery.js` plus the two files.
+- **A "Report a bug" link in the footer's Contact column.** It opens an email
+  with the subject already filled in.
+
 ## [1.24.0] - 2026-09-03
 
 ### Changed

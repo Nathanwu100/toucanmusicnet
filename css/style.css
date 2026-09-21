@@ -1812,6 +1812,225 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .team-bio { font-size: 0.76rem; }
 }
 
+/* ------------------------------------------------------------- gallery */
+/* Photographs from lessons, below the team on about.html.
+
+   The mosaic is a fixed composition, not a masonry that reflows: six
+   columns of square units, ten rows, and every tile placed by hand so the
+   one big landscape sits top-left and the whole thing closes into a clean
+   rectangle. Each photo is cropped to its tile with object-fit; the viewer
+   is where it is seen whole. Tiles carry no chrome -- the pictures are the
+   content and the grid is the design. */
+.gallery {
+  margin-top: clamp(4rem, 8vw, 6.5rem);
+  padding-top: clamp(2.5rem, 5vw, 4rem);
+  border-top: 1px solid var(--line);
+}
+.gallery-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1rem clamp(2rem, 6vw, 5rem);
+  align-items: end;
+  margin-bottom: clamp(1.5rem, 3.5vw, 2.5rem);
+}
+.gallery-head h2 {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.gallery-head p {
+  max-width: 42ch;
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  line-height: 1.6;
+  padding-bottom: 0.2rem;
+}
+
+.gallery-mosaic {
+  --tile-gap: 10px;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  gap: var(--tile-gap);
+  aspect-ratio: 6 / 10;
+}
+.gallery-tile { min-width: 0; min-height: 0; }
+.gallery-tile:nth-child(1) { grid-area: 1 / 1 / 4 / 5; }
+.gallery-tile:nth-child(2) { grid-area: 1 / 5 / 4 / 7; }
+.gallery-tile:nth-child(3) { grid-area: 4 / 1 / 6 / 5; }
+.gallery-tile:nth-child(4) { grid-area: 4 / 5 / 6 / 7; }
+.gallery-tile:nth-child(5) { grid-area: 6 / 1 / 9 / 3; }
+.gallery-tile:nth-child(6) { grid-area: 6 / 3 / 9 / 5; }
+.gallery-tile:nth-child(7) { grid-area: 6 / 5 / 9 / 7; }
+.gallery-tile:nth-child(8) { grid-area: 9 / 1 / 11 / 4; }
+.gallery-tile:nth-child(9) { grid-area: 9 / 4 / 11 / 7; }
+
+.gallery-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper-sunk);
+  cursor: zoom-in;
+}
+.gallery-open:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.gallery-open img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Under 640px the hand-placed composition would give up too much of each
+   photo, so it becomes two columns: landscapes full width, portraits in
+   pairs. Dense packing lets a portrait step back to fill a half-row left
+   open ahead of a full-width landscape. */
+@media (max-width: 640px) {
+  .gallery-head { grid-template-columns: 1fr; align-items: start; }
+  .gallery-mosaic {
+    --tile-gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: auto;
+    grid-auto-flow: dense;
+    aspect-ratio: auto;
+  }
+  /* Selectors here carry the mosaic class so they outrank the per-tile
+     placements above, which are two classes deep themselves. */
+  .gallery-mosaic .gallery-tile { grid-area: auto; }
+  .gallery-mosaic .gallery-tile-hero, .gallery-mosaic .gallery-tile-landscape { grid-column: span 2; aspect-ratio: 4 / 3; }
+  .gallery-mosaic .gallery-tile-hero { aspect-ratio: 5 / 4; }
+  .gallery-mosaic .gallery-tile-portrait { aspect-ratio: 3 / 4; }
+  /* Five portraits pair off with one left over; it takes the full width. */
+  .gallery-mosaic .gallery-tile:nth-child(7) { grid-column: span 2; aspect-ratio: 4 / 5; }
+}
+
+/* ------------------------------------------------------ gallery viewer */
+/* A full-screen <dialog>: the photo letterboxed on the dark canopy, one
+   strip along the bottom with the caption, the count, and the arrows.
+   Opening is the page's one orchestrated motion -- the scrim fades and
+   the photo settles up into place; turning the page is a short slide in
+   the direction of travel. */
+html.has-viewer { overflow: hidden; }
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  background: rgb(8, 26, 17);
+  overscroll-behavior: contain;
+}
+.viewer[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  animation: viewer-in 0.28s ease-out;
+}
+.viewer::backdrop { background: transparent; }
+
+.viewer-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  min-height: 0;
+  padding: clamp(3.6rem, 8vh, 4.5rem) clamp(1rem, 4vw, 3rem) 0.75rem;
+  cursor: zoom-out;
+}
+.viewer[open] .viewer-stage { animation: viewer-photo-in 0.42s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.viewer-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%; /* resolves against the 1fr track above, not an auto row */
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  cursor: default;
+}
+.viewer-stage.is-entering[data-direction="next"] img { animation: viewer-turn-next 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.viewer-stage.is-entering[data-direction="prev"] img { animation: viewer-turn-prev 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+.viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+  padding: 0.9rem clamp(1rem, 4vw, 3rem) clamp(1rem, 3vh, 1.6rem);
+}
+.viewer-caption {
+  max-width: 56ch;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+.viewer-nav { display: flex; align-items: center; gap: 0.6rem; flex: 0 0 auto; }
+.viewer-counter {
+  margin-right: 0.6rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-ink-soft);
+}
+
+.viewer-arrow, .viewer-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.viewer-arrow iconify-icon, .viewer-close iconify-icon { font-size: 24px; }
+.viewer-arrow:hover, .viewer-close:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.6); }
+.viewer-arrow:focus-visible, .viewer-close:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.viewer-close {
+  position: absolute;
+  top: clamp(0.75rem, 2vh, 1.25rem);
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 1;
+}
+
+@keyframes viewer-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes viewer-photo-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes viewer-turn-next {
+  from { opacity: 0; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes viewer-turn-prev {
+  from { opacity: 0; transform: translateX(-28px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 640px) {
+  .viewer-stage { padding-inline: 0.75rem; }
+  .viewer-bar { flex-wrap: wrap; }
+  .viewer-caption { flex: 1 1 100%; font-size: 0.9rem; }
+  .viewer-nav { margin-left: auto; }
+}
+
 /* -------------------------------------------------------- settings drawer */
 .settings-scrim { position: fixed; inset: 0; z-index: 89; background: rgba(22, 40, 45, 0.28); backdrop-filter: blur(2px); }
 .settings-drawer { position: fixed; z-index: 90; top: 0; right: 0; width: min(440px, 100%); height: 100dvh; overflow: auto; background: var(--paper-raise); border-left: 1px solid var(--line); box-shadow: -18px 0 48px rgba(22, 40, 45, 0.16); transform: translateX(102%); }

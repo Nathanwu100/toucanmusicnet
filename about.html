@@ -19,8 +19,9 @@
   <script src="js/tutorial.js?v=2" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/team.js?v=8" defer></script>
+  <script src="js/gallery.js?v=1" defer></script>
   <script src="js/app.js?v=24" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=54" />
+  <link rel="stylesheet" href="css/style.css?v=55" />
 </head>
 <body class="about-page">
   <nav class="nav" data-site-nav>
@@ -40,7 +41,36 @@
   <main class="team-page">
     <h1 class="team-page-title">About us</h1>
     <ul class="team-list" data-team-list></ul>
+
+    <section class="gallery" aria-labelledby="gallery-title">
+      <div class="gallery-head">
+        <h2 id="gallery-title">Inside a lesson</h2>
+        <p>Weekends in Palo Alto: first bow holds, note names on the whiteboard, a quartet warming up outside. Every photo opens full size.</p>
+      </div>
+      <ul class="gallery-mosaic" data-gallery></ul>
+    </section>
   </main>
+
+  <dialog class="viewer" data-gallery-viewer aria-label="Photo viewer">
+    <button type="button" class="viewer-close" data-viewer-close aria-label="Close">
+      <iconify-icon icon="pixelarticons:close" aria-hidden="true"></iconify-icon>
+    </button>
+    <div class="viewer-stage" data-viewer-stage>
+      <img data-viewer-image alt="" />
+    </div>
+    <div class="viewer-bar">
+      <p class="viewer-caption" data-viewer-caption aria-live="polite"></p>
+      <div class="viewer-nav">
+        <span class="viewer-counter" data-viewer-counter></span>
+        <button type="button" class="viewer-arrow" data-viewer-prev aria-label="Previous photo">
+          <iconify-icon icon="pixelarticons:chevron-left" aria-hidden="true"></iconify-icon>
+        </button>
+        <button type="button" class="viewer-arrow" data-viewer-next aria-label="Next photo">
+          <iconify-icon icon="pixelarticons:chevron-right" aria-hidden="true"></iconify-icon>
+        </button>
+      </div>
+    </div>
+  </dialog>
 
   <footer data-site-footer></footer>
 
