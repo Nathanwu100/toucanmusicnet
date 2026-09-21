@@ -370,6 +370,9 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .hero-copy .eyebrow, .hero h1, .hero-copy > p {
   text-shadow: 0 0 14px rgba(241, 246, 241, 0.95), 0 0 28px rgba(241, 246, 241, 0.8);
 }
+/* Not on the gradient phrase: its fill is painted through transparent
+   text, so a shadow would show through the letters themselves. */
+.hero h1 .hl-accent { text-shadow: none; }
 .eyebrow {
   font-weight: 600;
   font-size: 0.85rem;
