@@ -19,6 +19,24 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.0.0] - 2026-09-23
+
+### Changed
+- **A class or event leaves the calendar the day after it happens.** It
+  stays on its day until midnight, then moves to "Past classes & events"
+  underneath. The Upcoming / Past / All switch is gone with it: the grid
+  is what is coming, the archive is what has been. Opening an item from the
+  archive still shows it in the day panel.
+- **The hero photos are back behind the whole hero**, from the bar above to
+  the band below, standing the full height. They go to the page colour and
+  soften under the words on the left, and stay clear on the right. The
+  dots and arrows sit at the foot of the hero and show on hover.
+- **The wave background is a step darker**, for more contrast against the
+  cards and panels on it.
+- **Every dark-green panel is the one green now**: the reminders panel, the
+  closing band, tooltips, toasts, the team photo captions, and the shade
+  over the mission photo, alongside the buttons that already were.
+
 ## [1.28.0] - 2026-09-23
 
 ### Changed

@@ -19,7 +19,6 @@
   let panelRenderId = 0;
   // "upcoming" | "past" | "all" -- applies to the grid and the day panel
   // alike, so what a day cell promises is what opening it delivers.
-  let timeFilter = "all";
   // Set from ?event= on arrival, consumed by the first render, then cleared.
   // A reminder or a card on the home page links here naming its event.
   let pendingEventId = new URLSearchParams(window.location.search).get("event");
@@ -46,14 +45,23 @@
     left.getFullYear() === right.getFullYear() &&
     left.getMonth() === right.getMonth() &&
     left.getDate() === right.getDate();
-  // An event counts as past once it has finished, not once it has started,
-  // so a class you are sitting in is still "upcoming".
+  // An event counts as ended once it has finished, not once it has started,
+  // so a class you are sitting in is still on. It counts as passed from the
+  // next day: it stays on the calendar for the rest of its day, then moves
+  // to the archive underneath.
   const hasEnded = (event) => new Date(event.ends_at || event.starts_at).getTime() < Date.now();
-  const inTimeFilter = (event) =>
-    timeFilter === "all" || (timeFilter === "past" ? hasEnded(event) : !hasEnded(event));
-  const visibleEvents = () => events.filter(inTimeFilter);
-  const eventsForDate = (date) =>
-    visibleEvents().filter((event) => sameDay(new Date(event.starts_at), date));
+  const hasPassed = (event) => {
+    const day = new Date(event.ends_at || event.starts_at);
+    day.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return day.getTime() < today.getTime();
+  };
+  const visibleEvents = () => events.filter((event) => !hasPassed(event));
+  // The grid shows what has not passed. The day panel shows everything on
+  // the day, so a passed item opened from the archive still has a page.
+  const eventsForDate = (date, { includePassed = false } = {}) =>
+    (includePassed ? events : visibleEvents()).filter((event) => sameDay(new Date(event.starts_at), date));
   const toLocalInput = (dateOrIso) => {
     const date = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
     const pad = (value) => String(value).padStart(2, "0");
@@ -99,13 +107,12 @@
     const instrumentLabel = instrument
       ? $("#instrument-filter").selectedOptions[0]?.textContent
       : "All instruments";
-    const period = { upcoming: "Upcoming", past: "Past", all: "All" }[timeFilter];
     const shown = visibleEvents().length;
 
     scope.textContent = "";
     scope.append(element(
       "strong", "calendar-scope-summary",
-      `${period} · ${instrumentLabel} · ${shown} item${shown === 1 ? "" : "s"}`
+      `${instrumentLabel} · ${shown} upcoming item${shown === 1 ? "" : "s"}`
     ));
 
     let note = "";
@@ -127,17 +134,15 @@
     scope.append(noteRow);
   }
 
-  // Switching to a period the current month has nothing in is a dead end,
-  // so jump to the nearest month that does: the latest past month, or the
-  // soonest upcoming one.
+  // A month with nothing coming up is a dead end, so on load jump to the
+  // soonest month that has something.
   function jumpToPeriod() {
-    if (timeFilter === "all" || !events.length) return;
-    const pool = events.filter(inTimeFilter);
+    const pool = visibleEvents();
     if (!pool.length || pool.some((event) => {
       const date = new Date(event.starts_at);
       return date.getFullYear() === current.getFullYear() && date.getMonth() === current.getMonth();
     })) return;
-    const target = new Date((timeFilter === "past" ? pool[pool.length - 1] : pool[0]).starts_at);
+    const target = new Date(pool[0].starts_at);
     current = new Date(target.getFullYear(), target.getMonth(), 1);
     selectedDate = new Date(target.getFullYear(), target.getMonth(), target.getDate());
   }
@@ -210,7 +215,7 @@
     if (!list) return;
 
     const past = events
-      .filter(hasEnded)
+      .filter(hasPassed)
       .sort((left, right) => right.starts_at.localeCompare(left.starts_at));
 
     count.textContent = past.length
@@ -265,10 +270,7 @@
       if (event.is_enrolled) badges.appendChild(element("span", "enrolled-badge", "Attended"));
 
       jump.append(when, copy, badges);
-      // Opening the day in the calendar needs the period to admit past items,
-      // or the click would scroll to a day that renders as empty.
       jump.addEventListener("click", () => {
-        if (timeFilter === "upcoming") setTimeFilter("all");
         selectDate(date);
         $("#day-panel").scrollIntoView({ behavior: "smooth", block: "center" });
       });
@@ -329,12 +331,11 @@
   async function refresh() {
     $("#calendar-scope").textContent = "Loading the schedule…";
     events = await api.listEvents($("#instrument-filter").value || null);
-    // A linked event decides the day and the period; otherwise fall back to
-    // keeping the current period stocked.
+    // A linked event decides the day; otherwise land on a month with
+    // something in it.
     const linked = pendingEventId && events.find((event) => event.id === pendingEventId);
     if (linked) {
       const date = new Date(linked.starts_at);
-      if (!inTimeFilter(linked)) setTimeFilter("all");
       selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       current = new Date(date.getFullYear(), date.getMonth(), 1);
     } else {
@@ -1450,7 +1451,7 @@
       timetable.innerHTML = "";
     }
     showWholeTimetable = false;
-    const dayEvents = eventsForDate(selectedDate);
+    const dayEvents = eventsForDate(selectedDate, { includePassed: true });
     $("#selected-day-title").textContent = selectedDate.toLocaleDateString([], {
       weekday: "long", month: "long", day: "numeric",
     });
@@ -1481,9 +1482,7 @@
       icon.setAttribute("icon", "pixelarticons:calendar");
       icon.setAttribute("aria-hidden", "true");
       let message = "Select another day to see scheduled items.";
-      if (timeFilter === "upcoming") message = "Nothing upcoming on this day. Switch to Past or All to look back.";
-      else if (timeFilter === "past") message = "Nothing finished on this day. Switch to Upcoming or All.";
-      else if (user?.role === "admin") message = "Select another day, change a filter, or add an event here.";
+      if (user?.role === "admin") message = "Select another day, change the instrument, or add an event here.";
       empty.append(icon, element("p", "", message));
       list.appendChild(empty);
       return;
@@ -1892,21 +1891,6 @@
   $("#f-end").addEventListener("change", renderDraftTimetable);
   $("#fill-blocks").addEventListener("click", fillDefaultBlocks);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
-
-  function setTimeFilter(next) {
-    timeFilter = next;
-    document.querySelectorAll("[data-time-filter]").forEach((option) => {
-      option.setAttribute("aria-pressed", String(option.dataset.timeFilter === next));
-    });
-  }
-
-  document.querySelectorAll("[data-time-filter]").forEach((button) => {
-    button.addEventListener("click", () => {
-      setTimeFilter(button.dataset.timeFilter);
-      jumpToPeriod();
-      render();
-    });
-  });
 
   window.addEventListener("toucan:instrument-changed", (event) => {
     user = event.detail.user;

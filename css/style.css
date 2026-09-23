@@ -34,7 +34,7 @@
 
   /* The canopy gradient. One definition, used by the page backdrop and
      by anything that wants to echo it. */
-  --canopy: linear-gradient(170deg, #eef6ee 0%, #dcecdf 42%, #cfe4d6 100%);
+  --canopy: linear-gradient(170deg, #e7f0e8 0%, #d2e5d6 42%, #c3dbca 100%);
 
   /* --- the two greens ------------------------------------------- */
   /* Every green element on the page is one of these two. Anything that
@@ -42,7 +42,7 @@
      brightness filter on hover; there are no in-between shades. The page
      background and its bands keep their own tones -- they are scenery,
      not elements. */
-  --green: #16704a;           /* canopy green: actions, badges, text */
+  --green: #16704a;           /* canopy green: actions, badges, dark panels */
   --green-light: #edf6f0;     /* tinted fills, wells, chips */
 
   /* --- primary: every action ------------------------------------ */
@@ -223,10 +223,10 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   overflow: visible;
 }
 .silk-ribbon { stroke: none; }
-.silk-layer.far .silk-ribbon { fill: #e7f1e7; }
-.silk-layer.mid .silk-ribbon { fill: #d8e9dc; }
-.silk-layer.near .silk-ribbon { fill: #cbe0d1; }
-.silk-fold { fill: rgba(255, 255, 255, 0.42); }
+.silk-layer.far .silk-ribbon { fill: #dfeae0; }
+.silk-layer.mid .silk-ribbon { fill: #cde1d2; }
+.silk-layer.near .silk-ribbon { fill: #bdd6c5; }
+.silk-fold { fill: rgba(255, 255, 255, 0.36); }
 
 /* -------------------------------------------------------------------- nav */
 .nav {
@@ -297,7 +297,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   top: calc(100% + 8px);
   padding: 0.3rem 0.55rem;
   border-radius: 4px;
-  background: var(--ink);
+  background: var(--green);
   color: var(--paper-raise);
   font: 600 0.75rem var(--font-body);
   white-space: nowrap;
@@ -429,13 +429,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   from { background-position: 128% 0; }
   to   { background-position: -28% 0; }
 }
-.hero-cta { display: flex; gap: 1rem; margin-top: 0.25rem; flex-wrap: wrap; }
+.hero-cta { display: flex; gap: 1rem; margin-top: 2.2rem; flex-wrap: wrap; }
 .hero-cta .btn { padding: 1.05rem 1.55rem; font-size: 1.03rem; min-height: 58px; display: inline-flex; align-items: center; justify-content: center; }
 /* ------------------------------------------------- notification board */
 /* The one animated thing left on the site. Everything else settles into
    place instantly; the reminder panel and the items inside it fade in,
    because a reminder arriving is the one moment worth noticing. */
-.notification-board { padding: clamp(1.5rem, 3vw, 2.2rem); color: var(--paper-raise); background: var(--ink); border-radius: 8px; box-shadow: var(--shadow-2); animation: notification-board-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.notification-board { padding: clamp(1.5rem, 3vw, 2.2rem); color: var(--paper-raise); background: var(--green); border-radius: 8px; box-shadow: var(--shadow-2); animation: notification-board-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 @keyframes notification-board-in {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: none; }
@@ -673,7 +673,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .pixel-glyph iconify-icon { font-size: 25px; color: var(--ink); }
 
 .cta-band {
-  background: var(--ink);
+  background: var(--green);
   color: var(--paper);
   border-left: 8px solid var(--accent);
   border-radius: 4px;
@@ -981,10 +981,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 /* Upcoming / Past / All. One segment is pressed at all times, so the
    control always states the current period rather than implying a default. */
-.time-filter { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper-sunk); }
-.time-filter-option { padding: 0.36rem 0.8rem; border: 0; border-radius: 4px; background: transparent; color: var(--ink-soft); font: 600 0.82rem var(--font-body); cursor: pointer; }
-.time-filter-option:hover { color: var(--ink); }
-.time-filter-option[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); }
 
 .instrument-filter { display: flex; align-items: center; gap: 0.55rem; flex: 0 0 auto; }
 .instrument-filter label { font-size: 0.78rem; font-weight: 700; }
@@ -1081,7 +1077,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   margin-right: 6px; vertical-align: baseline;
 }
 .cal-legend .k-class i { background: var(--accent); }
-.cal-legend .k-event i { background: var(--ink); }
+.cal-legend .k-event i { background: var(--green); }
 
 .day-panel {
   position: sticky;
@@ -1815,9 +1811,9 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   padding: 2.6rem 0.95rem 0.9rem;
   color: #fff;
   background: linear-gradient(to top,
-    rgba(8, 26, 17, 0.92) 0%,
-    rgba(8, 26, 17, 0.82) 42%,
-    rgba(8, 26, 17, 0) 100%);
+    rgba(22, 112, 74, 0.94) 0%,
+    rgba(22, 112, 74, 0.84) 42%,
+    rgba(22, 112, 74, 0) 100%);
 }
 .team-card-name { font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
 .team-role {
@@ -1843,32 +1839,24 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .team-bio { font-size: 0.76rem; }
 }
 
-/* --------------------------------------------------------- hero gallery */
-/* Photographs from lessons, drifting under the home page headline.
+/* -------------------------------------------------------- hero backdrop */
+/* Photographs from lessons, drifting behind the whole home page hero, from
+   the bar above to the band below.
 
    One strip, moved by script, with the current photo held near the centre
-   of the screen. Every photo stands at the same height and its own width,
-   so portraits and landscapes set the rhythm and nothing is cropped. The
-   strip loops without end and curves: tiles turn toward the viewer as they
-   near the edge of the screen, like a wrapped screen, where they blur and
-   fade out. It slides up under the copy above it, and where it meets the
-   words it goes to white: clear at the bottom, veiled and softened at the
-   top. Dots and arrows under it are the way to a particular photo; they
-   show on hover, and always on a touch screen. */
-.hero-layer-gallery {
-  grid-column: 1 / -1;
-  position: relative;
-  z-index: 1;
-  margin-top: calc(-1 * clamp(2rem, 9vh, 6rem));
-}
-.hero-copy, .hero-layer-board { position: relative; z-index: 2; }
-
-.hero-gallery {
+   of the screen. Every photo stands the full height of the hero and its
+   own width, so portraits and landscapes set the rhythm and nothing is
+   cropped. The strip loops without end and curves: tiles turn toward the
+   viewer as they near the edge of the screen, like a wrapped screen. The
+   words sit on the left, so that is where the strip goes to the page
+   colour: clear on the right, veiled and softened on the left. Dots and
+   arrows at the foot of the hero pick a photo; they show on hover, and
+   always on a touch screen. */
+.hero-backdrop {
   --edge: clamp(56px, 12vw, 200px);
-  --tile-height: clamp(280px, 44vh, 560px);
-  position: relative;
-  width: 100vw;
-  margin-inline: calc(50% - 50vw);
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   overflow: hidden;
   /* One vanishing point for the whole row, at the centre of the screen. */
   perspective: 1400px;
@@ -1879,16 +1867,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   display: flex;
   gap: var(--tile-gap);
   width: max-content;
+  height: 100%;
   transform-style: preserve-3d;
   will-change: transform;
-  /* Room above and below for the edge tiles, which come forward and so
-     draw taller than their box. */
-  padding-block: calc(var(--tile-height) * 0.08);
 }
 .gallery-tile {
   flex: 0 0 auto;
-  height: var(--tile-height);
-  border-radius: 10px;
+  height: 100%;
   overflow: hidden;
   background: var(--paper-sunk);
   transform-origin: center;
@@ -1898,46 +1883,57 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .gallery-tile-portrait { aspect-ratio: 3 / 4; }
 .gallery-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-/* The veil and the blur. The veil is the page colour, solid where the
-   strip meets the words and gone by the middle. The blur is a pane that
-   softens whatever passes under it: along the top, under the veil, and at
-   each side edge, strongest at the edge and gone a short way in. */
-.hero-gallery::before, .hero-gallery::after {
+/* The veil and the blur. The veil is the page colour, near solid under the
+   words on the left and gone by the right; a thin band of it along the top
+   and bottom seats the strip under the bar and over the band below. The
+   blur is a pane that softens whatever passes under it, following the veil
+   from the left, plus the far right edge. */
+.hero-backdrop::before, .hero-backdrop::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
 }
-.hero-gallery::before {
-  background: linear-gradient(180deg,
-    rgba(241, 246, 241, 1) 0%,
-    rgba(241, 246, 241, 0.92) 16%,
-    rgba(241, 246, 241, 0.55) 36%,
-    rgba(241, 246, 241, 0) 58%);
+.hero-backdrop::before {
+  background:
+    linear-gradient(90deg,
+      rgba(241, 246, 241, 0.9) 0%,
+      rgba(241, 246, 241, 0.84) 38%,
+      rgba(241, 246, 241, 0.45) 62%,
+      rgba(241, 246, 241, 0.08) 100%),
+    linear-gradient(180deg,
+      rgba(241, 246, 241, 0.55) 0%,
+      rgba(241, 246, 241, 0) 10%,
+      rgba(241, 246, 241, 0) 88%,
+      rgba(241, 246, 241, 0.85) 100%);
 }
-.hero-gallery::after {
+.hero-backdrop::after {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   mask-image:
-    linear-gradient(to bottom, #000 0%, #000 14%, transparent 50%),
-    linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
+    linear-gradient(to right, #000 0%, #000 34%, transparent 62%),
+    linear-gradient(to left, #000, transparent var(--edge));
   -webkit-mask-image:
-    linear-gradient(to bottom, #000 0%, #000 14%, transparent 50%),
-    linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
+    linear-gradient(to right, #000 0%, #000 34%, transparent 62%),
+    linear-gradient(to left, #000, transparent var(--edge));
 }
 
 .hero-gallery-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(0.5rem, 2vh, 1.25rem);
+  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  margin-top: 0.5rem;
   opacity: 0;
   transition: opacity 0.2s ease;
 }
-.hero-layer-gallery:hover .hero-gallery-nav,
-.hero-layer-gallery:focus-within .hero-gallery-nav { opacity: 1; }
+.hero-scene:hover .hero-gallery-nav,
+.hero-scene:focus-within .hero-gallery-nav { opacity: 1; }
 @media (hover: none) { .hero-gallery-nav { opacity: 1; } }
 
 .gallery-arrow {
@@ -1948,7 +1944,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   padding: 0;
   border: 1px solid var(--line-strong);
   border-radius: 50%;
-  background: transparent;
+  background: rgba(241, 246, 241, 0.7);
   color: var(--ink);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
@@ -1975,15 +1971,22 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   background: var(--line-strong);
   transition: transform 0.2s ease, background 0.2s ease;
 }
-.gallery-dot:hover::before { background: var(--ink); }
+.gallery-dot:hover::before { background: var(--green); }
 .gallery-dot[aria-current="true"]::before { background: var(--green); transform: scale(1.4); }
 
-.hero-layer-cta { grid-column: 1 / -1; }
-
 @media (max-width: 640px) {
-  .hero-layer-gallery { margin-top: -1.5rem; }
-  .hero-gallery { --edge: 24px; --tile-height: clamp(220px, 60vw, 400px); }
+  .hero-backdrop { --edge: 24px; }
   .gallery-strip { --tile-gap: 8px; }
+  /* Text runs the full width on a phone, so the veil is even across it. */
+  .hero-backdrop::before {
+    background:
+      linear-gradient(90deg, rgba(241, 246, 241, 0.8), rgba(241, 246, 241, 0.8)),
+      linear-gradient(180deg, rgba(241, 246, 241, 0.5) 0%, rgba(241, 246, 241, 0) 10%, rgba(241, 246, 241, 0) 86%, rgba(241, 246, 241, 0.9) 100%);
+  }
+  .hero-backdrop::after {
+    mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 60%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 60%);
+  }
 }
 
 /* -------------------------------------------------------- settings drawer */
@@ -2049,7 +2052,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 /* ----------------------------------------------------------- mission page */
 .mission-hero { position: relative; min-height: min(720px, calc(100svh - 62px)); display: flex; align-items: end; overflow: hidden; }
 .mission-hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 44%; }
-.mission-hero-shade { position: absolute; inset: 0; background: rgba(13, 31, 35, 0.48); }
+.mission-hero-shade { position: absolute; inset: 0; background: rgba(22, 112, 74, 0.55); }
 .mission-hero-copy { position: relative; z-index: 1; width: min(1180px, 100%); margin: 0 auto; padding: clamp(3rem, 8vw, 6rem) clamp(1rem, 4vw, 3rem); color: #fff; }
 /* On the dark hero the bright accent is the readable one; -strong is for
    accent text on light surfaces. */
@@ -2118,7 +2121,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   max-width: min(380px, calc(100vw - 2rem));
 }
 .toast {
-  background: var(--ink);
+  background: var(--green);
   color: var(--paper);
   border-radius: 6px;
   padding: 0.8rem 1.1rem;
@@ -2197,8 +2200,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .cal-title { min-width: 9.5ch; font-size: 1.08rem; }
   .calendar-context { align-items: stretch; flex-direction: column; }
   .calendar-filters { align-items: stretch; flex-direction: column; }
-  .time-filter { justify-content: stretch; }
-  .time-filter-option { flex: 1; }
   .instrument-filter { align-items: stretch; flex-direction: column; }
   .instrument-filter select { width: 100%; }
   .day-panel { padding: 1rem; }

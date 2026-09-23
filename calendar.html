@@ -18,8 +18,8 @@
   <script src="js/tutorial.js?v=2" defer></script>
   <script src="js/background.js?v=4" defer></script>
   <script src="js/app.js?v=24" defer></script>
-  <script src="js/calendar.js?v=33" defer></script>
-  <link rel="stylesheet" href="css/style.css?v=63" />
+  <script src="js/calendar.js?v=34" defer></script>
+  <link rel="stylesheet" href="css/style.css?v=64" />
 </head>
 <body class="calendar-page">
   <nav class="nav" data-site-nav>
@@ -49,11 +49,6 @@
     <div class="calendar-context" id="calendar-context">
       <p id="calendar-scope" role="status" aria-live="polite">Loading the schedule…</p>
       <div class="calendar-filters">
-        <div class="time-filter" role="group" aria-label="Show classes from">
-          <button class="time-filter-option" type="button" data-time-filter="upcoming" aria-pressed="false">Upcoming</button>
-          <button class="time-filter-option" type="button" data-time-filter="past" aria-pressed="false">Past</button>
-          <button class="time-filter-option" type="button" data-time-filter="all" aria-pressed="true">All</button>
-        </div>
         <!-- Hidden for anyone signed in: an account already carries the
              instrument this would filter by. Signed-out visitors browsing the
              public schedule have no account to read it from, so they keep it. -->
