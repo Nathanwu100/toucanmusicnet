@@ -19,6 +19,18 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.1.0] - 2026-09-23
+
+### Added
+- **A confirmation screen after signing up.** Taking a slot or joining a
+  class now ends on a screen that says what was booked and when, with
+  Change and Close. Change on a slot booking points back at the timetable
+  to pick another slot; on a whole-class booking it leaves the class so
+  another can be chosen.
+- **Students can move between slots.** Picking a different slot of a class
+  you are already in asks to move you there, and does it as one step,
+  instead of refusing because you are already enrolled.
+
 ## [2.0.0] - 2026-09-23
 
 ### Changed

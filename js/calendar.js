@@ -442,7 +442,20 @@
   // A block reads like an event in a day calendar: filled in its instrument's
   // colour, with the name and time inside it. For a student it is the button
   // -- you click the slot you want, not a control tucked inside it.
-  function blockCard(event, block, { isStudent, isAdmin, mine, joinable }) {
+  // The screen after a booking: what was booked, and a way to change it or
+  // put it away. Leaving through Escape or the scrim counts as Close.
+  async function signedUpScreen({ title, body, changeLabel, onChange }) {
+    const answer = await choiceDialog({
+      title, body,
+      actions: [
+        { label: changeLabel, value: "change", tone: "quiet" },
+        { label: "Close", value: "close" },
+      ],
+    });
+    if (answer === "change") await onChange();
+  }
+
+  function blockCard(event, block, { isStudent, isAdmin, mine, joinable, enrolledBlockId = null }) {
     const left = Number(block.spots_left) || 0;
     const full = left === 0 && !mine;
     // Students press the block itself; admins get a div they can drag.
@@ -514,6 +527,11 @@
         const when = `${fmtTime(block.starts_at)} to ${fmtTime(block.ends_at)}`;
         const day = new Date(block.starts_at)
           .toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+        const where = `${day}, ${when}${event.location ? `, at ${event.location}` : ""}`;
+        // Already in another slot of this class: the click is a move, which
+        // is a leave and a join, rather than a second booking.
+        const moving = !mine && Boolean(enrolledBlockId);
+        const current = moving ? blocksOf(event).find((row) => row.id === enrolledBlockId) : null;
         if (mine) {
           if (!(await confirmDialog({
             title: "Leave this slot?",
@@ -522,10 +540,16 @@
             cancelLabel: "Stay in it",
             tone: "danger",
           }))) return;
+        } else if (moving) {
+          if (!(await confirmDialog({
+            title: `Move to ${block.label}?`,
+            body: `${where}. You leave ${current?.label || "your current slot"} at ${fmtTime(current?.starts_at || block.starts_at)}, and that place goes back to the pool.`,
+            confirmLabel: "Move here",
+            cancelLabel: "Stay put",
+          }))) return;
         } else if (!(await confirmDialog({
           title: `Take ${block.label}?`,
-          body: `${day}, ${when}${event.location ? `, at ${event.location}` : ""}. `
-            + `That is ${left === 1 ? "the last place" : `one of ${left} places`} in this slot.`,
+          body: `${where}. That is ${left === 1 ? "the last place" : `one of ${left} places`} in this slot.`,
           confirmLabel: "Take this slot",
           cancelLabel: "Not yet",
         }))) return;
@@ -534,11 +558,23 @@
           if (mine) {
             await api.leaveClass(event.id);
             toast(`You left the ${block.label} slot.`);
-          } else {
-            await api.joinClass(event.id, block.id);
-            toast(`You are in ${block.label}, ${fmtTime(block.starts_at)}.`, "success");
+            await refresh();
+            return;
           }
+          if (moving) await api.leaveClass(event.id);
+          await api.joinClass(event.id, block.id);
           await refresh();
+          await signedUpScreen({
+            title: moving ? `You moved to ${block.label}` : `You are signed up for ${block.label}`,
+            body: `${where}. We will remind you before it starts.`,
+            changeLabel: "Change slot",
+            onChange: () => {
+              // The timetable is on screen again after the refresh; pick a
+              // different slot and it becomes a move.
+              $("#class-timetable").scrollIntoView({ behavior: "smooth", block: "center" });
+              toast("Pick another slot to move to.");
+            },
+          });
         } catch (error) {
           toast(error.message, "error");
           card.disabled = false;
@@ -641,6 +677,7 @@
           isStudent: context.isStudent,
           isAdmin: context.isAdmin,
           mine: block.id === context.enrolledBlockId,
+          enrolledBlockId: context.enrolledBlockId,
           joinable: context.open && context.isStudent && column.slug === user?.instrument,
         });
         // No absolute positioning here: the row is laid out by the list, and
@@ -780,6 +817,7 @@
           isStudent,
           isAdmin,
           mine: block.id === enrolledBlockId,
+          enrolledBlockId,
           joinable: open && isStudent && column.slug === user?.instrument,
         });
         const offset = minutesBetween(startsAt, block.starts_at);
@@ -1422,11 +1460,23 @@
           if (enrolled) {
             await api.leaveClass(event.id);
             toast(`You left “${event.title}”. The spot is available again.`);
+            await refresh();
           } else {
             await api.joinClass(event.id);
-            toast(`You joined “${event.title}” at ${fmtRange(event)}.`, "success");
+            await refresh();
+            await signedUpScreen({
+              title: `You are signed up for ${event.title}`,
+              body: `${fmtRange(event)}${event.location ? `, at ${event.location}` : ""}. We will remind you before it starts.`,
+              changeLabel: "Change class",
+              onChange: async () => {
+                // A whole-class booking has no other slot to move to, so
+                // changing means leaving and picking another class.
+                await api.leaveClass(event.id);
+                toast(`You left “${event.title}”. Pick another class from the calendar.`);
+                await refresh();
+              },
+            });
           }
-          await refresh();
         } catch (error) {
           toast(error.message, "error");
           action.disabled = false;

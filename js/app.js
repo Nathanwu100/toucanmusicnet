@@ -32,10 +32,11 @@
     }, 5200);
   };
 
-  // A styled confirmation, in place of the browser's own. Resolves true or
-  // false, so callers read the same way `confirm()` did. Centred, because a
-  // question worth interrupting for should not be off in a corner.
-  window.confirmDialog = function ({ title, body, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "primary" }) {
+  // A styled dialog with a row of choices, in place of the browser's own.
+  // Resolves with the chosen action's value, or null when it is dismissed
+  // with Escape or a click on the scrim. Centred, because a question worth
+  // interrupting for should not be off in a corner.
+  window.choiceDialog = function ({ title, body, actions }) {
     return new Promise((resolve) => {
       const scrim = document.createElement("div");
       scrim.className = "dialog-scrim";
@@ -53,23 +54,24 @@
         panel.appendChild(copy);
       }
 
-      const actions = document.createElement("div");
-      actions.className = "dialog-actions";
-      const cancel = document.createElement("button");
-      cancel.type = "button";
-      cancel.className = "btn btn-quiet";
-      cancel.textContent = cancelLabel;
-      const go = document.createElement("button");
-      go.type = "button";
-      go.className = `btn ${tone === "danger" ? "btn-danger" : "btn-primary"}`;
-      go.textContent = confirmLabel;
-      actions.append(cancel, go);
-      panel.appendChild(actions);
+      const row = document.createElement("div");
+      row.className = "dialog-actions";
+      const buttons = actions.map((action) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `btn ${{ danger: "btn-danger", quiet: "btn-quiet" }[action.tone] || "btn-primary"}`;
+        button.textContent = action.label;
+        button.addEventListener("click", () => close(action.value));
+        row.appendChild(button);
+        return button;
+      });
+      panel.appendChild(row);
       scrim.appendChild(panel);
       document.body.appendChild(scrim);
 
       const previouslyFocused = document.activeElement;
-      go.focus();
+      // The last action is the main one; it is where focus lands.
+      buttons[buttons.length - 1].focus();
 
       const close = (answer) => {
         document.removeEventListener("keydown", onKey, true);
@@ -80,22 +82,32 @@
         resolve(answer);
       };
       const onKey = (event) => {
-        if (event.key === "Escape") { event.preventDefault(); close(false); }
+        if (event.key === "Escape") { event.preventDefault(); close(null); }
         // A modal that lets Tab wander behind it is not modal.
         if (event.key === "Tab") {
-          const focusable = [cancel, go];
-          const index = focusable.indexOf(document.activeElement);
+          const index = buttons.indexOf(document.activeElement);
           event.preventDefault();
-          focusable[(index + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length].focus();
+          buttons[(index + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length].focus();
         }
       };
       document.addEventListener("keydown", onKey, true);
-      cancel.addEventListener("click", () => close(false));
-      go.addEventListener("click", () => close(true));
       scrim.addEventListener("click", (event) => {
-        if (event.target === scrim) close(false);
+        if (event.target === scrim) close(null);
       });
     });
+  };
+
+  // A yes-or-no on top of that. Resolves true or false, so callers read the
+  // same way `confirm()` did.
+  window.confirmDialog = async function ({ title, body, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "primary" }) {
+    const answer = await window.choiceDialog({
+      title, body,
+      actions: [
+        { label: cancelLabel, value: false, tone: "quiet" },
+        { label: confirmLabel, value: true, tone },
+      ],
+    });
+    return answer === true;
   };
 
   // Cross-document view transitions reject an internal promise with
