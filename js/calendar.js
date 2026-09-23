@@ -1137,10 +1137,9 @@
   // to move them to or remove them from.
   function rosterTable(roster, event, { readOnly = false } = {}) {
     const wrap = element("div", "roster");
-    const total = event.student_capacity || roster.length;
     wrap.appendChild(element("p", "roster-head",
       roster.length
-        ? `${readOnly ? "Students who signed up" : "Enrolled students"} (${roster.length}${total ? ` of ${total}` : ""})`
+        ? (readOnly ? "Students who signed up" : "Enrolled students")
         : readOnly ? "No students signed up" : "No students enrolled yet"));
     if (!roster.length) return wrap;
 
