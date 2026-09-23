@@ -600,8 +600,12 @@ test("destructive questions use the site's dialog, not the browser's", () => {
   assert.match(app, /previouslyFocused instanceof HTMLElement/);
 
   // Every destructive path asks through it.
-  // Leave a slot, take a slot, remove a student, delete a class.
-  assert.equal((calendar.match(/await confirmDialog\(/g) || []).length, 4);
+  // Leave a slot, move to another slot, take a slot, remove a student,
+  // delete a class.
+  assert.equal((calendar.match(/await confirmDialog\(/g) || []).length, 5);
+  assert.match(calendar, /title: `Move to \$\{block\.label\}\?`/);
+  // The screen after a booking offers a change and a way out.
+  assert.match(calendar, /label: "Close", value: "close"/);
   assert.match(calendar, /title: `Remove \$\{entry\.student_name\}\?`/);
   assert.match(calendar, /confirmLabel: "Delete it"/);
 });

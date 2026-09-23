@@ -99,15 +99,14 @@
 
   // A yes-or-no on top of that. Resolves true or false, so callers read the
   // same way `confirm()` did.
-  window.confirmDialog = async function ({ title, body, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "primary" }) {
-    const answer = await window.choiceDialog({
+  window.confirmDialog = function ({ title, body, confirmLabel = "Confirm", cancelLabel = "Cancel", tone = "primary" }) {
+    return window.choiceDialog({
       title, body,
       actions: [
         { label: cancelLabel, value: false, tone: "quiet" },
         { label: confirmLabel, value: true, tone },
       ],
-    });
-    return answer === true;
+    }).then((answer) => answer === true);
   };
 
   // Cross-document view transitions reject an internal promise with
