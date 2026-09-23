@@ -429,7 +429,7 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   from { background-position: 128% 0; }
   to   { background-position: -28% 0; }
 }
-.hero-cta { display: flex; gap: 1rem; margin-top: 2.2rem; flex-wrap: wrap; }
+.hero-cta { display: flex; gap: 1rem; margin-top: 0.25rem; flex-wrap: wrap; }
 .hero-cta .btn { padding: 1.05rem 1.55rem; font-size: 1.03rem; min-height: 58px; display: inline-flex; align-items: center; justify-content: center; }
 /* ------------------------------------------------- notification board */
 /* The one animated thing left on the site. Everything else settles into
@@ -1843,25 +1843,32 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .team-bio { font-size: 0.76rem; }
 }
 
-/* ------------------------------------------------------- hero backdrop */
-/* Photographs from lessons, drifting behind the home page hero.
+/* --------------------------------------------------------- hero gallery */
+/* Photographs from lessons, drifting under the home page headline.
 
    One strip, moved by script, with the current photo held near the centre
    of the screen. Every photo stands at the same height and its own width,
    so portraits and landscapes set the rhythm and nothing is cropped. The
    strip loops without end and curves: tiles turn toward the viewer as they
    near the edge of the screen, like a wrapped screen, where they blur and
-   fade out. A veil of the page colour lies over the whole thing so the
-   words in front stay legible; heaviest on the left, where they are. */
-.hero-backdrop {
-  --edge: clamp(56px, 12vw, 200px);
-  --tile-height: clamp(380px, 64vh, 760px);
-  position: absolute;
-  inset: 0;
+   fade out. It slides up under the copy above it, and where it meets the
+   words it goes to white: clear at the bottom, veiled and softened at the
+   top. Dots and arrows under it are the way to a particular photo; they
+   show on hover, and always on a touch screen. */
+.hero-layer-gallery {
+  grid-column: 1 / -1;
+  position: relative;
   z-index: 1;
-  display: grid;
-  align-items: start;
-  padding-top: clamp(0.5rem, 2vh, 1.5rem);
+  margin-top: calc(-1 * clamp(2rem, 9vh, 6rem));
+}
+.hero-copy, .hero-layer-board { position: relative; z-index: 2; }
+
+.hero-gallery {
+  --edge: clamp(56px, 12vw, 200px);
+  --tile-height: clamp(280px, 44vh, 560px);
+  position: relative;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
   overflow: hidden;
   /* One vanishing point for the whole row, at the centre of the screen. */
   perspective: 1400px;
@@ -1891,37 +1898,92 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .gallery-tile-portrait { aspect-ratio: 3 / 4; }
 .gallery-tile img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
-/* The veil, and the edge blur. One pane over each edge softens whatever
-   passes under it, strongest at the edge and gone a short way in; the veil
-   sits over everything and fades the photos toward the page colour. */
-.hero-backdrop::before, .hero-backdrop::after {
+/* The veil and the blur. The veil is the page colour, solid where the
+   strip meets the words and gone by the middle. The blur is a pane that
+   softens whatever passes under it: along the top, under the veil, and at
+   each side edge, strongest at the edge and gone a short way in. */
+.hero-gallery::before, .hero-gallery::after {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
 }
-.hero-backdrop::before {
-  background:
-    linear-gradient(90deg, rgba(241, 246, 241, 0.8) 0%, rgba(241, 246, 241, 0.7) 42%, rgba(241, 246, 241, 0.3) 70%, rgba(241, 246, 241, 0.12) 100%),
-    linear-gradient(180deg, rgba(241, 246, 241, 0.45) 0%, rgba(241, 246, 241, 0) 12%, rgba(241, 246, 241, 0) 72%, rgba(241, 246, 241, 0.96) 100%);
+.hero-gallery::before {
+  background: linear-gradient(180deg,
+    rgba(241, 246, 241, 1) 0%,
+    rgba(241, 246, 241, 0.92) 16%,
+    rgba(241, 246, 241, 0.55) 36%,
+    rgba(241, 246, 241, 0) 58%);
 }
-.hero-backdrop::after {
+.hero-gallery::after {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  mask-image: linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
-  -webkit-mask-image: linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
+  mask-image:
+    linear-gradient(to bottom, #000 0%, #000 14%, transparent 50%),
+    linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
+  -webkit-mask-image:
+    linear-gradient(to bottom, #000 0%, #000 14%, transparent 50%),
+    linear-gradient(to right, #000, transparent var(--edge), transparent calc(100% - var(--edge)), #000);
 }
 
+.hero-gallery-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hero-layer-gallery:hover .hero-gallery-nav,
+.hero-layer-gallery:focus-within .hero-gallery-nav { opacity: 1; }
+@media (hover: none) { .hero-gallery-nav { opacity: 1; } }
+
+.gallery-arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.gallery-arrow iconify-icon { font-size: 22px; }
+.gallery-arrow:hover { background: var(--paper-raise); border-color: var(--ink); }
+
+.gallery-dots { display: flex; gap: 0.2rem; }
+.gallery-dot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.gallery-dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.gallery-dot:hover::before { background: var(--ink); }
+.gallery-dot[aria-current="true"]::before { background: var(--green); transform: scale(1.4); }
+
+.hero-layer-cta { grid-column: 1 / -1; }
+
 @media (max-width: 640px) {
-  .hero-backdrop { --edge: 24px; --tile-height: clamp(280px, 78vw, 480px); padding-top: 0.5rem; }
+  .hero-layer-gallery { margin-top: -1.5rem; }
+  .hero-gallery { --edge: 24px; --tile-height: clamp(220px, 60vw, 400px); }
   .gallery-strip { --tile-gap: 8px; }
-  /* Text runs the full width on a phone, so the veil is even across it. */
-  .hero-backdrop::before {
-    background:
-      linear-gradient(90deg, rgba(241, 246, 241, 0.74), rgba(241, 246, 241, 0.74)),
-      linear-gradient(180deg, rgba(241, 246, 241, 0.4) 0%, rgba(241, 246, 241, 0) 12%, rgba(241, 246, 241, 0) 62%, rgba(241, 246, 241, 0.98) 100%);
-  }
 }
 
 /* -------------------------------------------------------- settings drawer */

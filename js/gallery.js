@@ -1,8 +1,9 @@
-// The photo strip behind the home page hero.
+// The photo strip under the home page headline.
 //
-// Decorative: it drifts slowly behind the headline, curved round the viewer
-// like a wrapped screen, and loops without end. It takes no input and is
-// hidden from assistive tech; the words in front of it are the content.
+// It drifts slowly on its own, curved round the viewer like a wrapped
+// screen, and loops without end. The strip itself is decorative and hidden
+// from assistive tech; the dots and arrows under it are the way to a
+// particular photo, and using them holds the drift for a while.
 //
 // The photos live in assets/art/gallery as -sm WebP files. Adding one is an
 // entry here plus the file. `shape` sets the tile's proportions: every tile
@@ -48,6 +49,8 @@
   const SPEED = 24;      // px per second of drift
   const MAX_TURN = 30;   // degrees a tile turns at the edge of the screen
   const MAX_LIFT = 130;  // px a tile comes toward the viewer at the edge
+  const GLIDE_MS = 650;  // how long a step to a chosen photo takes
+  const HOLD_MS = 6000;  // how long the drift waits after somebody chooses
 
   let setWidth = 0;
   let viewWidth = 0;
@@ -59,6 +62,19 @@
     setWidth = tiles[N].offsetLeft - tiles[0].offsetLeft;
     centres = tiles.map((tile) => tile.offsetLeft + tile.offsetWidth / 2);
     startOffset = centres[N] - viewWidth / 2;
+  }
+
+  // Positions are distances travelled from startOffset, kept within one
+  // set's width. `travelled` is where the strip is now.
+  const wrap = (x) => ((x % setWidth) + setWidth) % setWidth;
+  const positionOf = (photo) => wrap(centres[N + photo] - viewWidth / 2 - startOffset);
+  function photoAt(position) {
+    const middle = startOffset + position + viewWidth / 2;
+    let best = 0;
+    for (let i = 0; i < tiles.length; i++) {
+      if (Math.abs(centres[i] - middle) < Math.abs(centres[best] - middle)) best = i;
+    }
+    return best % N;
   }
 
   // The curve. Each tile turns on its vertical axis by how far it sits from
@@ -77,27 +93,83 @@
     }
   }
 
+  // ---------------------------------------------------------- the dots
+  const dots = document.querySelector("[data-gallery-dots]");
+  const dotButtons = [];
+  if (dots) {
+    dots.innerHTML = PHOTOS.map((_, i) =>
+      `<button type="button" class="gallery-dot" data-photo="${i}" aria-label="Show photo ${i + 1} of ${N}"></button>`).join("");
+    dotButtons.push(...dots.querySelectorAll(".gallery-dot"));
+  }
+  let shown = -1;
+  function markShown(photo) {
+    if (photo === shown) return;
+    shown = photo;
+    dotButtons.forEach((dot, i) => {
+      if (i === photo) dot.setAttribute("aria-current", "true");
+      else dot.removeAttribute("aria-current");
+    });
+  }
+
+  // ---------------------------------------------------------- the loop
   // The drift only runs while the hero is on screen and the tab is visible;
   // off screen it would be work nobody sees. Progress is kept as distance,
-  // so a pause does not make it jump on resume.
+  // so a pause does not make it jump on resume. A glide -- somebody chose a
+  // photo -- eases the strip to that photo by the shorter way round, then
+  // holds there before the drift picks up again.
   let travelled = 0;
   let last = 0;
   let frame = 0;
   let onScreen = true;
+  let glide = null;      // { from, to, start }
+  let holdUntil = 0;
+
+  const easeOut = (x) => 1 - (1 - x) ** 3;
 
   function tick(now) {
     frame = 0;
     if (!last) last = now;
-    if (!reducedMotion.matches) travelled = (travelled + (now - last) / 1000 * SPEED) % setWidth;
+    if (glide) {
+      const k = Math.min(1, (now - glide.start) / GLIDE_MS);
+      travelled = wrap(glide.from + glide.delta * easeOut(k));
+      if (k === 1) glide = null;
+    } else if (now >= holdUntil && !reducedMotion.matches) {
+      travelled = wrap(travelled + (now - last) / 1000 * SPEED);
+    }
     last = now;
     paint(startOffset + travelled);
-    if (onScreen && !document.hidden && !reducedMotion.matches) frame = requestAnimationFrame(tick);
+    markShown(photoAt(travelled));
+    const moving = glide || (now < holdUntil) || !reducedMotion.matches;
+    if (onScreen && !document.hidden && moving) frame = requestAnimationFrame(tick);
   }
   function run() {
     if (frame) return;
     last = 0;
     frame = requestAnimationFrame(tick);
   }
+
+  let chosen = 0; // the photo a glide is heading for; two quick presses step from it
+  function goTo(photo) {
+    chosen = ((photo % N) + N) % N;
+    const to = positionOf(chosen);
+    // The shorter way round the loop, so "next" from the last photo steps
+    // forward to the first rather than winding all the way back.
+    let delta = wrap(to - travelled);
+    if (delta > setWidth / 2) delta -= setWidth;
+    glide = { from: travelled, delta, start: performance.now() };
+    holdUntil = performance.now() + GLIDE_MS + HOLD_MS;
+    run();
+  }
+
+  const prev = document.querySelector("[data-gallery-prev]");
+  const next = document.querySelector("[data-gallery-next]");
+  const current = () => (glide ? chosen : shown);
+  if (prev) prev.addEventListener("click", () => goTo(current() - 1));
+  if (next) next.addEventListener("click", () => goTo(current() + 1));
+  if (dots) dots.addEventListener("click", (event) => {
+    const dot = event.target.closest("[data-photo]");
+    if (dot) goTo(Number(dot.dataset.photo));
+  });
 
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((entries) => {
@@ -111,5 +183,7 @@
   window.addEventListener("load", () => { measure(); paint(startOffset + travelled); });
 
   measure();
+  paint(startOffset);
+  markShown(0);
   run();
 })();

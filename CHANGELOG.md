@@ -19,6 +19,17 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [1.28.0] - 2026-09-23
+
+### Changed
+- **The hero photos sit between the headline and the buttons.** The strip
+  now runs full width under the copy and the reminders panel, fading to
+  the page colour where it meets the words, with the two buttons below it.
+- **Dots and arrows under the strip** pick a photo. They appear on hover
+  (always on a touch screen), glide the strip to the chosen photo by the
+  shorter way round, and hold it there a few seconds before the drift
+  resumes.
+
 ## [1.27.1] - 2026-09-21
 
 ### Changed
