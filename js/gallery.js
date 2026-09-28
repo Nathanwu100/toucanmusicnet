@@ -12,7 +12,8 @@
 //
 // Everything moves by transform on an animation frame: no scrolling, no
 // snapping, no scroll events, which is what lets it run the same on a phone
-// as on a desktop.
+// as on a desktop. A finger (or a mouse) can drag the strip too; letting go
+// settles it on the nearest photo, or the next one along after a flick.
 
 (function () {
   "use strict";
@@ -170,6 +171,54 @@
     const dot = event.target.closest("[data-photo]");
     if (dot) goTo(Number(dot.dataset.photo));
   });
+
+  // ---------------------------------------------------------- dragging
+  // A press holds the drift and the strip follows the pointer sideways.
+  // Letting go settles on the nearest photo, or, after a flick, on the
+  // next one in that direction. Vertical movement is left to the page
+  // (touch-action: pan-y), which cancels the pointer, and that is taken
+  // as a release. Sideways drift within a few pixels is not a drag, so a
+  // tap does nothing.
+  const DRAG_SLOP = 6;      // px before a press counts as a drag
+  const FLICK_SPEED = 0.35; // px per ms that carries the strip to the next photo
+  let drag = null;          // { id, x, from, moved, vx, lastX, lastTime }
+  function press(event) {
+    if (drag || (event.pointerType === "mouse" && event.button !== 0)) return;
+    drag = { id: event.pointerId, x: event.clientX, from: travelled, moved: false, vx: 0, lastX: event.clientX, lastTime: event.timeStamp };
+  }
+  function move(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    const dx = event.clientX - drag.x;
+    if (!drag.moved) {
+      if (Math.abs(dx) < DRAG_SLOP) return;
+      drag.moved = true;
+      host.setPointerCapture(drag.id);
+      host.classList.add("dragging");
+      glide = null;
+      holdUntil = Infinity;
+    }
+    const dt = event.timeStamp - drag.lastTime;
+    if (dt > 0) drag.vx = (event.clientX - drag.lastX) / dt;
+    drag.lastX = event.clientX;
+    drag.lastTime = event.timeStamp;
+    travelled = wrap(drag.from - dx);
+    paint(startOffset + travelled);
+    markShown(photoAt(travelled));
+    event.preventDefault();
+  }
+  function release(event) {
+    if (!drag || event.pointerId !== drag.id) return;
+    const { moved, vx } = drag;
+    drag = null;
+    host.classList.remove("dragging");
+    if (!moved) return;
+    const flick = Math.abs(vx) > FLICK_SPEED ? -Math.sign(vx) : 0;
+    goTo(photoAt(travelled) + flick);
+  }
+  host.addEventListener("pointerdown", press);
+  host.addEventListener("pointermove", move);
+  host.addEventListener("pointerup", release);
+  host.addEventListener("pointercancel", release);
 
   if ("IntersectionObserver" in window) {
     new IntersectionObserver((entries) => {

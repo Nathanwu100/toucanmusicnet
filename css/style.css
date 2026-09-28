@@ -149,7 +149,9 @@
 
 [hidden] { display: none !important; }
 
-html { scroll-behavior: smooth; overflow-x: clip; }
+/* No rubber-banding past the ends of the page, in either direction. */
+html { scroll-behavior: smooth; overflow-x: clip; overscroll-behavior: none; }
+body { overscroll-behavior: none; }
 
 body {
   font-family: var(--font-body);
@@ -1974,19 +1976,35 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 .gallery-dot:hover::before { background: var(--green); }
 .gallery-dot[aria-current="true"]::before { background: var(--green); transform: scale(1.4); }
 
-@media (max-width: 640px) {
-  .hero-backdrop { --edge: 24px; }
+/* On a phone the hero stacks, and a backdrop the height of the whole stack
+   would make each photo four screens wide: a blurred sliver of one picture
+   under the veil, with the dots lost below the sponsors. So the strip
+   comes out from behind the words and stands as a band of its own between
+   the headline and the notification board, at a height that fits a photo
+   or two across the screen, clear of the veil and blur, with the dots and
+   arrows right under it. The hero grid gives way (display: contents) so
+   the band can sit between its children, and the gutters move onto them. */
+@media (max-width: 720px) {
+  .hero-scene { display: flex; flex-direction: column; }
+  .hero { display: contents; }
+  .hero-copy { order: 1; padding: 3rem 1rem 0; }
+  .hero-copy .eyebrow, .hero h1, .hero-copy > p { text-shadow: none; }
+  .hero-backdrop {
+    order: 2;
+    position: relative;
+    inset: auto;
+    height: clamp(200px, 34svh, 300px);
+    margin-top: 2.25rem;
+    perspective: 900px;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  .hero-backdrop.dragging { cursor: grabbing; }
+  .hero-backdrop::before, .hero-backdrop::after { display: none; }
   .gallery-strip { --tile-gap: 8px; }
-  /* Text runs the full width on a phone, so the veil is even across it. */
-  .hero-backdrop::before {
-    background:
-      linear-gradient(90deg, rgba(241, 246, 241, 0.8), rgba(241, 246, 241, 0.8)),
-      linear-gradient(180deg, rgba(241, 246, 241, 0.5) 0%, rgba(241, 246, 241, 0) 10%, rgba(241, 246, 241, 0) 86%, rgba(241, 246, 241, 0.9) 100%);
-  }
-  .hero-backdrop::after {
-    mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 60%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 30%, transparent 60%);
-  }
+  .hero-gallery-nav { order: 3; position: static; margin-top: 0.75rem; opacity: 1; }
+  .hero-layer-board { order: 4; padding: 2.5rem 1rem 0; }
+  .hero-layer-powered { order: 5; padding: 2.5rem 1rem 3.5rem; }
 }
 
 /* -------------------------------------------------------- settings drawer */
@@ -2165,7 +2183,6 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .nav-icon-link, .nav-icon-button { width: 34px; height: 34px; flex-basis: 34px; }
   .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 21px; }
   .nav-join { min-height: 34px; padding: 0.35rem 0.5rem; gap: 0.25rem; font-size: 0.75rem; white-space: nowrap; }
-  .hero { padding: 3rem 1rem 3.5rem; gap: 2.5rem; }
   .hero h1 { font-size: clamp(2.7rem, 14vw, 4rem); }
   .hero-cta { display: grid; width: 100%; }
   .hero-cta .btn { width: 100%; }

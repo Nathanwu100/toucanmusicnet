@@ -19,6 +19,26 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.1.1] - 2026-09-28
+
+### Fixed
+- **The home page photos work on a phone.** On a phone the hero stacks tall,
+  and the photos behind it stood the full height of that stack: each one
+  four screens wide, a blurred sliver under the veil, with the dots lost
+  below the sponsors. The strip now stands as a band of its own between the
+  buttons and the notification board, at a height that fits a photo or two
+  across the screen, clear and unblurred, with the dots and arrows right
+  under it. On a desktop nothing has moved.
+- **The photos can be swiped.** A finger or a mouse drags the strip; letting
+  go settles on the nearest photo, and a flick goes on to the next one.
+- **No rubber-banding.** The page no longer bounces past its top or bottom,
+  or sideways, when scrolled or swiped beyond its ends. iOS Safari ignores
+  the stylesheet on that point, so on a touch screen the page also refuses
+  a swipe that would carry it past either end.
+- **The background drifts with scrolling on a phone.** The canopy bands'
+  scroll travel was cut to a third on small screens, along with the pointer
+  travel, which left it invisible. It is now full size everywhere.
+
 ## [2.1.0] - 2026-09-23
 
 ### Added

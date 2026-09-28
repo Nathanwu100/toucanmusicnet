@@ -49,7 +49,9 @@
   let pointerDriven = !reduced && !coarseQuery.matches;
 
   // Smaller screens get the same composition at a shorter throw: the same
-  // pixel offsets that read as depth at 1440px read as drift at 380px.
+  // pointer offsets that read as depth at 1440px read as drift at 380px.
+  // Scroll travel is not scaled: it is paid for in distance scrolled, and a
+  // phone scrolls further than a desktop, not less.
   let range = 1;
   function computeRange() {
     const w = window.innerWidth;
@@ -102,7 +104,7 @@
     // arrives from its own distance instead of the page snapping into place.
     const depth = layer.z + (1 - introEase) * layer.revealZ;
     const x = pointerX * layer.px * range;
-    const y = pointerY * layer.py * range + scrollY * layer.scroll * range;
+    const y = pointerY * layer.py * range + scrollY * layer.scroll;
 
     let out = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, ${depth.toFixed(2)}px)`;
     if (layer.rx) out += ` rotateX(${(-pointerY * layer.rx * range).toFixed(3)}deg)`;
