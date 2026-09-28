@@ -30,13 +30,11 @@
 
   const grid = $("#cal-grid");
   const title = $("#cal-title");
-  const MONTHS = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
-  ];
-  const DOWS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  // Dates and times follow the language chosen in Settings (the <html>
+  // lang), falling back to the browser's own.
+  const locale = () => document.documentElement.lang || undefined;
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString(locale(), { hour: "numeric", minute: "2-digit" });
   const fmtRange = (event) => {
     const start = fmtTime(event.starts_at);
     return event.ends_at ? `${start} - ${fmtTime(event.ends_at)}` : start;
@@ -151,12 +149,16 @@
     const year = current.getFullYear();
     const month = current.getMonth();
     const today = new Date();
-    title.textContent = `${MONTHS[month]} ${year}`;
+    title.textContent = new Date(year, month, 1).toLocaleDateString(locale(), { month: "long", year: "numeric" });
     grid.innerHTML = "";
 
     const weekdays = element("div", "cal-weekdays");
     const daysGrid = element("div", "cal-days");
-    DOWS.forEach((day) => weekdays.appendChild(element("div", "cal-dow", day)));
+    // Sunday first, named in the chosen language; 2023 opened on a Sunday.
+    for (let dow = 0; dow < 7; dow += 1) {
+      weekdays.appendChild(element("div", "cal-dow",
+        new Date(2023, 0, 1 + dow).toLocaleDateString(locale(), { weekday: "short" })));
+    }
     grid.append(weekdays, daysGrid);
 
     const firstDow = new Date(year, month, 1).getDay();
@@ -179,7 +181,7 @@
       } else {
         cell.setAttribute("aria-pressed", "false");
       }
-      cell.setAttribute("aria-label", `${date.toLocaleDateString([], {
+      cell.setAttribute("aria-label", `${date.toLocaleDateString(locale(), {
         month: "long", day: "numeric", year: "numeric",
       })}, ${dayEvents.length} event${dayEvents.length === 1 ? "" : "s"}`);
       cell.appendChild(element("span", "d", String(day)));
@@ -238,7 +240,7 @@
       const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
       if (monthKey !== openMonth) {
         openMonth = monthKey;
-        list.appendChild(element("h3", "past-log-month", `${MONTHS[date.getMonth()]} ${date.getFullYear()}`));
+        list.appendChild(element("h3", "past-log-month", date.toLocaleDateString(locale(), { month: "long", year: "numeric" })));
         monthList = element("ul", "past-log-items");
         list.appendChild(monthList);
       }
@@ -247,12 +249,12 @@
       const jump = element("button", "past-log-jump");
       jump.type = "button";
       jump.setAttribute("aria-label",
-        `${event.title}, ${date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" })}. Show this day on the calendar.`);
+        `${event.title}, ${date.toLocaleDateString(locale(), { month: "long", day: "numeric", year: "numeric" })}. Show this day on the calendar.`);
 
       const when = element("span", "past-log-when");
       when.append(
         element("span", "past-log-day", String(date.getDate())),
-        element("span", "past-log-dow", DOWS[date.getDay()])
+        element("span", "past-log-dow", date.toLocaleDateString(locale(), { weekday: "short" }))
       );
 
       const copy = element("span", "past-log-copy");
@@ -526,7 +528,7 @@
       card.addEventListener("click", async () => {
         const when = `${fmtTime(block.starts_at)} to ${fmtTime(block.ends_at)}`;
         const day = new Date(block.starts_at)
-          .toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+          .toLocaleDateString(locale(), { weekday: "long", month: "long", day: "numeric" });
         const where = `${day}, ${when}${event.location ? `, at ${event.location}` : ""}`;
         // Already in another slot of this class: the click is a move, which
         // is a leave and a join, rather than a second booking.
@@ -589,7 +591,7 @@
   // is whose, and the admin controls. `table` is absent on the agenda, which
   // has nothing to drag.
   function appendTimetableFooter(host, options) {
-    const { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin, table } = options;
+    const { ctx, columns, shown, onlyMine, focusOwn, ownColumn, enrolledBlockId, isStudent, isAdmin, table } = options;
 
     if ((focusOwn && columns.length > shown.length) || onlyMine) {
       const showAll = element("button", "btn btn-sm btn-quiet tt-show-all",
@@ -600,6 +602,19 @@
         renderBlockGrid(ctx);
       });
       host.appendChild(showAll);
+    } else if (ownColumn && showWholeTimetable) {
+      // The way back: once they have looked at everything, a student can
+      // narrow the timetable to their own column again, or on a phone to
+      // just the slot they hold.
+      const narrow = window.matchMedia("(max-width: 620px)").matches;
+      const showMine = element("button", "btn btn-sm btn-quiet tt-show-all",
+        enrolledBlockId && narrow ? "Just my slot" : `Just ${user.instrument_name}`);
+      showMine.type = "button";
+      showMine.addEventListener("click", () => {
+        showWholeTimetable = false;
+        renderBlockGrid(ctx);
+      });
+      host.appendChild(showMine);
     }
 
     // Say the rule where it applies, rather than leaving a student to work out
@@ -718,7 +733,7 @@
       element("p", "eyebrow", "Timetable"),
       element("h2", "", event.title),
       element("p", "timetable-when",
-        `${new Date(startsAt).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })} · ${fmtRange(event)}` +
+        `${new Date(startsAt).toLocaleDateString(locale(), { weekday: "long", month: "long", day: "numeric" })} · ${fmtRange(event)}` +
         (event.location ? ` · ${event.location}` : ""))
     );
     head.appendChild(copy);
@@ -758,7 +773,7 @@
 
     if (window.matchMedia(AGENDA_QUERY).matches) {
       renderAgenda(host, shown, { event, isStudent, isAdmin, enrolledBlockId, open });
-      appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin });
+      appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, ownColumn, enrolledBlockId, isStudent, isAdmin });
       return true;
     }
 
@@ -837,7 +852,7 @@
     table.appendChild(scroller);
     host.appendChild(table);
 
-    appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, isStudent, isAdmin, table });
+    appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, ownColumn, enrolledBlockId, isStudent, isAdmin, table });
     return true;
   }
 
@@ -1303,7 +1318,7 @@
       const option = document.createElement("option");
       option.value = candidate.id;
       const when = new Date(candidate.starts_at)
-        .toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+        .toLocaleDateString(locale(), { weekday: "short", month: "short", day: "numeric" });
       option.textContent = `${candidate.title} · ${when}`;
       classSelect.appendChild(option);
     });
@@ -1501,7 +1516,7 @@
     }
     showWholeTimetable = false;
     const dayEvents = eventsForDate(selectedDate, { includePassed: true });
-    $("#selected-day-title").textContent = selectedDate.toLocaleDateString([], {
+    $("#selected-day-title").textContent = selectedDate.toLocaleDateString(locale(), {
       weekday: "long", month: "long", day: "numeric",
     });
     $("#selected-day-summary").textContent = dayEvents.length
@@ -1803,7 +1818,7 @@
     const defaultEnd = new Date(defaultStart.getTime() + 60 * 60 * 1000);
     $("#e-title").textContent = event
       ? `Edit ${kind}`
-      : `New ${kind} for ${selectedDate.toLocaleDateString([], { month: "long", day: "numeric" })}`;
+      : `New ${kind} for ${selectedDate.toLocaleDateString(locale(), { month: "long", day: "numeric" })}`;
     $("#e-error").classList.remove("show");
     $("#f-title").value = event?.title || "";
     $("#f-type").value = type;
@@ -1940,6 +1955,28 @@
   $("#f-end").addEventListener("change", renderDraftTimetable);
   $("#fill-blocks").addEventListener("click", fillDefaultBlocks);
   $("#instrument-filter").addEventListener("change", () => refresh().catch((error) => toast(error.message, "error")));
+
+  // The guided tour asks for the next class to be opened, so it can point
+  // at a real day, a real class, and a real timetable rather than describe
+  // them in the abstract. Resolves once the day panel has drawn it.
+  async function showNextClass() {
+    const next = visibleEvents()
+      .filter((event) => event.event_type === "class" && !hasEnded(event))
+      .sort((left, right) => left.starts_at.localeCompare(right.starts_at))[0];
+    if (!next) return false;
+    pendingEventId = next.id;
+    selectDate(new Date(next.starts_at), { reveal: true });
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      if ($("#day-event-list .day-event-item")) return true;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    return false;
+  }
+  window.ToucanCalendar = { showNextClass };
+
+  window.addEventListener("toucan:language-changed", () => {
+    render();
+  });
 
   window.addEventListener("toucan:instrument-changed", (event) => {
     user = event.detail.user;

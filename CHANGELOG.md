@@ -19,6 +19,23 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.2.0] - 2026-09-28
+
+### Added
+- **The site in Spanish and Chinese.** Settings has a Language section,
+  for visitors who are signed in and those who are not, with English,
+  Español and 中文. The choice is kept in the browser and applies to every
+  page, the settings drawer, the calendar and the guided tour; dates and
+  month names follow it. Names, places, class titles and sentences built
+  from pieces at run time stay as they were written.
+- **The guided tour shows how to sign up.** For a student it opens the next
+  real class and walks through it: pick a day, open the class, pick a time
+  in the timetable (with an example slot column drawn in the tour), and
+  what the confirmation screen offers afterwards.
+- **A way back to your own column.** After "See the other instruments" or
+  "See every slot", the timetable offers "Just my instrument" (or "Just my
+  slot" on a phone) to narrow it again.
+
 ## [2.1.1] - 2026-09-28
 
 ### Fixed

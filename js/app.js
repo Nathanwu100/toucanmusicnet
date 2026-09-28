@@ -285,6 +285,38 @@
     settingsDrawer.querySelector("[data-close-settings]").addEventListener("click", closeSettings);
   }
 
+  // The language is a choice of this browser, not of the account, so the
+  // section is there for visitors who are not signed in too. The names of
+  // the languages stay in their own language.
+  function languageSection() {
+    const i18n = window.ToucanI18n;
+    if (!i18n) return "";
+    const options = i18n.languages.map((language) => `
+        <button type="button" class="language-option" data-language="${language.code}"
+          aria-pressed="${language.code === i18n.current ? "true" : "false"}" lang="${language.tag}">${language.name}</button>`).join("");
+    return `
+      <section class="settings-group language-settings-group" aria-labelledby="language-title">
+        <div class="settings-group-head">
+          <span class="settings-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:message-text"></iconify-icon></span>
+          <div><h3 id="language-title">Language</h3><p>The site in your language. Names, places and class titles stay as they were written.</p></div>
+        </div>
+        <div class="language-options" role="group" aria-labelledby="language-title">${options}</div>
+      </section>`;
+  }
+
+  function bindLanguageSection(content) {
+    const group = content.querySelector(".language-options");
+    if (!group) return;
+    group.addEventListener("click", (event) => {
+      const option = event.target.closest("[data-language]");
+      if (!option) return;
+      window.ToucanI18n.set(option.dataset.language);
+      group.querySelectorAll("[data-language]").forEach((button) => {
+        button.setAttribute("aria-pressed", button === option ? "true" : "false");
+      });
+    });
+  }
+
   function renderSettingsContent() {
     const content = settingsDrawer.querySelector("[data-settings-content]");
     if (!currentUser) {
@@ -295,7 +327,9 @@
           <p>Log in to manage weekly email, class reminders, and text notifications.</p>
           <a class="btn btn-primary" href="login.html">Log in</a>
           <a class="btn btn-quiet" href="signup.html">Create an account</a>
-        </div>`;
+        </div>
+        ${languageSection()}`;
+      bindLanguageSection(content);
       return;
     }
 
@@ -357,7 +391,9 @@
           <button class="btn btn-quiet" type="button" data-start-tutorial><iconify-icon icon="pixelarticons:play" aria-hidden="true"></iconify-icon>Site guide</button>
         </div>
         <p class="settings-save-status" data-settings-status role="status" aria-live="polite"></p>
-      </form>`;
+      </form>
+      ${languageSection()}`;
+    bindLanguageSection(content);
 
     content.querySelector(".settings-who").textContent = `Account settings for ${currentUser.name}.`;
     const digest = content.querySelector("#drawer-pref-digest");

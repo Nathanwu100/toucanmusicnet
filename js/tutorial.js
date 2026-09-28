@@ -1,4 +1,7 @@
 // First-visit calendar walkthrough and reusable music-note celebration.
+//
+// The walkthrough is replayed from Settings. For a student it is a guide to
+// signing up: pick a day, open the class, pick a time, and what comes after.
 
 (function () {
   const PENDING_KEY = "toucan_tour_pending_v1";
@@ -62,16 +65,152 @@
     const safeName = String(user.name).replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[char]));
-    const roleCopy = user.role === "volunteer"
-      ? "Open a class to see volunteer availability and claim a spot."
-      : user.role === "admin"
-        ? "Open an item to review it. Admin controls also let you create and edit events."
-        : "Open any class or event to see its time, place, and details.";
-
     function markComplete() {
       localStorage.setItem(seenKey(user), "1");
       sessionStorage.removeItem(PENDING_KEY);
     }
+
+    // A student's tour walks through signing up for a class. It opens the
+    // next real class first, so the day, the class, and its timetable are
+    // on screen to point at; an example slot column is drawn in the popover
+    // for the step about picking a time, so it reads the same whether the
+    // class is split into slots or not.
+    const isStudent = user.role === "student";
+    if (isStudent) await window.ToucanCalendar?.showNextClass();
+    const timetableOrList = () => {
+      const timetable = document.querySelector("#class-timetable");
+      return timetable && !timetable.hidden ? timetable : document.querySelector("#day-event-list");
+    };
+    const exampleTimetable = `
+      <div class="tour-example" aria-hidden="true">
+        <span class="tour-example-head">Violin</span>
+        <span class="tour-example-slot">4:00 – 4:30<em>2 places open</em></span>
+        <span class="tour-example-slot is-mine">4:30 – 5:00<em>Your slot</em></span>
+        <span class="tour-example-slot is-full">5:00 – 5:30<em>Full</em></span>
+      </div>`;
+
+    const studentSteps = [
+      {
+        popover: {
+          title: `Welcome, ${safeName}`,
+          description: "Here is how to find a class and sign up for it, step by step.",
+        },
+      },
+      {
+        element: ".nav-icon-link[aria-label='Calendar']",
+        popover: {
+          title: "Your schedule",
+          description: "The calendar icon brings you back to classes and events from anywhere on the site.",
+          side: "bottom",
+        },
+      },
+      {
+        element: ".cal-head",
+        popover: {
+          title: "Move between months",
+          description: "Use the arrows to browse upcoming and past schedules.",
+          side: "bottom",
+        },
+      },
+      {
+        element: "#cal-grid",
+        popover: {
+          title: "1. Pick a day",
+          description: "A day with a class shows its time and name. Press the day and it opens beside the calendar, or underneath on a phone.",
+          side: "top",
+        },
+      },
+      {
+        element: "#day-event-list",
+        popover: {
+          title: "2. Open the class",
+          description: "Press a class to see its instrument, time and place. A class with one place for everyone has a Join class button. A class split into time slots shows its timetable underneath.",
+          side: "left",
+        },
+      },
+      {
+        element: timetableOrList,
+        popover: {
+          title: "3. Pick your time",
+          description: "The timetable shows your instrument's column. Press the slot you want. A full slot is greyed out. See the other instruments shows every column, and Just my instrument brings yours back." + exampleTimetable,
+          side: "left",
+        },
+      },
+      {
+        popover: {
+          title: "4. You are booked",
+          description: "A screen confirms your slot. Change slot moves you to another one, and Leave class gives the place back. We remind you before it starts.",
+        },
+      },
+      {
+        element: ".cal-legend",
+        popover: {
+          title: "Classes and events",
+          description: "The legend shows which calendar items are recurring classes and which are special events.",
+          side: "top",
+        },
+      },
+      {
+        element: "[data-tour='nav-settings']",
+        popover: {
+          title: "Preferences and help",
+          description: "The settings drawer controls your instrument, weekly email, class reminders, text notifications and language. You can also replay this guide there.",
+          side: "bottom",
+        },
+      },
+    ];
+
+    const roleCopy = user.role === "volunteer"
+      ? "Open a class to see volunteer availability and claim a spot."
+      : "Open an item to review it. Admin controls also let you create and edit events.";
+    const otherSteps = [
+      {
+        popover: {
+          title: `Welcome, ${safeName}`,
+          description: "Here is the quickest way to find classes, events, and the tools available to your account.",
+        },
+      },
+      {
+        element: ".nav-icon-link[aria-label='Calendar']",
+        popover: {
+          title: "Your schedule",
+          description: "The calendar icon brings you back to classes and events from anywhere on the site.",
+          side: "bottom",
+        },
+      },
+      {
+        element: ".cal-head",
+        popover: {
+          title: "Move between months",
+          description: "Use the arrows to browse upcoming and past schedules.",
+          side: "bottom",
+        },
+      },
+      {
+        element: "#cal-grid",
+        popover: {
+          title: "Open a calendar item",
+          description: roleCopy,
+          side: "top",
+        },
+      },
+      {
+        element: ".cal-legend",
+        popover: {
+          title: "Classes and events",
+          description: "The legend shows which calendar items are recurring classes and which are special events.",
+          side: "top",
+        },
+      },
+      {
+        element: "[data-tour='nav-settings']",
+        popover: {
+          title: "Preferences and help",
+          description: "The settings drawer controls weekly email, class reminders, text notifications and language. You can also replay this guide there.",
+          side: "bottom",
+        },
+      },
+    ];
 
     const tour = window.driver.js.driver({
       animate: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -87,54 +226,7 @@
       prevBtnText: "Back",
       doneBtnText: "Done",
       skipMissingElement: true,
-      steps: [
-        {
-          popover: {
-            title: `Welcome, ${safeName}`,
-            description: "Here is the quickest way to find classes, events, and the tools available to your account.",
-          },
-        },
-        {
-          element: ".nav-icon-link[aria-label='Calendar']",
-          popover: {
-            title: "Your schedule",
-            description: "The calendar icon brings you back to classes and events from anywhere on the site.",
-            side: "bottom",
-          },
-        },
-        {
-          element: ".cal-head",
-          popover: {
-            title: "Move between months",
-            description: "Use the pixel arrow controls to browse upcoming and past schedules.",
-            side: "bottom",
-          },
-        },
-        {
-          element: "#cal-grid",
-          popover: {
-            title: "Open a calendar item",
-            description: roleCopy,
-            side: "top",
-          },
-        },
-        {
-          element: ".cal-legend",
-          popover: {
-            title: "Classes and events",
-            description: "The legend shows which calendar items are recurring classes and which are special events.",
-            side: "top",
-          },
-        },
-        {
-          element: "[data-tour='nav-settings']",
-          popover: {
-            title: "Preferences and help",
-            description: "The settings drawer controls weekly email, class reminders, and text notifications. You can also replay this guide there.",
-            side: "bottom",
-          },
-        },
-      ],
+      steps: isStudent ? studentSteps : otherSteps,
       onDoneClick: () => { markComplete(); tour.destroy(); },
       onCloseClick: () => { markComplete(); tour.destroy(); },
       onDestroyed: markComplete,
