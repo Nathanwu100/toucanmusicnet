@@ -47,7 +47,7 @@
     {
       name: "Carrie",
       photo: "assets/team/carrie.webp",
-      role: "Violin Teacher",
+      role: "Media Lead",
       bio: "9 years of violin and 6 years in advanced orchestras. Outside music: volleyball, taekwondo, and painting.",
     },
     {
