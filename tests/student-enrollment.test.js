@@ -26,10 +26,10 @@ test("student signup requires a supported instrument and persists it across logi
     role: "student",
     instrument: "viola",
   });
-  assert.equal(created.instrument, "viola");
+  assert.deepEqual([...created.instruments], ["viola"]);
   await api.logout();
   const loggedIn = await api.login("new@example.com", "password1");
-  assert.equal(loggedIn.instrument, "viola");
+  assert.deepEqual([...loggedIn.instruments], ["viola"]);
   assert.equal(loggedIn.needs_instrument, false);
 });
 
@@ -42,7 +42,7 @@ test("volunteer signup does not require or retain a student instrument", async (
     role: "volunteer",
     instrument: "viola",
   });
-  assert.equal(volunteer.instrument, null);
+  assert.deepEqual([...volunteer.instruments], []);
 });
 
 test("the schedule is unscoped for students, but joining still is not", async () => {
@@ -175,11 +175,11 @@ test("instrument changes are blocked by enrollment and refresh visibility after 
   const { api } = loadDemoApi();
   await api.login(student.email, student.password);
   await api.joinClass("ev-1");
-  await assert.rejects(api.updateInstrument("piano"), /Leave or transfer/);
+  await assert.rejects(api.updateInstruments(["piano"]), /Leave or transfer/);
 
   await api.leaveClass("ev-1");
-  const updated = await api.updateInstrument("piano");
-  assert.equal(updated.instrument, "piano");
+  const updated = await api.updateInstruments(["piano"]);
+  assert.deepEqual([...updated.instruments], ["piano"]);
 
   // Visibility never depended on the instrument, so it does not change here.
   // What changes is what the student may join.
@@ -192,14 +192,14 @@ test("legacy students without an instrument can browse but not join", async () =
   const { api, storage } = loadDemoApi();
   await api.listInstruments();
   const db = readDemoDb(storage);
-  db.users.find((user) => user.id === "student-1").instrument = null;
+  db.users.find((user) => user.id === "student-1").instruments = [];
   writeDemoDb(storage, db);
   const user = await api.login(student.email, student.password);
   assert.equal(user.needs_instrument, true);
   assert.ok((await api.listEvents()).length > 0, "an unset instrument no longer empties the calendar");
   await assert.rejects(api.joinClass("ev-1"), /instrument/i);
 
-  await api.updateInstrument("viola");
+  await api.updateInstruments(["viola"]);
   const joined = await api.joinClass("ev-3");
   assert.ok(joined.spots_left >= 0, "choosing an instrument unlocks joining, not seeing");
 });
@@ -253,7 +253,7 @@ test("admin can assign a class to the violin, piano, and viola instruments", asy
     name: "Viola Student", email: "viola@example.com", password: "password1",
     role: "student", instrument: "viola",
   });
-  assert.equal(violaStudent.instrument, "viola");
+  assert.deepEqual([...violaStudent.instruments], ["viola"]);
   const visible = await api.listEvents();
   const createdRow = visible.find((event) => event.id === created.id);
   assert.ok(createdRow, "the new viola class shows up in the shared listing");
@@ -359,7 +359,7 @@ test("a class taught for several instruments accepts students from each of them"
     name: "Piano Student", email: "keys@example.com", password: "password1",
     role: "student", instrument: "piano",
   });
-  assert.equal(pianoStudent.instrument, "piano");
+  assert.deepEqual([...pianoStudent.instruments], ["piano"]);
   await assert.rejects(api.joinClass(created.id), /does not match/);
 
   const row = (await api.listEvents()).find((event) => event.id === created.id);

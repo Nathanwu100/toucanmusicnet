@@ -116,8 +116,8 @@
     let note = "";
     if (!user) note = "Anyone can browse the schedule. Sign in to join a class or volunteer.";
     else if (user.role === "student") {
-      note = user.instrument_name
-        ? `You can join ${user.instrument_name} classes.`
+      note = user.instruments?.length
+        ? `You can join ${listNames(user.instrument_names)} classes.`
         : "Choose an instrument in Settings to join classes.";
     } else if (user.role === "volunteer") note = "You can sign up to volunteer for any event.";
     else if (user.role === "admin") note = "You can add, edit, and delete anything here.";
@@ -378,6 +378,18 @@
 
   const blocksOf = (event) => (Array.isArray(event.blocks) ? event.blocks : []);
 
+  // The instruments on the signed-in student's account -- there can be
+  // several -- and whether `slug` is one of them. Empty for anyone who is
+  // not a student, and for a student who has not chosen yet.
+  const myInstruments = () => user?.instruments || [];
+  const plays = (slug) => myInstruments().includes(slug);
+  const myNames = () => listNames(user?.instrument_names || []);
+  // Which of a class's instruments this student could take it for, in the
+  // class's own order, and the same as names.
+  const sharedInstruments = (event) => (event.instruments || []).filter(plays);
+  const nameOf = (event, slug) => (event.instrument_names || [])[(event.instruments || []).indexOf(slug)] || slug;
+  const sharedNames = (event) => listNames(sharedInstruments(event).map((slug) => nameOf(event, slug)));
+
   // A saved block is identified by its database id. One that has only been
   // drawn has no id yet -- the server mints that on insert -- so it carries a
   // local _key instead, purely so the grid can tell the cards apart. _key is
@@ -500,14 +512,15 @@
 
     // A student pressing a slot in another instrument's column gets told why
     // it is not theirs, rather than a card that quietly does nothing.
-    if (isStudent && !joinable && user?.instrument && block.instrument !== user.instrument) {
+    if (isStudent && !joinable && myInstruments().length && !plays(block.instrument)) {
       card.classList.add("is-other-instrument");
       card.title = `For ${block.instrument_name || block.instrument} students`;
       card.addEventListener("click", () => {
         toast(
           `That slot is for ${block.instrument_name || block.instrument}. Your account is set to `
-          + `${user.instrument_name}, and you can only take ${user.instrument_name} slots. `
-          + `Change your instrument in Settings.`,
+          + `${myNames()}, and you can only take slots for `
+          + `${myInstruments().length === 1 ? "that instrument" : "those instruments"}. `
+          + `Add an instrument in Settings.`,
           "error"
         );
       });
@@ -592,6 +605,10 @@
   // has nothing to drag.
   function appendTimetableFooter(host, options) {
     const { ctx, columns, shown, onlyMine, focusOwn, ownColumn, enrolledBlockId, isStudent, isAdmin, table } = options;
+    // The columns this student may book, and their names as a sentence
+    // would list them: "Violin", or "Violin and Viola".
+    const own = columns.filter((column) => plays(column.slug));
+    const ownNames = listNames(own.map((column) => column.name));
 
     if ((focusOwn && columns.length > shown.length) || onlyMine) {
       const showAll = element("button", "btn btn-sm btn-quiet tt-show-all",
@@ -608,7 +625,7 @@
       // just the slot they hold.
       const narrow = window.matchMedia("(max-width: 620px)").matches;
       const showMine = element("button", "btn btn-sm btn-quiet tt-show-all",
-        enrolledBlockId && narrow ? "Just my slot" : `Just ${user.instrument_name}`);
+        enrolledBlockId && narrow ? "Just my slot" : `Just ${ownNames}`);
       showMine.type = "button";
       showMine.addEventListener("click", () => {
         showWholeTimetable = false;
@@ -618,21 +635,21 @@
     }
 
     // Say the rule where it applies, rather than leaving a student to work out
-    // for themselves why two of the three columns ignore them.
+    // for themselves why some of the columns ignore them.
     if (isStudent && !onlyMine) {
       const note = element("p", "block-note");
-      const teachesMine = columns.some((column) => column.slug === user?.instrument);
-      if (!user?.instrument) {
+      const several = myInstruments().length > 1;
+      if (!myInstruments().length) {
         note.append(document.createTextNode("Choose an instrument in "), settingsLink(),
           document.createTextNode(" before you can take a slot."));
-      } else if (!teachesMine) {
+      } else if (!own.length) {
         note.append(document.createTextNode(
-          `This class does not teach ${user.instrument_name}, the instrument on your account. You can change that in `),
+          `This class does not teach ${myNames()}, the ${several ? "instruments" : "instrument"} on your account. You can change that in `),
           settingsLink(), document.createTextNode("."));
-      } else if (columns.length > 1) {
+      } else if (columns.length > own.length) {
         note.append(document.createTextNode(focusOwn
-          ? `Showing ${user.instrument_name} only, the instrument on your account. Change it in `
-          : `You can only take slots in the ${user.instrument_name} column, because that is the instrument on your account. Change it in `),
+          ? `Showing ${ownNames} only, the ${own.length === 1 ? "instrument" : "instruments"} on your account. Change them in `
+          : `You can only take slots in the ${ownNames} ${own.length === 1 ? "column" : "columns"}, because ${own.length === 1 ? "that is the instrument" : "those are the instruments"} on your account. Change them in `),
           settingsLink(), document.createTextNode("."));
       }
       if (note.childNodes.length) host.appendChild(note);
@@ -693,7 +710,7 @@
           isAdmin: context.isAdmin,
           mine: block.id === context.enrolledBlockId,
           enrolledBlockId: context.enrolledBlockId,
-          joinable: context.open && context.isStudent && column.slug === user?.instrument,
+          joinable: context.open && context.isStudent && plays(column.slug),
         });
         // No absolute positioning here: the row is laid out by the list, and
         // its time is written on it rather than read off an axis.
@@ -740,19 +757,24 @@
     if (isAdmin) {
       head.appendChild(element("p", "timetable-hint", "Drag a block to move it, or into another column."));
     } else if (isStudent) {
-      head.appendChild(element("p", "timetable-hint", "Pick a slot in your instrument's column."));
+      head.appendChild(element("p", "timetable-hint", myInstruments().length > 1
+        ? "Pick a slot in one of your instruments' columns."
+        : "Pick a slot in your instrument's column."));
     }
     host.appendChild(head);
 
     const enrolledBlockId = blocksOf(event).find((block) => block.is_mine)?.id || null;
     const open = event.enrollment_open && !hasEnded(event);
 
-    // A student can only book their own instrument, so by default that is the
-    // only column they are shown -- the other two were three quarters of the
-    // grid they could do nothing with. "See the other instruments" brings
-    // them back for anyone who wants the whole picture.
-    const ownColumn = isStudent && user?.instrument
-      && columns.some((column) => column.slug === user.instrument);
+    // A student can only book the columns for the instruments on their own
+    // account, so by default those are the only columns they are shown --
+    // for a one-instrument student the other two were three quarters of a
+    // grid they could do nothing with. A student of two instruments sees
+    // two columns; the grid sizes itself to however many that is. "See the
+    // other instruments" brings the rest back for anyone who wants the
+    // whole picture.
+    const ownColumn = isStudent && myInstruments().length > 0
+      && columns.some((column) => plays(column.slug));
     const focusOwn = ownColumn && !showWholeTimetable;
 
     // Narrower still: once they hold a place, a phone shows just that slot.
@@ -762,7 +784,9 @@
     let shown = columns;
     if (focusOwn) {
       shown = columns
-        .filter((column) => column.slug === user.instrument)
+        .filter((column) => plays(column.slug))
+        // Just the slot they hold means just the column it sits in, too.
+        .filter((column) => !onlyMine || column.blocks.some((block) => block.id === enrolledBlockId))
         .map((column) => ({
           ...column,
           blocks: onlyMine
@@ -833,7 +857,7 @@
           isAdmin,
           mine: block.id === enrolledBlockId,
           enrolledBlockId,
-          joinable: open && isStudent && column.slug === user?.instrument,
+          joinable: open && isStudent && plays(column.slug),
         });
         const offset = minutesBetween(startsAt, block.starts_at);
         const length = Math.max(10, minutesBetween(block.starts_at, block.ends_at));
@@ -1451,10 +1475,11 @@
 
     if (isStudent) {
       const enrolled = event.is_enrolled === true;
-      // Students now browse every instrument, but can still only join a class
-      // that teaches their own -- join_class enforces this server-side, so
-      // the button says so rather than letting the click fail.
-      const wrongInstrument = Boolean(user.instrument) && !event.instruments.includes(user.instrument);
+      // Students browse every instrument, but can still only join a class
+      // that teaches one of their own -- join_class enforces this
+      // server-side, so the button says so rather than letting the click fail.
+      const shared = sharedInstruments(event);
+      const wrongInstrument = myInstruments().length > 0 && !shared.length;
       const action = element(
         "button",
         `btn btn-sm ${enrolled ? "btn-quiet" : "btn-primary"}`,
@@ -1462,10 +1487,10 @@
       );
       const started = new Date(event.starts_at).getTime() <= Date.now();
       action.disabled = !enrolled &&
-        (left === 0 || !event.enrollment_open || started || wrongInstrument || !user.instrument);
-      if (!enrolled && !user.instrument) action.title = "Choose an instrument in Settings first.";
+        (left === 0 || !event.enrollment_open || started || wrongInstrument || !myInstruments().length);
+      if (!enrolled && !myInstruments().length) action.title = "Choose an instrument in Settings first.";
       if (!enrolled && wrongInstrument) {
-        action.title = `You are enrolled in ${user.instrument_name}, so you cannot join a ${(event.instrument_names || event.instruments).join(" / ")} class.`;
+        action.title = `Your account is set to ${myNames()}, so you cannot join a ${(event.instrument_names || event.instruments).join(" / ")} class.`;
       }
       if (!enrolled && !event.enrollment_open) action.title = "Enrollment is closed.";
       if (!enrolled && started) action.title = "This class has already started.";
@@ -1477,7 +1502,22 @@
             toast(`You left “${event.title}”. The spot is available again.`);
             await refresh();
           } else {
-            await api.joinClass(event.id);
+            // A class that teaches two of their instruments has to be taken
+            // for one of them: the enrollment records which, and the roster
+            // shows it. With one in common there is nothing to ask.
+            let forInstrument = shared[0] || null;
+            if (shared.length > 1) {
+              forInstrument = await choiceDialog({
+                title: "Which instrument?",
+                body: "This class teaches more than one of your instruments. Which are you taking it for?",
+                actions: shared.map((slug) => ({ label: nameOf(event, slug), value: slug })),
+              });
+              if (!forInstrument) {
+                action.disabled = false;
+                return;
+              }
+            }
+            await api.joinClass(event.id, null, forInstrument);
             await refresh();
             await signedUpScreen({
               title: `You are signed up for ${event.title}`,
@@ -1499,7 +1539,10 @@
       });
       capacityRow.appendChild(action);
       if (enrolled) {
-        body.appendChild(element("p", "enrollment-linked", `Enrolled · ${user.instrument_name} · time slot ${fmtRange(event)}`));
+        // The listing says whether they are in, not for which instrument,
+        // so the instrument is only named when there is just one it could be.
+        body.appendChild(element("p", "enrollment-linked",
+          `Enrolled · ${shared.length === 1 ? `${sharedNames(event)} · ` : ""}time slot ${fmtRange(event)}`));
       }
     }
     body.appendChild(capacityRow);

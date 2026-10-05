@@ -19,6 +19,39 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.3.0] - 2026-10-04
+
+Includes a migration, `20261004000000_student_multiple_instruments.sql`,
+which has to run before this front end goes live: it replaces
+`profiles.instrument` with `profiles.instruments`, and the `join_class` and
+`update_student_instruments` functions the pages now call.
+
+### Added
+- **A student can learn more than one instrument.** Signup offers tick boxes
+  rather than a dropdown, and the Instruments section in Settings lets an
+  existing student add another instrument at any time. A student can join a
+  class, and take a time slot, for any instrument on their account.
+- **The timetable shows every column you can book.** A student of violin and
+  viola sees both columns side by side, and the grid sizes itself to however
+  many that is; "See the other instruments" still brings the rest back, and
+  the way back is "Just Violin and Viola". The notes under the timetable, the
+  calendar's scope line and the Join button all name the instruments on the
+  account rather than one.
+- **Which instrument is this for?** Joining a whole-class place in a class
+  that teaches two of a student's instruments asks which one they are taking
+  it for, so the enrollment and the admin roster record the right one. A time
+  slot already belongs to one instrument, so it is never asked.
+
+### Changed
+- **Removing an instrument is guarded the way changing it was.** An
+  instrument an active enrollment is for cannot be removed until the student
+  leaves or is moved, and the message names the class. Adding one is never
+  blocked. A student keeps at least one instrument.
+- The weekly digest and reminder functions filter by the student's list of
+  instruments, and read the class's list, which they had not been doing
+  since classes gained several instruments.
+- Demo accounts saved with a single instrument are upgraded in place.
+
 ## [2.2.0] - 2026-09-28
 
 ### Added

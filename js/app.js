@@ -128,6 +128,15 @@
     }[char]));
   };
 
+  // "Violin", "Violin and Viola", "Piano, Violin and Viola": a list of names
+  // as a sentence would say it. Shared with the calendar.
+  window.listNames = function (names) {
+    const items = (names || []).filter(Boolean);
+    if (items.length <= 1) return items[0] || "";
+    return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  };
+  const listNames = window.listNames;
+
   async function renderNav() {
     const nav = document.querySelector("[data-site-nav]");
     if (!nav) return null;
@@ -173,7 +182,7 @@
       window.location.href = "index.html";
     });
     document.body.dataset.role = currentUser ? currentUser.role : "guest";
-    document.body.dataset.instrument = currentUser?.instrument || "";
+    document.body.dataset.instruments = (currentUser?.instruments || []).join(" ");
     return currentUser;
   }
 
@@ -333,22 +342,26 @@
       return;
     }
 
-    const fallbackInstrumentOptions = api.instruments
-      .map((instrument) => `<option value="${escapeHtml(instrument.slug)}">${escapeHtml(instrument.name)}</option>`)
-      .join("");
+    // One tick box per instrument. A student can learn several, so this is
+    // a list rather than a dropdown; the catalog is drawn from the API once
+    // it answers, with the built-in three standing in until then.
+    const instrumentOption = (instrument) => `
+              <label class="instrument-option">
+                <input type="checkbox" name="drawer-instruments" value="${escapeHtml(instrument.slug)}">
+                <span>${escapeHtml(instrument.name)}</span>
+              </label>`;
     const instrumentSection = currentUser.role === "student" ? `
         <section class="settings-group instrument-settings-group" aria-labelledby="instrument-title">
           <div class="settings-group-head">
             <span class="settings-icon" aria-hidden="true"><iconify-icon icon="pixelarticons:music"></iconify-icon></span>
-            <div><h3 id="instrument-title">Instrument</h3><p>This controls which classes and events you can access.</p></div>
+            <div><h3 id="instrument-title">Instruments</h3><p>Pick every instrument you are learning. You can join a class, and take a time slot, for any of them.</p></div>
           </div>
           <div class="field instrument-setting-field">
-            <label for="drawer-instrument">Selected instrument</label>
-            <select id="drawer-instrument" required>
-              <option value="">Choose an instrument</option>
-              ${fallbackInstrumentOptions}
-            </select>
-            <p class="instrument-change-warning">If you are enrolled in a class, leave or transfer that class before changing instruments. Your enrollment will never be deleted automatically.</p>
+            <span class="field-label" id="drawer-instruments-label">Your instruments</span>
+            <div class="instrument-options" id="drawer-instruments" role="group" aria-labelledby="drawer-instruments-label">
+              ${api.instruments.map(instrumentOption).join("")}
+            </div>
+            <p class="instrument-change-warning">You can add an instrument any time. To remove one, first leave or transfer any class you are enrolled in for it. Your enrollment will never be deleted automatically.</p>
           </div>
         </section>` : "";
 
@@ -402,7 +415,7 @@
     const phone = content.querySelector("#drawer-phone");
     const phoneCountry = content.querySelector("#drawer-phone-country");
     const phoneField = content.querySelector("[data-phone-field]");
-    const instrument = content.querySelector("#drawer-instrument");
+    const instrumentGroup = content.querySelector("#drawer-instruments");
     digest.checked = currentUser.weekly_digest !== false;
     reminders.checked = currentUser.class_reminders !== false;
     texts.checked = currentUser.text_notifications === true;
@@ -418,19 +431,22 @@
         phone.value = parsed.national;
       }
     });
-    if (instrument) {
-      instrument.value = currentUser.instrument || "";
-      instrument.dataset.savedValue = currentUser.instrument || "";
+    // What is ticked, in catalog order, so two lists can be compared as text.
+    const chosenInstruments = () => instrumentGroup
+      ? [...instrumentGroup.querySelectorAll("input:checked")].map((input) => input.value)
+      : [];
+    const tickInstruments = (slugs) => {
+      instrumentGroup?.querySelectorAll("input").forEach((input) => {
+        input.checked = slugs.includes(input.value);
+      });
+    };
+    if (instrumentGroup) {
+      tickInstruments(currentUser.instruments || []);
+      instrumentGroup.dataset.savedValue = (currentUser.instruments || []).join(" ");
       api.listInstruments().then((instruments) => {
-        const selected = instrument.value;
-        instrument.innerHTML = '<option value="">Choose an instrument</option>';
-        instruments.forEach((item) => {
-          const option = document.createElement("option");
-          option.value = item.slug;
-          option.textContent = item.name;
-          instrument.appendChild(option);
-        });
-        instrument.value = selected;
+        const selected = chosenInstruments();
+        instrumentGroup.innerHTML = instruments.map(instrumentOption).join("");
+        tickInstruments(selected);
       }).catch(() => {
         toast("The supported instrument list could not be refreshed.", "error");
       });
@@ -448,9 +464,9 @@
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const parsedPhone = window.ToucanPhone.parse(phoneCountry.value, phone.value);
-      if (instrument && !instrument.value) {
-        toast("Choose an instrument before saving student settings.", "error");
-        instrument.focus();
+      if (instrumentGroup && !chosenInstruments().length) {
+        toast("Choose at least one instrument before saving student settings.", "error");
+        instrumentGroup.querySelector("input")?.focus();
         return;
       }
       if (texts.checked && !parsedPhone.valid) {
@@ -462,14 +478,15 @@
       submit.disabled = true;
       saveStatus.textContent = "Saving...";
       try {
-        const instrumentChanged = instrument && instrument.value !== instrument.dataset.savedValue;
+        const instrumentChanged = instrumentGroup && chosenInstruments().join(" ") !== instrumentGroup.dataset.savedValue;
         if (instrumentChanged) {
           saveStatus.textContent = "Checking your current enrollment...";
-          currentUser = await api.updateInstrument(instrument.value);
-          instrument.dataset.savedValue = currentUser.instrument;
-          document.body.dataset.instrument = currentUser.instrument;
+          currentUser = await api.updateInstruments(chosenInstruments());
+          tickInstruments(currentUser.instruments);
+          instrumentGroup.dataset.savedValue = currentUser.instruments.join(" ");
+          document.body.dataset.instruments = currentUser.instruments.join(" ");
           window.dispatchEvent(new CustomEvent("toucan:instrument-changed", {
-            detail: { instrument: currentUser.instrument, user: currentUser },
+            detail: { instruments: currentUser.instruments, user: currentUser },
           }));
         }
         currentUser = await api.updatePrefs({
@@ -482,7 +499,7 @@
         phoneCountry.value = stored.iso;
         phone.value = stored.national;
         saveStatus.textContent = instrumentChanged
-          ? `Instrument changed to ${currentUser.instrument_name}. Your schedule has been refreshed.`
+          ? `Your instruments are now ${listNames(currentUser.instrument_names)}. Your schedule has been refreshed.`
           : submit.value === "phone"
           ? "Your mobile number is saved."
           : "Your settings are saved.";
@@ -538,7 +555,7 @@
       openSettings();
       if (currentUser?.needs_instrument) {
         toast("Choose an instrument to unlock your student calendar.", "error");
-        settingsDrawer.querySelector("#drawer-instrument")?.focus();
+        settingsDrawer.querySelector("#drawer-instruments input")?.focus();
       }
     }
   }

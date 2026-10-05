@@ -25,8 +25,8 @@ instruments Toucan supports — with student and volunteer capacities.
   `sam@example.com`, password `toucan2026`
 - **Student login:** `ari@example.com`, password `toucan2026` (Violin)
 - Sign up as a **volunteer** to claim spots on events; as a **student** to
-  choose one instrument, see only that instrument's schedule, and join a
-  class with space remaining.
+  pick one or more instruments, browse the shared schedule, and join a class
+  (or take a time slot) for any instrument on your account.
 - The admin sees every instrument, can filter the calendar, inspect student
   and volunteer rosters, and set both student and volunteer capacity.
 
@@ -40,9 +40,9 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 | --- | --- |
 | `index.html` | Landing page — mission, programs, how volunteering works |
 | `login.html` | Log in with email (the admin logs in with the name `admin`) |
-| `signup.html` | Create a student or volunteer account; students must choose a supported instrument |
-| `calendar.html` | Instrument-scoped student schedule with live class capacity and join/leave controls; all-instrument volunteer/admin views; admin filtering, editing, and rosters |
-| Settings drawer | Student instrument changes with enrollment protection, notification preferences, and the site guide |
+| `signup.html` | Create a student or volunteer account; students pick one or more supported instruments |
+| `calendar.html` | The shared schedule with live class capacity; students join classes and take time slots for their own instruments (the timetable shows just their columns); admin filtering, editing, and rosters |
+| Settings drawer | Students add or remove instruments (with enrollment protection), notification preferences, and the site guide |
 | `mission.html` | Mission statement and community values; linked from the homepage and footer rather than the top navigation |
 | `about.html` | Who runs the program and the team roster; reached from the About us tab and the footer. Roster data lives in `js/team.js` |
 
@@ -53,18 +53,20 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
 
 2. **Run the database changes**. For a new project, paste
    `supabase/schema.sql` into the SQL editor. For an existing Toucan database,
-   apply `supabase/migrations/20260718000000_student_instruments_and_enrollment.sql`
-   (or run `supabase db push`). The current schema includes:
+   apply the files under `supabase/migrations/` in order (or run
+   `supabase db push`); the newest,
+   `20261004000000_student_multiple_instruments.sql`, turns a student's single
+   instrument into a list. The current schema includes:
 
    - `instruments` with exactly the supported Piano, Violin, and Viola tracks
      (older tracks such as Strings, Percussion, or Voice are deleted, or kept
      deactivated only while a legacy record still references them), plus a
      trigger so events can never be created on an unsupported instrument;
-   - `profiles.instrument` and instrument/time-slot/capacity fields on `events`;
+   - `profiles.instruments` (one or more per student) and instrument/time-slot/capacity fields on `events`;
    - `student_enrollments`, with one student/class row and active/cancelled status;
    - `join_class` and `leave_class` RPCs that lock the class row, prevent
      duplicates, conflicts, and overbooking, and return the new spots-left count;
-   - RLS that lets students read only events matching their profile instrument,
+   - RLS that lets students read only events matching one of their profile instruments,
      keeps other students' enrollments private, preserves volunteer access, and
      gives admins the all-instrument view; and
    - database guards that reject instrument/time changes, deletion, or capacity
@@ -166,16 +168,18 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
   two nudges — one at 60 minutes and one at 30 minutes before start. To make
   it a single 90-minute reminder instead, change `OFFSETS_MINUTES` in
   `supabase/functions/event-reminders/index.ts` to `[90]`.
-- **Schedule privacy**: guests receive no schedule; students receive only the
-  event rows matching `profiles.instrument`; volunteers and admins retain the
-  all-instrument schedule. The edge functions apply the same student filter to
-  weekly emails and reminders.
+- **Schedule privacy**: the calendar itself is public. Direct table reads by
+  students are limited to event rows matching one of their
+  `profiles.instruments`; volunteers and admins retain the all-instrument
+  schedule. The edge functions apply the same student filter to weekly emails
+  and reminders.
 - **Student capacity**: spots left are always `student_capacity - active
   enrollments`. Canceled enrollments are ignored. The locking `join_class` RPC
   makes two students racing for the last spot serialize safely.
-- **Instrument changes**: a student with an active enrollment must explicitly
-  leave or transfer before changing instruments. Enrollment instrument and time
-  slot are stored as snapshots and are never silently moved.
+- **Instrument changes**: a student may add an instrument at any time, but
+  must explicitly leave or transfer an active enrollment before removing the
+  instrument it is for. Each enrollment snapshots the one instrument it was
+  taken for, and its time slot, and neither is ever silently moved.
 - **Volunteer capacity**: the existing locking trigger still prevents two
   volunteers from claiming the same final volunteer spot.
 - Email and text delivery honor the per-user notification settings

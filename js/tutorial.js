@@ -132,7 +132,7 @@
         element: timetableOrList,
         popover: {
           title: "3. Pick your time",
-          description: "The timetable shows your instrument's column. Press the slot you want. A full slot is greyed out. See the other instruments shows every column, and Just my instrument brings yours back." + exampleTimetable,
+          description: "The timetable shows the columns for your instruments. Press the slot you want. A full slot is greyed out. See the other instruments shows every column, and the button under it brings yours back." + exampleTimetable,
           side: "left",
         },
       },
@@ -154,7 +154,7 @@
         element: "[data-tour='nav-settings']",
         popover: {
           title: "Preferences and help",
-          description: "The settings drawer controls your instrument, weekly email, class reminders, text notifications and language. You can also replay this guide there.",
+          description: "The settings drawer controls your instruments, weekly email, class reminders, text notifications and language. You can also replay this guide there.",
           side: "bottom",
         },
       },

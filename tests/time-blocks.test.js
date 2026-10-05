@@ -666,11 +666,12 @@ test("the walkthrough library loads only when the walkthrough runs", () => {
 test("a student is told which instrument they may book, and where to change it", () => {
   const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
 
-  // The rule is stated on the timetable, not only after a refused attempt.
-  assert.match(calendar, /You can only take slots in the \$\{user\.instrument_name\} column/);
-  assert.match(calendar, /because that is the instrument on your account/);
-  // A class that does not teach their instrument says so plainly.
-  assert.match(calendar, /This class does not teach \$\{user\.instrument_name\}/);
+  // The rule is stated on the timetable, not only after a refused attempt,
+  // and names every instrument on the account, not one.
+  assert.match(calendar, /You can only take slots in the \$\{ownNames\}/);
+  assert.match(calendar, /on your account\. Change them in /);
+  // A class that does not teach their instruments says so plainly.
+  assert.match(calendar, /This class does not teach \$\{myNames\(\)\}/);
   // No instrument chosen yet is its own case.
   assert.match(calendar, /Choose an instrument in /);
   // Every one of them points at Settings, which is a drawer, not a page.
@@ -679,16 +680,16 @@ test("a student is told which instrument they may book, and where to change it",
 
   // Pressing somebody else's column explains itself rather than doing nothing.
   assert.match(calendar, /is-other-instrument/);
-  assert.match(calendar, /Change your instrument in Settings/);
+  assert.match(calendar, /Add an instrument in Settings/);
 });
 
 test("a student sees only the column they can actually book", () => {
   const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
 
-  // Their own instrument's column, and only when the class teaches it.
-  assert.match(calendar, /const ownColumn = isStudent && user\?\.instrument/);
-  assert.match(calendar, /columns\.some\(\(column\) => column\.slug === user\.instrument\)/);
-  assert.match(calendar, /column\.slug === user\.instrument/);
+  // Their own instruments' columns, and only when the class teaches one.
+  assert.match(calendar, /const ownColumn = isStudent && myInstruments\(\)\.length > 0/);
+  assert.match(calendar, /columns\.some\(\(column\) => plays\(column\.slug\)\)/);
+  assert.match(calendar, /\.filter\(\(column\) => plays\(column\.slug\)\)/);
   // Admins and signed-out visitors keep the whole grid.
   assert.match(calendar, /let shown = columns;/);
   // There is always a way to see the rest.

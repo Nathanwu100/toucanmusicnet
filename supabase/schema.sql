@@ -286,8 +286,15 @@ update public.instruments
 set active = false
 where slug not in ('piano', 'violin', 'viola');
 
+-- A student learns one or more instruments. The enforce_student_instruments
+-- trigger below keeps every element a supported catalog slug, deduplicated
+-- and in catalog order, and keeps the list empty for anyone who is not a
+-- student. Migration 20261004000000_student_multiple_instruments.sql turned
+-- the old single `instrument` column into this array.
 alter table public.profiles
-  add column if not exists instrument text references public.instruments (slug);
+  add column if not exists instruments text[] not null default '{}';
+create index if not exists profiles_instruments_gin_idx
+  on public.profiles using gin (instruments);
 
 -- A class or event is taught for one or more instruments. The array replaces
 -- the old single-instrument column; the enforce_supported_instrument trigger
@@ -419,8 +426,18 @@ where exists (
   );
 
 update public.profiles p
-set instrument = null
-where p.instrument in (select slug from public.instruments where not active)
+set instruments = coalesce(
+  (
+    select array_agg(i.slug order by i.sort_order)
+    from public.instruments i
+    where i.active and i.slug = any (p.instruments)
+  ),
+  '{}'::text[]
+)
+where exists (
+    select 1 from public.instruments r
+    where not r.active and r.slug = any (p.instruments)
+  )
   and not exists (
     select 1 from public.student_enrollments se
     where se.student_id = p.id and se.status = 'active'
@@ -441,7 +458,7 @@ where e.id = se.class_id
 delete from public.instruments i
 where not i.active
   and not exists (select 1 from public.events e where i.slug = any (e.instruments))
-  and not exists (select 1 from public.profiles p where p.instrument = i.slug)
+  and not exists (select 1 from public.profiles p where i.slug = any (p.instruments))
   and not exists (select 1 from public.student_enrollments se where se.instrument = i.slug);
 
 create or replace function public.current_profile_role()
@@ -451,22 +468,84 @@ as $$
   select role from public.profiles where id = auth.uid();
 $$;
 
-create or replace function public.current_instrument()
-returns text
+create or replace function public.current_instruments()
+returns text[]
 language sql stable security definer set search_path = public
 as $$
-  select instrument from public.profiles where id = auth.uid();
+  select coalesce(instruments, '{}'::text[]) from public.profiles where id = auth.uid();
 $$;
 
 revoke execute on function public.current_profile_role() from public, anon;
-revoke execute on function public.current_instrument() from public, anon;
+revoke execute on function public.current_instruments() from public, anon;
 grant execute on function public.current_profile_role() to authenticated;
-grant execute on function public.current_instrument() to authenticated;
+grant execute on function public.current_instruments() to authenticated;
 
--- Create a missing profile from trusted auth metadata. New accounts (created
--- after the instrument catalog was installed) must carry a valid student
--- instrument. Older auth users may be created with a null instrument so the
--- Settings requirement can repair them safely at next login.
+-- The same rule enforce_supported_instrument applies to events: every slug
+-- must be an active catalog instrument, duplicates collapse, and the result
+-- is kept in catalog order. Returns null when anything in the list is not
+-- supported, so callers can refuse rather than silently drop it.
+create or replace function public.normalize_student_instruments(requested text[])
+returns text[]
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  wanted int;
+  normalized text[];
+begin
+  select count(distinct slug) into wanted
+  from unnest(coalesce(requested, '{}'::text[])) as slug;
+  if wanted = 0 then
+    return '{}'::text[];
+  end if;
+  select array_agg(i.slug order by i.sort_order) into normalized
+  from public.instruments i
+  where i.active and i.slug = any (requested);
+  if normalized is null or cardinality(normalized) <> wanted then
+    return null;
+  end if;
+  return normalized;
+end;
+$$;
+
+revoke execute on function public.normalize_student_instruments(text[]) from public, anon;
+grant execute on function public.normalize_student_instruments(text[]) to authenticated;
+
+-- A profile row can only ever hold supported instruments, in catalog order,
+-- and only a student holds any at all.
+create or replace function public.enforce_student_instruments()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized text[];
+begin
+  if new.role <> 'student' then
+    new.instruments := '{}'::text[];
+    return new;
+  end if;
+  normalized := public.normalize_student_instruments(new.instruments);
+  if normalized is null then
+    raise exception 'Choose supported instruments.';
+  end if;
+  new.instruments := normalized;
+  return new;
+end;
+$$;
+
+drop trigger if exists enforce_student_instruments on public.profiles;
+create trigger enforce_student_instruments
+  before insert or update on public.profiles
+  for each row execute function public.enforce_student_instruments();
+
+-- ------------------------------------------------------ first-login profile
+-- Signup metadata now carries `instruments` as a JSON array. The old single
+-- `instrument` key is still honoured, for an account that signed up before
+-- this change and only confirms its email afterwards.
 create or replace function public.ensure_current_profile()
 returns public.profiles
 language plpgsql
@@ -479,7 +558,7 @@ declare
   auth_created_at timestamptz;
   catalog_created_at timestamptz;
   requested_role text;
-  requested_instrument text;
+  requested_instruments text[];
   requested_phone text;
 begin
   if auth.uid() is null then
@@ -500,7 +579,20 @@ begin
 
   select min(created_at) into catalog_created_at from public.instruments;
   requested_role := case when auth_metadata ->> 'role' = 'volunteer' then 'volunteer' else 'student' end;
-  requested_instrument := case when requested_role = 'student' then auth_metadata ->> 'instrument' else null end;
+
+  if requested_role = 'student' then
+    if jsonb_typeof(auth_metadata -> 'instruments') = 'array' then
+      select coalesce(array_agg(value), '{}'::text[]) into requested_instruments
+      from jsonb_array_elements_text(auth_metadata -> 'instruments');
+    elsif nullif(auth_metadata ->> 'instrument', '') is not null then
+      requested_instruments := array[auth_metadata ->> 'instrument'];
+    else
+      requested_instruments := '{}'::text[];
+    end if;
+    requested_instruments := public.normalize_student_instruments(requested_instruments);
+  else
+    requested_instruments := '{}'::text[];
+  end if;
 
   -- A mobile number may be offered at signup. Accept it only in the exact
   -- shape profiles_phone_number_format allows, so bad metadata cannot fail
@@ -517,22 +609,20 @@ begin
     requested_phone := null;
   end if;
 
-  if requested_role = 'student' and not exists (
-    select 1 from public.instruments
-    where slug = requested_instrument and active
-  ) then
+  if requested_role = 'student'
+     and (requested_instruments is null or cardinality(requested_instruments) = 0) then
     if auth_created_at >= catalog_created_at then
       raise exception 'Select an instrument to finish creating your student account.';
     end if;
-    requested_instrument := null;
+    requested_instruments := '{}'::text[];
   end if;
 
-  insert into public.profiles (id, full_name, role, instrument, phone_number, text_notifications)
+  insert into public.profiles (id, full_name, role, instruments, phone_number, text_notifications)
   values (
     auth.uid(),
     coalesce(nullif(auth_metadata ->> 'full_name', ''), 'Member'),
     requested_role,
-    requested_instrument,
+    requested_instruments,
     requested_phone,
     requested_phone is not null
   )
@@ -544,10 +634,11 @@ $$;
 revoke execute on function public.ensure_current_profile() from public, anon;
 grant execute on function public.ensure_current_profile() to authenticated;
 
--- Students cannot change instruments while an active class enrollment still
--- snapshots their old instrument and time slot. They must leave (or use a
--- future explicit transfer process) first.
-create or replace function public.update_student_instrument(new_instrument text)
+-- ------------------------------------------------ changing the instruments
+-- The whole intended list, not a diff. Adding is always fine. An instrument
+-- an active enrollment still snapshots cannot be dropped: the student leaves
+-- or is moved first, exactly as before, and the message names the class.
+create or replace function public.update_student_instruments(new_instruments text[])
 returns public.profiles
 language plpgsql
 security definer
@@ -556,46 +647,54 @@ as $$
 declare
   viewer public.profiles%rowtype;
   updated_profile public.profiles%rowtype;
-  blocking_class text;
+  normalized text[];
+  blocking record;
 begin
   if auth.uid() is null then
-    raise exception 'Log in to choose an instrument.';
+    raise exception 'Log in to choose your instruments.';
   end if;
 
   select * into viewer from public.profiles where id = auth.uid() for update;
   if viewer.id is null or viewer.role <> 'student' then
-    raise exception 'Only student accounts have a selected instrument.';
+    raise exception 'Only student accounts have selected instruments.';
   end if;
-  if not exists (
-    select 1 from public.instruments where slug = new_instrument and active
-  ) then
-    raise exception 'Choose a supported instrument.';
+
+  normalized := public.normalize_student_instruments(new_instruments);
+  if normalized is null then
+    raise exception 'Choose supported instruments.';
   end if;
-  if viewer.instrument is not distinct from new_instrument then
+  if cardinality(normalized) = 0 then
+    raise exception 'Keep at least one instrument on your account.';
+  end if;
+  if viewer.instruments = normalized then
     return viewer;
   end if;
 
-  select e.title into blocking_class
+  select e.title, i.name into blocking
   from public.student_enrollments se
   join public.events e on e.id = se.class_id
-  where se.student_id = auth.uid() and se.status = 'active'
+  join public.instruments i on i.slug = se.instrument
+  where se.student_id = auth.uid()
+    and se.status = 'active'
+    and not (se.instrument = any (normalized))
   order by se.joined_at
   limit 1;
 
-  if blocking_class is not null then
-    raise exception 'Leave or transfer your current class "%" before changing instruments.', blocking_class;
+  if blocking.title is not null then
+    raise exception 'Leave or transfer your current class "%" before removing % from your account.',
+      blocking.title, blocking.name;
   end if;
 
   update public.profiles
-  set instrument = new_instrument
+  set instruments = normalized
   where id = auth.uid()
   returning * into updated_profile;
   return updated_profile;
 end;
 $$;
 
-revoke execute on function public.update_student_instrument(text) from public, anon;
-grant execute on function public.update_student_instrument(text) to authenticated;
+revoke execute on function public.update_student_instruments(text[]) from public, anon;
+grant execute on function public.update_student_instruments(text[]) to authenticated;
 
 -- A security-definer listing function can expose aggregate capacity without
 -- granting students access to anybody else's enrollment rows. The schedule
@@ -666,111 +765,7 @@ $$;
 revoke execute on function public.list_visible_events(text) from public;
 grant execute on function public.list_visible_events(text) to anon, authenticated;
 
--- The class row lock serializes attempts for the final spot. Eligibility,
--- duplicate detection, schedule-conflict detection, capacity, and insertion
--- all happen inside this single transaction.
-create or replace function public.join_class(target_class_id uuid)
-returns table (class_id uuid, enrollment_id uuid, spots_left int)
-language plpgsql
-security definer
-set search_path = public
-as $$
--- The OUT parameter named class_id is a PL/pgSQL variable for the whole body,
--- and student_enrollments has a column of the same name. Everywhere else that
--- column is written se.class_id, but the ON CONFLICT inference list below
--- cannot be table-qualified -- Postgres does not allow an alias there -- so it
--- saw both and raised 42702, "column reference class_id is ambiguous". That
--- aborted every join. This pragma settles it: inside this function an
--- ambiguous name means the column. The only name it applies to is class_id;
--- enrollment_id and spots_left match no column in any table used here.
-#variable_conflict use_column
-declare
-  viewer public.profiles%rowtype;
-  target public.events%rowtype;
-  taken int;
-  saved_enrollment_id uuid;
-begin
-  if auth.uid() is null then
-    raise exception 'Log in to join a class.';
-  end if;
-
-  select * into viewer from public.profiles where id = auth.uid() for update;
-  if viewer.id is null or viewer.role <> 'student' then
-    raise exception 'Only student accounts can join classes.';
-  end if;
-  if viewer.instrument is null then
-    raise exception 'Choose an instrument in Settings before joining a class.';
-  end if;
-
-  select * into target from public.events where id = target_class_id for update;
-  if target.id is null or target.event_type <> 'class' then
-    raise exception 'Class not found.';
-  end if;
-  if not (viewer.instrument = any (target.instruments)) then
-    raise exception 'This class does not match your selected instrument.';
-  end if;
-  if not target.enrollment_open or target.starts_at <= now() then
-    raise exception 'This class is not open for enrollment.';
-  end if;
-  if exists (
-    select 1 from public.student_enrollments se
-    where se.student_id = auth.uid()
-      and se.class_id = target.id
-      and se.status = 'active'
-  ) then
-    raise exception 'You are already enrolled in this class.';
-  end if;
-  if exists (
-    select 1
-    from public.student_enrollments se
-    where se.student_id = auth.uid()
-      and se.status = 'active'
-      and se.class_id <> target.id
-      and se.class_starts_at < coalesce(target.ends_at, target.starts_at + interval '1 hour')
-      and coalesce(se.class_ends_at, se.class_starts_at + interval '1 hour') > target.starts_at
-  ) then
-    raise exception 'This class conflicts with another class on your schedule.';
-  end if;
-
-  select count(*) into taken
-  from public.student_enrollments se
-  where se.class_id = target.id and se.status = 'active';
-  if taken >= target.student_capacity then
-    raise exception 'Class full.';
-  end if;
-
-  -- The snapshot records the student's own instrument -- the one of the
-  -- class's taught instruments they are actually enrolled for.
-  insert into public.student_enrollments (
-    student_id, class_id, instrument, time_slot_id,
-    class_starts_at, class_ends_at, status, joined_at, left_at, updated_at
-  ) values (
-    auth.uid(), target.id, viewer.instrument, target.time_slot_id,
-    target.starts_at, target.ends_at, 'active', now(), null, now()
-  )
-  on conflict (student_id, class_id) do update set
-    instrument = excluded.instrument,
-    time_slot_id = excluded.time_slot_id,
-    class_starts_at = excluded.class_starts_at,
-    class_ends_at = excluded.class_ends_at,
-    status = 'active',
-    joined_at = now(),
-    left_at = null,
-    updated_at = now()
-  where public.student_enrollments.status = 'cancelled'
-  returning id into saved_enrollment_id;
-
-  if saved_enrollment_id is null then
-    raise exception 'You are already enrolled in this class.';
-  end if;
-
-  return query select target.id, saved_enrollment_id,
-    greatest(target.student_capacity - taken - 1, 0);
-end;
-$$;
-
-revoke execute on function public.join_class(uuid) from public, anon;
-grant execute on function public.join_class(uuid) to authenticated;
+-- join_class is defined with the time-block model further down.
 
 create or replace function public.leave_class(target_class_id uuid)
 returns table (class_id uuid, spots_left int)
@@ -920,13 +915,15 @@ create policy "create own profile" on public.profiles
     and (
       (
         role = 'student'
-        and instrument is not null
-        and exists (
-          select 1 from public.instruments i
-          where i.slug = instrument and i.active
+        and cardinality(instruments) > 0
+        and not exists (
+          select 1 from unnest(instruments) as chosen(slug)
+          where not exists (
+            select 1 from public.instruments i where i.slug = chosen.slug and i.active
+          )
         )
       )
-      or (role = 'volunteer' and instrument is null)
+      or (role = 'volunteer' and instruments = '{}'::text[])
     )
   );
 
@@ -938,8 +935,7 @@ create policy "role and instrument scoped events" on public.events
     or (select public.current_profile_role()) = 'volunteer'
     or (
       (select public.current_profile_role()) = 'student'
-      and (select public.current_instrument()) is not null
-      and (select public.current_instrument()) = any (instruments)
+      and instruments && (select public.current_instruments())
     )
   );
 
@@ -1226,23 +1222,22 @@ $$;
 revoke execute on function public.list_class_roster(uuid) from public, anon;
 grant execute on function public.list_class_roster(uuid) to authenticated;
 
--- --------------------------------------------------------------- enrolment
--- Takes an optional block. A class that has blocks requires one, and the
--- block has to be in the student's own instrument column. A class without
--- blocks ignores the argument and behaves exactly as it did before.
+-- ---------------------------------------------------------------- joining
+-- A third argument names which of the student's instruments a whole-class
+-- place is for, when the class teaches more than one of them. A time block
+-- already belongs to one instrument, so for a block it is ignored. Both old
+-- signatures go, or PostgREST cannot pick between them.
 --
--- #variable_conflict use_column is load-bearing. The OUT parameter class_id
--- puts that name in scope as a PL/pgSQL variable for the whole body, and
--- student_enrollments has a column of the same name. Every other reference is
--- written se.class_id, but the ON CONFLICT inference list below cannot take a
--- table alias, so Postgres saw both and raised 42702 -- "column reference
--- class_id is ambiguous" -- which aborted every join outright. The pragma
--- settles it in favour of the column. Local variables are named so that no
--- other collision exists: slot_capacity rather than capacity, which is a
--- column on class_time_blocks.
+-- #variable_conflict use_column: see the note on the previous version of
+-- this function in 20260902000000_class_time_blocks.sql.
 drop function if exists public.join_class(uuid);
 drop function if exists public.join_class(uuid, uuid);
-create function public.join_class(target_class_id uuid, target_block_id uuid default null)
+drop function if exists public.join_class(uuid, uuid, text);
+create function public.join_class(
+  target_class_id uuid,
+  target_block_id uuid default null,
+  target_instrument text default null
+)
 returns table (class_id uuid, block_id uuid, enrollment_id uuid, spots_left int)
 language plpgsql
 security definer
@@ -1253,6 +1248,8 @@ declare
   viewer public.profiles%rowtype;
   target public.events%rowtype;
   slot public.class_time_blocks%rowtype;
+  shared text[];
+  chosen_instrument text;
   block_count int;
   taken_count int;
   slot_capacity int;
@@ -1268,7 +1265,7 @@ begin
   if viewer.id is null or viewer.role <> 'student' then
     raise exception 'Only student accounts can join classes.';
   end if;
-  if viewer.instrument is null then
+  if cardinality(coalesce(viewer.instruments, '{}'::text[])) = 0 then
     raise exception 'Choose an instrument in Settings before joining a class.';
   end if;
 
@@ -1276,8 +1273,14 @@ begin
   if target.id is null or target.event_type <> 'class' then
     raise exception 'Class not found.';
   end if;
-  if not (viewer.instrument = any (target.instruments)) then
-    raise exception 'This class does not match your selected instrument.';
+
+  -- The instruments this student could take the class for, in the class's
+  -- own order.
+  select coalesce(array_agg(taught order by ordinality), '{}'::text[]) into shared
+  from unnest(target.instruments) with ordinality as t(taught, ordinality)
+  where taught = any (viewer.instruments);
+  if cardinality(shared) = 0 then
+    raise exception 'This class does not match any of your instruments.';
   end if;
   if not target.enrollment_open or target.starts_at <= now() then
     raise exception 'This class is not open for enrollment.';
@@ -1296,12 +1299,13 @@ begin
     if slot.id is null then
       raise exception 'That time block is not part of this class.';
     end if;
-    if slot.instrument <> viewer.instrument then
+    if not (slot.instrument = any (viewer.instruments)) then
       raise exception 'That time block is for %, not your instrument.', slot.instrument;
     end if;
     if slot.starts_at <= now() then
       raise exception 'That time block has already started.';
     end if;
+    chosen_instrument := slot.instrument;
     slot_capacity := slot.capacity;
     slot_starts := slot.starts_at;
     slot_ends := slot.ends_at;
@@ -1311,6 +1315,14 @@ begin
   else
     if target_block_id is not null then
       raise exception 'This class is not divided into time blocks.';
+    end if;
+    if target_instrument is not null then
+      if not (target_instrument = any (shared)) then
+        raise exception 'You cannot take this class for %.', target_instrument;
+      end if;
+      chosen_instrument := target_instrument;
+    else
+      chosen_instrument := shared[1];
     end if;
     slot_capacity := target.student_capacity;
     slot_starts := target.starts_at;
@@ -1347,13 +1359,14 @@ begin
     raise exception 'That time block is full.';
   end if;
 
-  -- The snapshot records the student's own instrument and the times of the
-  -- block they took, so a later edit cannot rewrite what they signed up for.
+  -- The snapshot records the instrument the student is taking this class
+  -- for, and the times of the place they took, so a later edit cannot
+  -- rewrite what they signed up for.
   insert into public.student_enrollments (
     student_id, class_id, block_id, instrument, time_slot_id,
     class_starts_at, class_ends_at, status, joined_at, left_at, updated_at
   ) values (
-    auth.uid(), target.id, slot.id, viewer.instrument, target.time_slot_id,
+    auth.uid(), target.id, slot.id, chosen_instrument, target.time_slot_id,
     slot_starts, slot_ends, 'active', now(), null, now()
   )
   on conflict (student_id, class_id) do update set
@@ -1378,8 +1391,8 @@ begin
 end;
 $$;
 
-revoke execute on function public.join_class(uuid, uuid) from public, anon;
-grant execute on function public.join_class(uuid, uuid) to authenticated;
+revoke execute on function public.join_class(uuid, uuid, text) from public, anon;
+grant execute on function public.join_class(uuid, uuid, text) to authenticated;
 
 -- ============================================== displacing a student
 -- Until now an admin who needed to change a class that people had already

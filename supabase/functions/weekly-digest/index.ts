@@ -58,7 +58,7 @@ Deno.serve(async () => {
 
   const { data: profiles, error: pErr } = await supabase
     .from("profiles")
-    .select("id, full_name, role, instrument, weekly_digest")
+    .select("id, full_name, role, instruments, weekly_digest")
     .eq("weekly_digest", true);
   if (pErr) return new Response(pErr.message, { status: 500 });
 
@@ -76,7 +76,7 @@ Deno.serve(async () => {
       });
       return `<tr>
         <td style="padding:8px 12px;border-bottom:1px solid #e9f1ef"><strong>${ev.title}</strong><br>
-          <span style="color:#46595e">${when}${ev.location ? " · " + ev.location : ""} · ${ev.instrument}</span></td>
+          <span style="color:#46595e">${when}${ev.location ? " · " + ev.location : ""} · ${(ev.instruments ?? []).join(" / ")}</span></td>
       </tr>`;
     })
     .join("");
@@ -96,7 +96,7 @@ Deno.serve(async () => {
   const failures: { email: string; error: string }[] = [];
   for (const p of profiles ?? []) {
     const visibleEvents = p.role === "student"
-      ? events.filter((event) => p.instrument && event.instrument === p.instrument)
+      ? events.filter((event) => (p.instruments ?? []).some((slug: string) => (event.instruments ?? []).includes(slug)))
       : events;
     if (!visibleEvents.length) continue;
     const email = emailById.get(p.id);

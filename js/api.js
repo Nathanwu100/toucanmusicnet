@@ -48,27 +48,27 @@
       users: [
         {
           id: "admin-1", name: "admin", email: cfg.ADMIN_EMAIL || "admin@toucanmusic.org",
-          password: "toucan2026", role: "admin", instrument: null,
+          password: "toucan2026", role: "admin", instruments: [],
           weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
         },
         {
           id: "vol-1", name: "Maya Rivera", email: "maya@example.com",
-          password: "toucan2026", role: "volunteer", instrument: null,
+          password: "toucan2026", role: "volunteer", instruments: [],
           weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
         },
         {
           id: "vol-2", name: "Jordan Lee", email: "jordan@example.com",
-          password: "toucan2026", role: "volunteer", instrument: null,
+          password: "toucan2026", role: "volunteer", instruments: [],
           weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
         },
         {
           id: "vol-3", name: "Sam Patel", email: "sam@example.com",
-          password: "toucan2026", role: "volunteer", instrument: null,
+          password: "toucan2026", role: "volunteer", instruments: [],
           weekly_digest: false, class_reminders: true, text_notifications: false, phone_number: null,
         },
         {
           id: "student-1", name: "Ari Chen", email: "ari@example.com",
-          password: "toucan2026", role: "student", instrument: "violin",
+          password: "toucan2026", role: "student", instruments: ["violin"],
           weekly_digest: true, class_reminders: true, text_notifications: false, phone_number: null,
         },
       ],
@@ -129,8 +129,9 @@
   }
 
   // Stored demo databases created before an instrument was added to the
-  // catalog gain the new entries, and events saved when a class taught a
-  // single instrument move onto the instruments array -- all without losing
+  // catalog gain the new entries; events saved when a class taught a single
+  // instrument move onto the instruments array; and accounts saved when a
+  // student had a single instrument move onto theirs -- all without losing
   // accounts or enrollments.
   function upgradeDb(db) {
     let changed = false;
@@ -144,6 +145,13 @@
       if (!Array.isArray(event.instruments)) {
         event.instruments = event.instrument ? [event.instrument] : ["violin"];
         delete event.instrument;
+        changed = true;
+      }
+    }
+    for (const user of db.users || []) {
+      if (!Array.isArray(user.instruments)) {
+        user.instruments = user.role === "student" && user.instrument ? [user.instrument] : [];
+        delete user.instrument;
         changed = true;
       }
     }
@@ -302,15 +310,39 @@
     return normalized;
   }
 
+  // The instruments on a student's account, held to the same rule as a
+  // class's (mirroring normalize_student_instruments): supported, no
+  // duplicates, catalog order. A student keeps at least one.
+  function normalizeStudentInstruments(slugs, db) {
+    const requested = new Set(Array.isArray(slugs) ? slugs.filter(Boolean) : []);
+    if (!requested.size) throw new Error("Select an instrument to finish creating your student account.");
+    const normalized = db.instruments
+      .filter((item) => item.active && requested.has(item.slug))
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((item) => item.slug);
+    if (normalized.length !== requested.size) throw new Error("Choose supported instruments.");
+    return normalized;
+  }
+
+  // The instruments a student could take a class for: the class's own list,
+  // in the class's order, narrowed to what is on the account.
+  function sharedInstruments(user, event) {
+    const mine = user?.instruments || [];
+    return (event?.instruments || []).filter((slug) => mine.includes(slug));
+  }
+
   function publicUser(user) {
     return {
       id: user.id,
       name: user.name || user.full_name,
       email: user.email,
       role: user.role,
-      instrument: user.instrument || null,
-      instrument_name: instrumentName(user.instrument),
-      needs_instrument: user.role === "student" && !user.instrument,
+      // A student's instruments, in catalog order, with the names beside
+      // them. Empty for anyone who is not a student, and for a student from
+      // before the catalog who has not chosen yet.
+      instruments: [...(user.instruments || [])],
+      instrument_names: instrumentNames(user.instruments || []),
+      needs_instrument: user.role === "student" && !(user.instruments || []).length,
       weekly_digest: user.weekly_digest,
       class_reminders: user.class_reminders,
       text_notifications: user.text_notifications,
@@ -554,7 +586,10 @@
       if (error) throw authError(error);
     },
 
-    async signup({ name, email, password, role, instrument, phone_number = null }) {
+    // `instruments` is the list a student picked; `instrument` is the older
+    // single value and is still accepted so nothing calling in the old shape
+    // breaks. A volunteer has neither.
+    async signup({ name, email, password, role, instruments, instrument, phone_number = null }) {
       if (!["student", "volunteer"].includes(role)) throw new Error("Pick a role to continue.");
       // A number offered at signup is what switches texts on. The column and
       // the profiles_text_notification_phone constraint move together: no
@@ -562,10 +597,10 @@
       const phone = normalizePhone(phone_number);
       if (phone_number && !phone) throw new Error("Enter a valid mobile number, or leave it blank.");
       const supported = await this.listInstruments();
-      if (role === "student" && !supported.some((item) => item.slug === instrument)) {
-        throw new Error("Select an instrument to finish creating your student account.");
-      }
-      const selectedInstrument = role === "student" ? instrument : null;
+      const requested = Array.isArray(instruments) ? instruments : instrument ? [instrument] : [];
+      const selectedInstruments = role === "student"
+        ? normalizeStudentInstruments(requested, { instruments: supported.map((item) => ({ ...item, active: true })) })
+        : [];
 
       if (DEMO) {
         const db = loadDb();
@@ -573,7 +608,7 @@
           throw authError(new Error("An account already uses that email address."), "email_exists");
         }
         const user = {
-          id: uid(), name, email, password, role, instrument: selectedInstrument,
+          id: uid(), name, email, password, role, instruments: selectedInstruments,
           weekly_digest: true, class_reminders: true,
           text_notifications: Boolean(phone), phone_number: phone,
         };
@@ -588,7 +623,7 @@
         password,
         options: {
           emailRedirectTo: confirmationRedirectUrl(),
-          data: { full_name: name, role, instrument: selectedInstrument, phone_number: phone },
+          data: { full_name: name, role, instruments: selectedInstruments, phone_number: phone },
         },
       });
       if (error) throw authError(error);
@@ -620,7 +655,7 @@
       const mailed = Boolean(data.user.confirmation_sent_at);
       return {
         ...publicUser({
-          id: data.user.id, name, email, role, instrument: selectedInstrument,
+          id: data.user.id, name, email, role, instruments: selectedInstruments,
           weekly_digest: true, class_reminders: true,
           text_notifications: Boolean(phone), phone_number: phone,
         }),
@@ -658,24 +693,33 @@
       return publicUser({ ...normalizeRpcRow(data), email: authUser.email });
     },
 
-    async updateInstrument(instrument) {
+    // The whole intended list, not a diff. Adding an instrument is always
+    // fine; one that an active enrollment still snapshots cannot be removed
+    // until the student leaves or is moved, and the message names the class.
+    async updateInstruments(instruments) {
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("student");
-        if (!db.instruments.some((item) => item.slug === instrument && item.active)) {
-          throw new Error("Choose a supported instrument.");
+        let normalized;
+        try {
+          normalized = normalizeStudentInstruments(instruments, db);
+        } catch (error) {
+          throw new Error(Array.isArray(instruments) && instruments.length
+            ? "Choose supported instruments."
+            : "Keep at least one instrument on your account.");
         }
-        if (currentUser.instrument === instrument) return publicUser(currentUser);
-        const active = db.studentEnrollments.find((row) => row.student_id === currentUser.id && row.status === "active");
-        if (active) {
-          const classTitle = db.events.find((event) => event.id === active.class_id)?.title || "your current class";
-          throw new Error(`Leave or transfer your current class “${classTitle}” before changing instruments.`);
+        if (JSON.stringify(currentUser.instruments || []) === JSON.stringify(normalized)) return publicUser(currentUser);
+        const blocking = db.studentEnrollments.find((row) =>
+          row.student_id === currentUser.id && row.status === "active" && !normalized.includes(row.instrument));
+        if (blocking) {
+          const classTitle = db.events.find((event) => event.id === blocking.class_id)?.title || "your current class";
+          throw new Error(`Leave or transfer your current class “${classTitle}” before removing ${instrumentName(blocking.instrument, db)} from your account.`);
         }
-        currentUser.instrument = instrument;
+        currentUser.instruments = normalized;
         saveDb(db);
         return publicUser(currentUser);
       }
       const authUser = await requireSupabaseSession();
-      const { data, error } = await sb.rpc("update_student_instrument", { new_instrument: instrument });
+      const { data, error } = await sb.rpc("update_student_instruments", { new_instruments: instruments });
       if (error) throw new Error(error.message);
       return publicUser({ ...normalizeRpcRow(data), email: authUser.email });
     },
@@ -1029,13 +1073,17 @@
       return data || [];
     },
 
-    async joinClass(eventId, blockId = null) {
+    // `instrument` names which of the student's instruments a whole-class
+    // place is for, when the class teaches more than one of them. A time
+    // block already belongs to one instrument, so for a block it is ignored.
+    async joinClass(eventId, blockId = null, instrument = null) {
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("student");
         const target = db.events.find((event) => event.id === eventId);
         if (!target || target.event_type !== "class") throw new Error("Class not found.");
-        if (!currentUser.instrument) throw new Error("Choose an instrument in Settings before joining a class.");
-        if (!target.instruments.includes(currentUser.instrument)) throw new Error("This class does not match your selected instrument.");
+        if (!(currentUser.instruments || []).length) throw new Error("Choose an instrument in Settings before joining a class.");
+        const shared = sharedInstruments(currentUser, target);
+        if (!shared.length) throw new Error("This class does not match any of your instruments.");
         if (!target.enrollment_open || new Date(target.starts_at).getTime() <= Date.now()) {
           throw new Error("This class is not open for enrollment.");
         }
@@ -1044,6 +1092,7 @@
         // keeps behaving as a single whole-class place.
         const blocks = target.blocks || [];
         let block = null;
+        let chosenInstrument = shared[0];
         let capacity = target.student_capacity;
         let slotStart = target.starts_at;
         let slotEnd = target.ends_at;
@@ -1051,17 +1100,23 @@
           if (!blockId) throw new Error("Choose a time block for this class.");
           block = blocks.find((row) => row.id === blockId);
           if (!block) throw new Error("That time block is not part of this class.");
-          if (block.instrument !== currentUser.instrument) {
+          if (!currentUser.instruments.includes(block.instrument)) {
             throw new Error(`That time block is for ${instrumentName(block.instrument, db)}, not your instrument.`);
           }
           if (new Date(block.starts_at).getTime() <= Date.now()) {
             throw new Error("That time block has already started.");
           }
+          chosenInstrument = block.instrument;
           capacity = block.capacity;
           slotStart = block.starts_at;
           slotEnd = block.ends_at;
         } else if (blockId) {
           throw new Error("This class is not divided into time blocks.");
+        } else if (instrument) {
+          if (!shared.includes(instrument)) {
+            throw new Error(`You cannot take this class for ${instrumentName(instrument, db) || instrument}.`);
+          }
+          chosenInstrument = instrument;
         }
 
         const existing = db.studentEnrollments.find((row) => row.student_id === currentUser.id && row.class_id === eventId);
@@ -1076,11 +1131,11 @@
           : activeStudentEnrollments(db, eventId).length;
         if (taken >= capacity) throw new Error(block ? "That time block is full." : "Class full.");
 
-        // The snapshot records the student's own instrument -- the one of the
-        // class's taught instruments they are actually enrolled for.
+        // The snapshot records the instrument the student is taking this
+        // class for -- the block's, or the one named for a whole-class place.
         const snapshot = {
           block_id: block ? block.id : null,
-          instrument: currentUser.instrument, time_slot_id: target.time_slot_id,
+          instrument: chosenInstrument, time_slot_id: target.time_slot_id,
           class_starts_at: slotStart, class_ends_at: slotEnd,
           status: "active", joined_at: new Date().toISOString(), left_at: null,
         };
@@ -1099,6 +1154,7 @@
       const { data, error } = await sb.rpc("join_class", {
         target_class_id: eventId,
         target_block_id: blockId,
+        target_instrument: instrument,
       });
       if (error) throw authError(error);
       return normalizeRpcRow(data);

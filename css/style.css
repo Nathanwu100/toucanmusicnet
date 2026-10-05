@@ -723,6 +723,9 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 
 .field { margin-bottom: 1.1rem; }
 .field label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 0.3rem; }
+/* A group of tick boxes has no single control for a <label> to point at, so
+   its heading is a span styled the same way. */
+.field .field-label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 0.3rem; }
 .field input[type="text"], .field input[type="email"], .field input[type="password"],
 .field input[type="datetime-local"], .field input[type="number"], .field input[type="tel"],
 .field select, .field textarea {
@@ -2058,6 +2061,12 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
 }
 .phone-field[hidden] { display: none; }
 .instrument-setting-field { margin: 0; padding: 1rem; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.instrument-setting-field .instrument-options { margin-top: 0.2rem; }
+.instrument-setting-field .instrument-options .instrument-option { background: var(--paper-raise); }
+/* On the signup page the row of choices stands in for the dropdown it
+   replaced, so it keeps the same breathing room above the hint. */
+.instrument-signup-field .instrument-options { margin-bottom: 0.35rem; }
+.instrument-signup-field .instrument-loading { margin: 0.2rem 0; }
 .instrument-change-warning { margin-top: 0.65rem; padding: 0.65rem 0.75rem; border-left: 3px solid var(--danger); background: var(--danger-soft); color: var(--danger); font-size: 0.8rem; line-height: 1.45; }
 .save-phone { margin-top: 0.8rem; }
 .drawer-actions { display: flex; align-items: center; gap: 0.7rem; margin-top: 1.2rem; flex-wrap: wrap; }

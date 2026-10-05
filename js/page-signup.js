@@ -5,20 +5,31 @@
 // still has to run after the deferred scripts it depends on.
 
 const instrumentField = document.getElementById("student-instrument-field");
-const instrumentSelect = document.getElementById("instrument");
+const instrumentChoices = document.getElementById("instrument-choices");
+
+// A student may learn more than one instrument, so these are tick boxes
+// rather than a dropdown. One is enough; several are welcome.
+const chosenInstruments = () =>
+  [...instrumentChoices.querySelectorAll("input:checked")].map((input) => input.value);
 
 async function loadSignupInstruments() {
   try {
     const instruments = await ToucanAPI.listInstruments();
-    instrumentSelect.innerHTML = '<option value="">Choose an instrument</option>';
+    instrumentChoices.innerHTML = "";
     instruments.forEach((instrument) => {
-      const option = document.createElement("option");
-      option.value = instrument.slug;
-      option.textContent = instrument.name;
-      instrumentSelect.appendChild(option);
+      const option = document.createElement("label");
+      option.className = "instrument-option";
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.name = "instruments";
+      input.value = instrument.slug;
+      const name = document.createElement("span");
+      name.textContent = instrument.name;
+      option.append(input, name);
+      instrumentChoices.appendChild(option);
     });
   } catch (error) {
-    instrumentSelect.innerHTML = '<option value="">Instruments unavailable</option>';
+    instrumentChoices.innerHTML = '<p class="hint instrument-loading">Instruments unavailable</p>';
     const err = document.getElementById("error");
     err.textContent = "We could not load the instrument list. Please refresh and try again.";
     err.classList.add("show");
@@ -29,8 +40,7 @@ function syncInstrumentField() {
   const role = document.querySelector('input[name="role"]:checked')?.value;
   const isStudent = role === "student";
   instrumentField.hidden = !isStudent;
-  instrumentSelect.required = isStudent;
-  if (!isStudent) instrumentSelect.value = "";
+  if (!isStudent) instrumentChoices.querySelectorAll("input").forEach((input) => { input.checked = false; });
 }
 
 document.querySelectorAll('input[name="role"]').forEach((input) => {
@@ -60,10 +70,10 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
     err.classList.add("show");
     return;
   }
-  if (role.value === "student" && !instrumentSelect.value) {
-    err.textContent = "Select an instrument to finish creating your student account.";
+  if (role.value === "student" && !chosenInstruments().length) {
+    err.textContent = "Select at least one instrument to finish creating your student account.";
     err.classList.add("show");
-    instrumentSelect.focus();
+    instrumentChoices.querySelector("input")?.focus();
     return;
   }
   const typedPhone = phoneInput.value.trim();
@@ -82,7 +92,7 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
       email: document.getElementById("email").value.trim(),
       password: document.getElementById("password").value,
       role: role.value,
-      instrument: role.value === "student" ? instrumentSelect.value : null,
+      instruments: role.value === "student" ? chosenInstruments() : [],
       // A number given here opts the account into texts; leaving it blank
       // leaves texts off, which is the setting the account starts with.
       phone_number: parsedPhone ? parsedPhone.e164 : null,
