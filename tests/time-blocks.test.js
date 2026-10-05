@@ -830,3 +830,12 @@ test("the instrument filter is only for visitors without an account", () => {
   assert.match(markup, /id="instrument-filter-field" hidden/);
   assert.match(calendar, /\$\("#instrument-filter-field"\)\.hidden = Boolean\(user\)/);
 });
+
+test("the no-bounce rule stays off the body, or the mouse wheel stops scrolling", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+  // The body is a scroll container with nothing to scroll (overflow-x: hidden
+  // makes its overflow-y auto). overscroll-behavior: none on it stops Chrome
+  // chaining a wheel scroll up to the page, so nothing moves.
+  assert.match(css, /html \{[^}]*overscroll-behavior: none/);
+  assert.doesNotMatch(css, /\nbody \{[^}]*overscroll-behavior/);
+});

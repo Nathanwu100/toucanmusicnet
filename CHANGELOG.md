@@ -19,6 +19,16 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.3.1] - 2026-10-05
+
+### Fixed
+- **The mouse wheel and trackpad scroll the site again.** Since 2.1.1 the
+  no-bounce rule was set on the body as well as the page. The body is a scroll
+  container of its own with nothing to scroll, so in Chrome every wheel
+  movement landed on it and, told not to chain past its edge, went nowhere;
+  only the keyboard still moved the page. The rule now sits on the page
+  alone, which is all that was ever needed to stop the bounce.
+
 ## [2.3.0] - 2026-10-04
 
 Includes a migration, `20261004000000_student_multiple_instruments.sql`,

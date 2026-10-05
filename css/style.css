@@ -149,9 +149,15 @@
 
 [hidden] { display: none !important; }
 
-/* No rubber-banding past the ends of the page, in either direction. */
+/* No rubber-banding past the ends of the page, in either direction.
+
+   On <html> only. The body is a scroll container of its own -- overflow-x:
+   hidden below turns its vertical overflow into auto -- but it never has
+   anything to scroll, so every wheel movement lands on a scroller already at
+   its limit. With overscroll-behavior: none on it, Chrome refuses to pass
+   that movement up to the page, and the mouse wheel and trackpad stop
+   scrolling the site altogether (keys still work). */
 html { scroll-behavior: smooth; overflow-x: clip; overscroll-behavior: none; }
-body { overscroll-behavior: none; }
 
 body {
   font-family: var(--font-body);
