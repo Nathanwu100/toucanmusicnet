@@ -2081,12 +2081,13 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   background: rgba(241, 246, 241, 0.7);
   color: var(--ink);
   cursor: pointer;
-  /* Hidden until the pointer comes near: the halo below is the "near", a
-     wide invisible ring round the button that counts as hovering it. */
+  /* Hidden until the pointer is on it. The halo below is a few pixels of
+     margin round the button that count as on it, so it does not flicker at
+     its own edge; it is not a wide "near" zone. */
   opacity: 0;
   transition: background 0.15s ease, border-color 0.15s ease, opacity 0.2s ease;
 }
-.gallery-arrow::before { content: ""; position: absolute; inset: -34px; border-radius: 50%; }
+.gallery-arrow::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
 .gallery-arrow:hover,
 .gallery-arrow:focus-visible { opacity: 1; }
 .gallery-arrow iconify-icon { font-size: 22px; }
@@ -2424,24 +2425,26 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .brand { font-size: 0; gap: 0; }
 }
 
-/* ------------------------------------------------------- small computers */
-/* A laptop at 1366x768, a window shrunk to half a screen, a projector. Phones
-   have their own layout below 720px; above it everything was drawn for a
-   big monitor and on a small one too little fitted on screen at once. Here
-   the whole site takes a step down -- the rem sizes through the root, the
-   rest by hand -- and no further than stays easy to read: body text never
-   goes below 14px. */
-@media (min-width: 721px) and (max-width: 1280px), (min-width: 721px) and (max-height: 800px) {
-  html { font-size: 14.5px; }
+/* ------------------------------------------------------------- computers */
+/* Phones have their own layout below 720px. Above it the site was drawn at
+   a size that read as too big on any computer, so every computer gets it
+   at roughly 85% of that: the rem sizes through the root, the rest by hand.
+   Small computers -- a laptop at 1366x768, a window shrunk to half a
+   screen -- take one step further down below, and no further than stays
+   easy to read: body text never goes below 13px. */
+@media (min-width: 721px) {
+  html { font-size: 14px; }
   .nav { min-height: 54px; padding-top: 0.45rem; padding-bottom: 0.45rem; gap: 1.1rem; }
   .nav-icon-link, .nav-icon-button { width: 38px; height: 38px; flex-basis: 38px; }
   .nav-icon-link iconify-icon, .nav-icon-button iconify-icon { font-size: 21px; }
   .hero {
-    min-height: calc(100svh - 54px);
+    /* At 85% the hero no longer fills the whole first screen, which is what
+       zooming out would have done to it too. */
+    min-height: calc(86svh - 54px);
     padding: clamp(2rem, 5vh, 3.5rem) clamp(1rem, 4vw, 2.5rem) 2.5rem;
     gap: clamp(1.5rem, 4vw, 4rem);
   }
-  .hero h1 { font-size: clamp(2.5rem, 5.2vw, 4.4rem); }
+  .hero h1 { font-size: clamp(2.5rem, 5.2vw, 4.6rem); }
   .hero p { font-size: 1.05rem; }
   .notification-board { padding: clamp(1.2rem, 2.5vw, 1.7rem); }
   .section { padding: 3.5rem clamp(1rem, 4vw, 2.5rem); }
@@ -2461,12 +2464,19 @@ iconify-icon { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
   .auth-wrap { padding-top: clamp(1.5rem, 5vh, 3rem); }
   .panel { padding: clamp(1.3rem, 3vw, 2rem); }
 }
+/* Small computers: one more step. */
+@media (min-width: 721px) and (max-width: 1280px), (min-width: 721px) and (max-height: 800px) {
+  html { font-size: 13.5px; }
+  .cal-days { grid-auto-rows: 72px; }
+  .event-gallery-card { flex-basis: min(250px, 78vw); grid-template-rows: 150px auto; min-height: 240px; }
+  .event-gallery-arrow { top: 75px; }
+}
 /* Shorter still -- a laptop with the browser's own bars taking their share --
-   and the hero stops insisting on a whole screen. */
+   and the hero stops insisting on most of a screen. */
 @media (min-width: 721px) and (max-height: 680px) {
-  html { font-size: 14px; }
+  html { font-size: 13px; }
   .hero { min-height: 0; }
-  .cal-days { grid-auto-rows: 68px; }
+  .cal-days { grid-auto-rows: 66px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

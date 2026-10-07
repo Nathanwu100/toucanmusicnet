@@ -19,6 +19,19 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.4.1] - 2026-10-07
+
+### Changed
+- **The site is about 85% of its old size on every computer.** What 2.4.0
+  did for small computers now applies to all of them: text through the root
+  size, and the nav, hero, calendar rows, day panel, cards and sponsor
+  logos by hand. The hero no longer fills the whole first screen. Small
+  computers take one step further down, and body text never goes below
+  13px. Phones are untouched.
+- **The photo strip's arrows show when the pointer is on them,** not when
+  it is anywhere near. A few pixels of margin keep them from flickering at
+  their own edge.
+
 ## [2.4.0] - 2026-10-07
 
 Includes a migration, `20261007000000_event_icons.sql`, which adds

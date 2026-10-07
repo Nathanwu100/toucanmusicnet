@@ -125,26 +125,29 @@ test("the photo strip's arrows show only when the pointer is near them", () => {
   const css = read("css/style.css");
   const arrow = css.slice(css.indexOf(".gallery-arrow {"), css.indexOf(".gallery-dots {"));
   assert.match(arrow, /opacity: 0;/);
-  // The halo is the "near": a wide invisible ring that counts as hovering.
-  assert.match(arrow, /\.gallery-arrow::before \{ content: ""; position: absolute; inset: -34px;/);
+  // Shown when the pointer is on the button itself: the halo is only a few
+  // pixels of margin so it does not flicker at its own edge.
+  assert.match(arrow, /\.gallery-arrow::before \{ content: ""; position: absolute; inset: -6px;/);
   assert.match(arrow, /\.gallery-arrow:hover,\s*\.gallery-arrow:focus-visible \{ opacity: 1; \}/);
   // Nothing to hover on a touch screen, so there they stay visible.
   assert.match(arrow, /@media \(hover: none\) \{ \.gallery-arrow \{ opacity: 1; \}/);
 });
 
-test("small computers get a smaller site, and body text never drops below 14px", () => {
+test("every computer gets the site at about 85%, small ones a step smaller, text never below 13px", () => {
   const css = read("css/style.css");
-  const start = css.indexOf("/* ------------------------------------------------------- small computers */");
-  assert.ok(start > 0, "the compact layer exists");
+  const start = css.indexOf("/* ------------------------------------------------------------- computers */");
+  assert.ok(start > 0, "the computer layer exists");
   const compact = css.slice(start, css.indexOf("@media (prefers-reduced-motion: reduce)"));
   // Desktop only: phones keep their own layout.
-  assert.match(compact, /@media \(min-width: 721px\) and \(max-width: 1280px\), \(min-width: 721px\) and \(max-height: 800px\)/);
+  assert.match(compact, /@media \(min-width: 721px\) \{\s*html \{ font-size: 14px; \}/);
+  assert.match(compact, /@media \(min-width: 721px\) and \(max-width: 1280px\), \(min-width: 721px\) and \(max-height: 800px\) \{\s*html \{ font-size: 13\.5px; \}/);
   for (const size of compact.match(/html \{ font-size: ([\d.]+)px; \}/g).map((m) => parseFloat(m.match(/([\d.]+)px/)[1]))) {
-    assert.ok(size >= 14, `root font-size ${size}px stays readable`);
+    assert.ok(size >= 13, `root font-size ${size}px stays readable`);
   }
   // The things that are not in rem are brought down by hand.
   assert.match(compact, /\.cal-days \{ grid-auto-rows: 78px; \}/);
   assert.match(compact, /\.event-gallery-card \{ flex-basis: min\(270px, 78vw\)/);
+  assert.match(compact, /min-height: calc\(86svh - 54px\)/);
 });
 
 test("Join us never flashes at somebody who was signed in last time", () => {
