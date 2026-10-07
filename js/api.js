@@ -32,6 +32,41 @@
     { slug: "viola", name: "Viola", description: null, sort_order: 30 },
   ];
 
+  // The illustrations a class or event can wear on the home page's "Coming
+  // up" card. An admin picks one by slug; with none picked, iconFor below
+  // chooses from the type and instruments. The drawings ship with the pages.
+  const EVENT_ICONS = [
+    { slug: "piano", name: "Piano", src: "assets/art/icons/piano.svg" },
+    { slug: "violin", name: "Violin", src: "assets/art/icons/violin.svg" },
+    { slug: "viola", name: "Viola", src: "assets/art/icons/viola.svg" },
+    { slug: "sheet-music", name: "Sheet music", src: "assets/art/sheet-music.svg?v=2" },
+    { slug: "notes", name: "Notes", src: "assets/art/icons/notes.svg" },
+    { slug: "metronome", name: "Metronome", src: "assets/art/icons/metronome.svg" },
+    { slug: "concert-hall", name: "Concert hall", src: "assets/art/concert-hall.svg?v=2" },
+    { slug: "spotlight", name: "Showcase", src: "assets/art/icons/spotlight.svg" },
+  ];
+  const iconBySlug = (slug) => EVENT_ICONS.find((icon) => icon.slug === slug) || null;
+
+  // The icon a card shows: the one chosen, or, failing that, the instrument
+  // when there is one, sheet music for a class of several, and the stage
+  // for an event.
+  function iconFor(event) {
+    const chosen = iconBySlug(event?.icon);
+    if (chosen) return chosen;
+    if (event?.event_type === "event") return iconBySlug("spotlight");
+    const taught = event?.instruments || [];
+    if (taught.length === 1 && iconBySlug(taught[0])) return iconBySlug(taught[0]);
+    if (taught.length > 1) return iconBySlug("sheet-music");
+    return iconBySlug("notes");
+  }
+
+  // Null means "let the page choose"; anything else has to be a catalog slug.
+  function normalizeIcon(icon) {
+    if (icon === null || icon === undefined || icon === "") return null;
+    if (!iconBySlug(icon)) throw new Error("Choose one of the default icons.");
+    return icon;
+  }
+
   // A new key intentionally resets older demo data that still carries the
   // retired strings, percussion, and voice tracks.
   const DB_KEY = "toucan_db_v4";
@@ -446,6 +481,8 @@
       return CONFIGURED_FOR_SUPABASE && DEMO_REASON === "library-missing";
     },
     instruments: INSTRUMENTS.map((instrument) => ({ ...instrument })),
+    eventIcons: EVENT_ICONS.map((icon) => ({ ...icon })),
+    iconFor,
 
     async listInstruments() {
       if (DEMO) {
@@ -768,6 +805,7 @@
 
     async createEvent(event) {
       const { blocks, ...fields } = event;
+      fields.icon = normalizeIcon(fields.icon);
       if (DEMO) {
         const { db, currentUser } = requireDemoUser("admin");
         const instruments = normalizeInstruments(fields.instruments, db);
@@ -860,6 +898,7 @@
 
     async updateEvent(id, event) {
       const { blocks, ...event_ } = event;
+      if ("icon" in event_) event_.icon = normalizeIcon(event_.icon);
       if (DEMO) {
         const { db } = requireDemoUser("admin");
         const index = db.events.findIndex((candidate) => candidate.id === id);

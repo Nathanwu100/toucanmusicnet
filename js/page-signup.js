@@ -4,6 +4,12 @@
 // refuse inline script entirely. A module, because it was one inline and
 // still has to run after the deferred scripts it depends on.
 
+// Somebody already signed in has no account to create. They are sent home
+// rather than shown a form that could only tell them the address is taken.
+ToucanAPI.getSession().then((user) => {
+  if (user) window.location.replace("index.html");
+}).catch(() => {});
+
 const instrumentField = document.getElementById("student-instrument-field");
 const instrumentChoices = document.getElementById("instrument-choices");
 

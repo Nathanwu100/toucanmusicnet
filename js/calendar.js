@@ -875,9 +875,45 @@
     scroller.appendChild(bodyRow);
     table.appendChild(scroller);
     host.appendChild(table);
+    fitAxis(table);
+    fitScale(table, shown);
 
     appendTimetableFooter(host, { ctx, columns, shown, onlyMine, focusOwn, ownColumn, enrolledBlockId, isStudent, isAdmin, table });
     return true;
+  }
+
+  // The stylesheet can only guess at the axis width, and a label such as
+  // "12:30 PM" -- longer still in Spanish or Chinese -- is wider than that
+  // guess, so the hour was clipped off its left edge. Once the ticks are
+  // drawn, the column is widened to the widest of them. Measured again on
+  // the next frame, for the class dialog, which draws its grid before it is
+  // shown, and once the web font is in, since that changes the widths.
+  function fitAxis(table) {
+    const fit = () => {
+      const widths = [...table.querySelectorAll(".tt-tick")].map((tick) => tick.getBoundingClientRect().width);
+      const widest = Math.max(0, ...widths);
+      if (widest) table.style.setProperty("--tt-axis", `${Math.ceil(widest) + 10}px`);
+    };
+    fit();
+    requestAnimationFrame(fit);
+    document.fonts?.ready.then(fit);
+  }
+
+  // A block is as tall as its minutes, so a quarter-hour slot at the usual
+  // scale is a sliver too short for its own name and time: the text was
+  // clipped off and the box looked empty. The scale is the stylesheet's or
+  // whatever makes the shortest slot on show tall enough for both lines,
+  // whichever is larger -- so a class of short slots grows taller, every slot
+  // in proportion, instead of any of them going blank.
+  const MIN_BLOCK_PX = 46;
+  function fitScale(table, columns) {
+    const lengths = columns.flatMap((column) => column.blocks)
+      .map((block) => Math.max(5, minutesBetween(block.starts_at, block.ends_at)));
+    if (!lengths.length) return;
+    const shortest = Math.min(...lengths);
+    const base = parseFloat(getComputedStyle(table).getPropertyValue("--tt-px-per-minute")) || 1.5;
+    const needed = MIN_BLOCK_PX / shortest;
+    if (needed > base) table.style.setProperty("--tt-px-per-minute", `${needed.toFixed(2)}px`);
   }
 
   // Dragging works the way it does in a day calendar: the block lands where
@@ -1194,6 +1230,7 @@
       title: event.title,
       event_type: event.event_type,
       instruments: event.instruments,
+      icon: event.icon || null,
       starts_at: event.starts_at,
       ends_at: event.ends_at,
       location: event.location,
@@ -1874,6 +1911,10 @@
     $("#f-start").value = event ? toLocalInput(event.starts_at) : toLocalInput(defaultStart);
     $("#f-end").value = event?.ends_at ? toLocalInput(event.ends_at) : toLocalInput(defaultEnd);
     $("#f-location").value = event?.location || "";
+    const chosenIcon = event?.icon && api.eventIcons.some((icon) => icon.slug === event.icon) ? event.icon : "";
+    document.querySelectorAll("#f-icon input").forEach((input) => {
+      input.checked = input.value === chosenIcon;
+    });
     $("#f-capacity").value = event?.volunteer_capacity ?? 2;
     $("#f-student-capacity").value = event?.student_capacity || 12;
     $("#f-enrollment-open").checked = event ? event.enrollment_open : true;
@@ -1916,6 +1957,7 @@
       starts_at: new Date(start).toISOString(),
       ends_at: new Date(end).toISOString(),
       location: $("#f-location").value.trim(),
+      icon: document.querySelector("#f-icon input:checked")?.value || null,
       volunteer_capacity: Math.max(0, parseInt($("#f-capacity").value, 10) || 0),
       student_capacity: studentCapacity,
       enrollment_open: eventType === "class" && $("#f-enrollment-open").checked,
@@ -2048,6 +2090,37 @@
       row.append(input, element("span", "", instrument.name));
       $("#f-instruments").appendChild(row);
     });
+    // The icon picker: Automatic first, then every default icon as a tile.
+    const iconTile = (value, name, src) => {
+      const tile = element("label", "icon-option");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "f-icon";
+      input.value = value;
+      const art = element("span", "icon-option-art");
+      if (src) {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = "";
+        img.width = 120;
+        img.height = 80;
+        img.loading = "lazy";
+        art.appendChild(img);
+      } else {
+        const auto = document.createElement("iconify-icon");
+        auto.setAttribute("icon", "pixelarticons:music");
+        auto.setAttribute("aria-hidden", "true");
+        art.appendChild(auto);
+      }
+      tile.append(input, art, element("span", "icon-option-name", name));
+      return tile;
+    };
+    const iconHost = $("#f-icon");
+    if (iconHost) {
+      iconHost.appendChild(iconTile("", "Automatic", null));
+      api.eventIcons.forEach((icon) => iconHost.appendChild(iconTile(icon.slug, icon.name, icon.src)));
+    }
+
     // A signed-in account already names an instrument, so the filter only
     // means something to a visitor browsing without one.
     $("#instrument-filter-field").hidden = Boolean(user);

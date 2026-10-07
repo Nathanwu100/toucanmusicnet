@@ -19,6 +19,59 @@ migration has to run before the matching front-end goes live.
 
 The version in `package.json` matches the newest tag here.
 
+## [2.4.0] - 2026-10-07
+
+Includes a migration, `20261007000000_event_icons.sql`, which adds
+`events.icon` and returns it from `list_visible_events`. Run it before this
+front end goes live, or saving a class fails on the missing column.
+
+### Added
+- **"Coming up" is a strip that scrolls sideways.** As many cards as there
+  are upcoming classes and events, up to eight, snapping a card at a time.
+  Hovering a card lifts it, leans its picture in, and colours its title;
+  arrows either side move the strip and only appear when the pointer comes
+  near them.
+- **An admin chooses each card's icon.** The class dialog has an icon
+  picker with eight default drawings: piano, violin, viola, sheet music,
+  notes, a metronome, the concert hall, and a stage under spotlights.
+  Automatic, the default, picks from the type and instruments: the
+  instrument for a one-instrument class, sheet music for several, the stage
+  for an event.
+- **The photo strip's arrows appear only when the pointer comes near
+  them.** A wide invisible ring round each counts as near. On a touch
+  screen they stay visible.
+- **A scroll progress bar.** A hairline along the top edge of every page
+  fills from the left as you read down it. Browsers that can bind it to the
+  scroll position run it themselves; the rest move it by script.
+
+### Changed
+- **The site is smaller on a small computer.** Between a phone and a big
+  monitor -- a laptop at 1366x768, a window shrunk to half a screen -- the
+  whole site takes a step down so more fits on screen at once: text through
+  the root size, and the nav, hero, calendar rows, day panel and cards by
+  hand. Body text never goes below 14px, and phones are untouched.
+- **"Join us" no longer flashes at a signed-in visitor.** Each page opened
+  with the visitor's nav and swapped in the account's once the session was
+  known. The role seen last time is now remembered in the browser, the
+  account corner is held back until it is drawn for real, and the script
+  that does so runs before the first paint.
+- **Somebody signed in cannot reach the signup page.** It sends them home,
+  and every "Join" button on the site -- the home page's, the mission
+  page's -- leads home for them too. There is nothing for an account to
+  join.
+
+### Fixed
+- **Short time slots no longer show up as empty boxes.** A quarter-hour
+  slot at the timetable's usual scale was too short for its own name and
+  time, so the text was clipped and the box looked blank. The grid now
+  grows so the shortest slot on show fits both lines, every slot in
+  proportion, so a column of short slots reads evenly.
+- **The hour is no longer cut off the timetable's time axis.** The axis
+  column was a fixed width, narrower than a label like "12:30 PM", so the
+  label hung off its left edge and the scroller clipped the hour. The column
+  is now sized to the widest label once the grid is drawn, which also fits
+  the longer Spanish and Chinese forms.
+
 ## [2.3.1] - 2026-10-05
 
 ### Fixed

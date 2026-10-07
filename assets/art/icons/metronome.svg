@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of a metronome">
+  <rect width="1200" height="900" fill="#e2f0e7"/>
+  <!-- shadow -->
+  <ellipse cx="600" cy="790" rx="300" ry="26" fill="#102a1d" opacity="0.1"/>
+  <!-- body -->
+  <path d="M470 150 L730 150 L860 760 Q860 790 830 790 L370 790 Q340 790 340 760 Z" fill="#204a32"/>
+  <path d="M470 150 L730 150 L860 760 Q860 790 830 790 L600 790 L600 150 Z" fill="#0b1f15" opacity="0.18"/>
+  <rect x="340" y="700" width="520" height="90" rx="12" fill="#1b3f2b"/>
+  <!-- face -->
+  <path d="M520 200 L680 200 L740 650 L460 650 Z" fill="#f6faf6"/>
+  <g stroke="#102a1d" stroke-opacity="0.5" stroke-width="4">
+    <line x1="560" y1="260" x2="640" y2="260"/><line x1="556" y1="330" x2="644" y2="330"/>
+    <line x1="552" y1="400" x2="648" y2="400"/><line x1="548" y1="470" x2="652" y2="470"/>
+    <line x1="544" y1="540" x2="656" y2="540"/>
+  </g>
+  <!-- pendulum, mid-swing -->
+  <g transform="rotate(-16 600 640)">
+    <rect x="593" y="200" width="14" height="440" rx="7" fill="#0b1f15"/>
+    <rect x="560" y="330" width="80" height="38" rx="6" fill="#e6b75d"/>
+    <rect x="560" y="330" width="80" height="12" rx="6" fill="#f0c86f"/>
+  </g>
+  <circle cx="600" cy="640" r="16" fill="#bd5643"/>
+  <!-- wind key -->
+  <rect x="880" y="470" width="60" height="18" rx="9" fill="#0b1f15"/>
+  <rect x="930" y="446" width="22" height="66" rx="8" fill="#e6b75d"/>
+</svg>

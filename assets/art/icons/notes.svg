@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of music notes">
+  <rect width="1200" height="900" fill="#e2f0e7"/>
+  <!-- a staff drifting across the back -->
+  <g stroke="#102a1d" stroke-width="4" opacity="0.22">
+    <path d="M0 360 C300 320 500 420 800 380 S1100 330 1200 350"/>
+    <path d="M0 400 C300 360 500 460 800 420 S1100 370 1200 390"/>
+    <path d="M0 440 C300 400 500 500 800 460 S1100 410 1200 430"/>
+    <path d="M0 480 C300 440 500 540 800 500 S1100 450 1200 470"/>
+    <path d="M0 520 C300 480 500 580 800 540 S1100 490 1200 510"/>
+  </g>
+  <!-- beamed pair -->
+  <g fill="#204a32">
+    <ellipse cx="420" cy="600" rx="52" ry="36" transform="rotate(-20 420 600)"/>
+    <ellipse cx="620" cy="560" rx="52" ry="36" transform="rotate(-20 620 560)"/>
+    <rect x="458" y="300" width="16" height="300" rx="8"/>
+    <rect x="658" y="260" width="16" height="300" rx="8"/>
+    <path d="M458 300 L674 260 L674 316 L458 356 Z"/>
+  </g>
+  <!-- gold quaver -->
+  <g fill="#f0c86f">
+    <ellipse cx="860" cy="400" rx="46" ry="32" transform="rotate(-20 860 400)"/>
+    <rect x="896" y="160" width="14" height="240" rx="7"/>
+    <path d="M910 160 q90 30 60 130 q-14 -56 -60 -72 z"/>
+  </g>
+  <!-- coral crotchet -->
+  <g fill="#bd5643">
+    <ellipse cx="250" cy="300" rx="40" ry="28" transform="rotate(-20 250 300)"/>
+    <rect x="281" y="110" width="12" height="190" rx="6"/>
+  </g>
+  <!-- small ink dot notes -->
+  <circle cx="1040" cy="620" r="22" fill="#0b1f15"/>
+  <rect x="1056" y="500" width="10" height="120" rx="5" fill="#0b1f15"/>
+</svg>

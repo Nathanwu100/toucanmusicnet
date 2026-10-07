@@ -79,6 +79,8 @@
     "Photos from lessons": ["Fotos de las clases", "课堂照片"],
     "Previous photo": ["Foto anterior", "上一张照片"],
     "Next photo": ["Foto siguiente", "下一张照片"],
+    "Earlier in the list": ["Anteriores en la lista", "列表中更早的"],
+    "Later in the list": ["Siguientes en la lista", "列表中更晚的"],
 
     // ---------------------------------------------------------- calendar
     "Calendar — Toucan Music": ["Calendario — Toucan Music", "日历 — Toucan Music"],
@@ -96,6 +98,9 @@
     "Past classes & events": ["Clases y eventos pasados", "过去的课程与活动"],
     "Add class": ["Añadir clase", "添加课程"],
     "Add event": ["Añadir evento", "添加活动"],
+    "Icon on the home page": ["Icono en la página de inicio", "首页上的图标"],
+    "The picture on this item's card under Coming up. Automatic picks from the type and instruments.": ["La imagen de la tarjeta de este elemento en Próximamente. Automático la elige según el tipo y los instrumentos.", "该项目在“近期安排”卡片上的图片。“自动”会根据类型和乐器选择。"],
+    "Automatic": ["Automático", "自动"],
     "Timetable": ["Horario", "时间表"],
     "Pick a slot in your instrument's column.": ["Elige un turno en la columna de tu instrumento.", "在你的乐器所在列中选择一个时段。"],
     "Pick a slot in one of your instruments' columns.": ["Elige un turno en la columna de uno de tus instrumentos.", "在你任意一种乐器所在的列中选择一个时段。"],

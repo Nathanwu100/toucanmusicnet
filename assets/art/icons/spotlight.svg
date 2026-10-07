@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of a stage under spotlights">
+  <rect width="1200" height="900" fill="#102a1d"/>
+  <!-- beams -->
+  <path d="M300 0 L120 700 L560 700 Z" fill="#f0c86f" opacity="0.22"/>
+  <path d="M900 0 L640 700 L1080 700 Z" fill="#f0c86f" opacity="0.22"/>
+  <path d="M600 0 L420 700 L780 700 Z" fill="#f6faf6" opacity="0.16"/>
+  <!-- lamps -->
+  <g fill="#0b1f15">
+    <rect x="260" y="0" width="80" height="50" rx="10"/><rect x="560" y="0" width="80" height="50" rx="10"/><rect x="860" y="0" width="80" height="50" rx="10"/>
+  </g>
+  <g fill="#f0c86f">
+    <circle cx="300" cy="52" r="14"/><circle cx="600" cy="52" r="14"/><circle cx="900" cy="52" r="14"/>
+  </g>
+  <!-- stage -->
+  <rect x="80" y="700" width="1040" height="110" rx="10" fill="#93412f"/>
+  <rect x="80" y="700" width="1040" height="28" rx="10" fill="#bd5643"/>
+  <rect x="120" y="810" width="960" height="60" fill="#0b1f15" opacity="0.5"/>
+  <!-- a star for the showcase -->
+  <path d="M600 330 L646 440 L764 450 L674 528 L702 644 L600 582 L498 644 L526 528 L436 450 L554 440 Z" fill="#f0c86f"/>
+  <path d="M600 330 L646 440 L764 450 L674 528 L702 644 L600 582 Z" fill="#e6b75d"/>
+</svg>

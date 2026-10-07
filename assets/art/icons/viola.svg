@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of a viola resting on a chair">
+  <rect width="1200" height="900" fill="#e2f0e7"/>
+  <!-- chair -->
+  <g fill="#204a32">
+    <rect x="300" y="520" width="600" height="34" rx="8"/>
+    <rect x="330" y="554" width="30" height="240" rx="8"/>
+    <rect x="840" y="554" width="30" height="240" rx="8"/>
+    <rect x="330" y="300" width="30" height="240" rx="8"/>
+    <rect x="330" y="300" width="200" height="30" rx="8"/>
+  </g>
+  <rect x="300" y="520" width="600" height="12" fill="#0b1f15" opacity="0.25"/>
+  <!-- viola, leaning -->
+  <g transform="rotate(-18 640 430)">
+    <path d="M640 200 C545 200 488 258 500 334 C509 386 548 396 548 430 C548 466 507 476 500 534 C488 630 548 700 640 700 C732 700 792 630 780 534 C773 476 732 466 732 430 C732 396 771 386 780 334 C792 258 735 200 640 200 Z" fill="#6b4fa8"/>
+    <path d="M640 200 C545 200 488 258 500 334 C509 386 548 396 548 430 C548 466 507 476 500 534 C488 630 548 700 640 700 C732 700 792 630 780 534 C773 476 732 466 732 430 C732 396 771 386 780 334 C792 258 735 200 640 200 Z" fill="#0b1f15" opacity="0.22" transform="translate(10 12)"/>
+    <path d="M590 410 c-16 34 -9 68 12 90" stroke="#0b1f15" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M690 410 c16 34 9 68 -12 90" stroke="#0b1f15" stroke-width="8" fill="none" stroke-linecap="round"/>
+    <path d="M616 610 L664 610 L654 710 L626 710 Z" fill="#0b1f15"/>
+    <rect x="600" y="518" width="80" height="13" rx="3" fill="#f6faf6"/>
+    <rect x="620" y="20" width="40" height="200" rx="6" fill="#0b1f15"/>
+    <circle cx="640" cy="10" r="32" fill="#0b1f15"/>
+    <circle cx="640" cy="10" r="13" fill="#e6b75d"/>
+    <g stroke="#f6faf6" stroke-width="2.5" opacity="0.9">
+      <line x1="626" y1="60" x2="624" y2="650"/><line x1="635" y1="60" x2="634" y2="650"/>
+      <line x1="645" y1="60" x2="646" y2="650"/><line x1="654" y1="60" x2="656" y2="650"/>
+    </g>
+  </g>
+</svg>

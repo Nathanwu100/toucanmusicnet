@@ -839,3 +839,33 @@ test("the no-bounce rule stays off the body, or the mouse wheel stops scrolling"
   assert.match(css, /html \{[^}]*overscroll-behavior: none/);
   assert.doesNotMatch(css, /\nbody \{[^}]*overscroll-behavior/);
 });
+
+test("the time axis is as wide as its widest label, so the hour is not clipped", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  assert.match(calendar, /function fitAxis\(table\)/);
+  assert.match(calendar, /table\.style\.setProperty\("--tt-axis"/);
+  // Measured once the grid is in the document, and again when the font lands.
+  assert.match(calendar, /host\.appendChild\(table\);\s*\n\s*fitAxis\(table\);/);
+  assert.match(calendar, /document\.fonts\?\.ready\.then\(fit\)/);
+});
+
+test("the timetable grows so its shortest slot can hold its name and time", () => {
+  const calendar = fs.readFileSync(path.join(__dirname, "../js/calendar.js"), "utf8");
+  assert.match(calendar, /const MIN_BLOCK_PX = 46;/);
+  assert.match(calendar, /function fitScale\(table, columns\)/);
+  // Only ever scaled up from the stylesheet's value, never squeezed below it.
+  assert.match(calendar, /if \(needed > base\) table\.style\.setProperty\("--tt-px-per-minute"/);
+  assert.match(calendar, /fitAxis\(table\);\s*\n\s*fitScale\(table, shown\);/);
+});
+
+test("every page carries a scroll progress bar along its top edge", () => {
+  const app = fs.readFileSync(path.join(__dirname, "../js/app.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/style.css"), "utf8");
+  assert.match(app, /function initScrollProgress\(\)/);
+  assert.match(app, /initScrollProgress\(\);/);
+  // Driven by the browser where it can be, by script everywhere else.
+  assert.match(app, /animation-timeline: scroll\(\)/);
+  assert.match(app, /addEventListener\("scroll", schedule, \{ passive: true \}\)/);
+  assert.match(css, /\.scroll-progress \{[\s\S]*?position: fixed;[\s\S]*?pointer-events: none;/);
+  assert.match(css, /animation-timeline: scroll\(root block\)/);
+});

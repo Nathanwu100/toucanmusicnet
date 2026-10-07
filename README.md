@@ -55,8 +55,9 @@ row-level policies in `supabase/schema.sql` for admin-only event changes.
    `supabase/schema.sql` into the SQL editor. For an existing Toucan database,
    apply the files under `supabase/migrations/` in order (or run
    `supabase db push`); the newest,
-   `20261004000000_student_multiple_instruments.sql`, turns a student's single
-   instrument into a list. The current schema includes:
+   `20261007000000_event_icons.sql`, adds the icon an admin picks for a class
+   or event's card on the home page; the one before it turns a student's
+   single instrument into a list. The current schema includes:
 
    - `instruments` with exactly the supported Piano, Violin, and Viola tracks
      (older tracks such as Strings, Percussion, or Voice are deleted, or kept

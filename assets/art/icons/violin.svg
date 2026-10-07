@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-label="Illustration of a violin and bow">
+  <rect width="1200" height="900" fill="#e2f0e7"/>
+  <!-- bow, behind -->
+  <g transform="rotate(-32 600 450)">
+    <rect x="150" y="438" width="900" height="10" rx="5" fill="#0b1f15"/>
+    <rect x="150" y="452" width="900" height="6" rx="3" fill="#f6faf6" opacity="0.9"/>
+    <rect x="1020" y="420" width="40" height="46" rx="6" fill="#0b1f15"/>
+  </g>
+  <!-- body -->
+  <g transform="rotate(28 600 450)">
+    <path d="M600 250 C520 250 470 300 480 365 C488 410 520 420 520 450 C520 480 486 490 480 540 C470 620 520 680 600 680 C680 680 730 620 720 540 C714 490 680 480 680 450 C680 420 712 410 720 365 C730 300 680 250 600 250 Z" fill="#bd5643"/>
+    <path d="M600 250 C520 250 470 300 480 365 C488 410 520 420 520 450 C520 480 486 490 480 540 C470 620 520 680 600 680 C680 680 730 620 720 540 C714 490 680 480 680 450 C680 420 712 410 720 365 C730 300 680 250 600 250 Z" fill="#93412f" opacity="0.35" transform="translate(8 10)"/>
+    <!-- f-holes -->
+    <path d="M556 430 c-14 30 -8 60 10 80" stroke="#0b1f15" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M644 430 c14 30 8 60 -10 80" stroke="#0b1f15" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <!-- tailpiece, bridge -->
+    <path d="M580 600 L620 600 L612 690 L588 690 Z" fill="#0b1f15"/>
+    <rect x="566" y="520" width="68" height="12" rx="3" fill="#f6faf6"/>
+    <!-- neck and scroll -->
+    <rect x="582" y="70" width="36" height="200" rx="6" fill="#0b1f15"/>
+    <rect x="588" y="70" width="24" height="200" rx="6" fill="#204a32" opacity="0.5"/>
+    <circle cx="600" cy="58" r="30" fill="#0b1f15"/>
+    <circle cx="600" cy="58" r="12" fill="#e6b75d"/>
+    <rect x="552" y="92" width="22" height="10" rx="5" fill="#0b1f15"/>
+    <rect x="626" y="92" width="22" height="10" rx="5" fill="#0b1f15"/>
+    <!-- strings -->
+    <g stroke="#f6faf6" stroke-width="2.5" opacity="0.9">
+      <line x1="588" y1="100" x2="586" y2="640"/><line x1="596" y1="100" x2="595" y2="640"/>
+      <line x1="604" y1="100" x2="605" y2="640"/><line x1="612" y1="100" x2="614" y2="640"/>
+    </g>
+  </g>
+</svg>

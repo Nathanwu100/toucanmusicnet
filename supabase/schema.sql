@@ -304,6 +304,15 @@ alter table public.events
   add column if not exists instruments text[];
 alter table public.events
   add column if not exists student_capacity int not null default 12;
+-- The illustration on the home page's "Coming up" card: one of the default
+-- icons the pages ship (js/api.js), by slug, or null to let the page choose
+-- from the type and instruments. Migration 20261007000000_event_icons.sql.
+alter table public.events
+  add column if not exists icon text;
+alter table public.events drop constraint if exists events_icon_slug;
+alter table public.events add constraint events_icon_slug check (
+  icon is null or icon ~ '^[a-z0-9-]{1,40}$'
+);
 alter table public.events
   add column if not exists enrollment_open boolean not null default true;
 alter table public.events
@@ -1079,7 +1088,8 @@ grant insert, update, delete on public.class_time_blocks to authenticated;
 -- ------------------------------------------------------------------ listing
 -- Blocks ride along with the event that owns them, so the calendar still
 -- makes one call. Each carries its instrument, its name, its own capacity,
--- and how much of that capacity is gone.
+-- and how much of that capacity is gone. The icon an admin chose for the
+-- home page rides along too.
 drop function if exists public.list_visible_events(text);
 create function public.list_visible_events(requested_instrument text default null)
 returns table (
@@ -1101,7 +1111,8 @@ returns table (
   active_enrollments bigint,
   spots_left int,
   is_enrolled boolean,
-  blocks jsonb
+  blocks jsonb,
+  icon text
 )
 language sql stable
 security definer
@@ -1121,7 +1132,8 @@ as $$
         and mine.student_id = auth.uid()
         and mine.status = 'active'
     ) as is_enrolled,
-    coalesce(blocks.list, '[]'::jsonb) as blocks
+    coalesce(blocks.list, '[]'::jsonb) as blocks,
+    e.icon
   from public.events e
   cross join lateral (
     -- Same catalog order the enforce_supported_instrument trigger stores the

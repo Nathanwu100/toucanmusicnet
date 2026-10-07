@@ -4,6 +4,22 @@
 (function () {
   const api = window.ToucanAPI;
   let currentUser = null;
+
+  // Every page is written with the nav a visitor sees, Join us and all, and
+  // the nav is drawn again once the session is known. For somebody signed
+  // in that was a flash of Join us on every page they opened. The role seen
+  // last time is kept in this browser, and when it says they were signed
+  // in, the account corner of the nav is held back until it is drawn for
+  // real. app.js is render-blocking on every page, so this runs before the
+  // first paint.
+  const ROLE_HINT_KEY = "toucan_role_hint";
+  const roleHint = () => {
+    try { return localStorage.getItem(ROLE_HINT_KEY); } catch (error) { return null; }
+  };
+  const rememberRole = (role) => {
+    try { localStorage.setItem(ROLE_HINT_KEY, role); } catch (error) { /* private mode */ }
+  };
+  if (roleHint() && roleHint() !== "guest") document.body.classList.add("nav-auth-pending");
   let settingsDrawer = null;
   let settingsScrim = null;
   let settingsTrigger = null;
@@ -179,10 +195,21 @@
 
     nav.querySelector("[data-logout]")?.addEventListener("click", async () => {
       await api.logout();
+      rememberRole("guest");
       window.location.href = "index.html";
     });
     document.body.dataset.role = currentUser ? currentUser.role : "guest";
+    rememberRole(document.body.dataset.role);
+    document.body.classList.remove("nav-auth-pending");
     document.body.dataset.instruments = (currentUser?.instruments || []).join(" ");
+    // Every "Join" button on the site leads to signup. Somebody signed in has
+    // nothing to join, so for them those buttons lead home instead, and the
+    // signup page itself turns them away (js/page-signup.js).
+    if (currentUser) {
+      document.querySelectorAll('a[href^="signup.html"]').forEach((link) => {
+        link.setAttribute("href", "index.html");
+      });
+    }
     return currentUser;
   }
 
@@ -560,28 +587,28 @@
     }
   }
 
-  const galleryImages = [
-    { src: "assets/art/sheet-music.svg?v=2", alt: "Illustration of sheet music pages" },
-    { src: "assets/art/concert-hall.svg?v=2", alt: "Illustration of a concert hall stage with a grand piano" },
-  ];
+  // "Coming up" is a strip that scrolls sideways: as many cards as there are
+  // upcoming classes and events, up to a handful, each wearing the icon an
+  // admin chose for it (or the one the catalog picks from its instruments).
+  const UPCOMING_LIMIT = 8;
 
   function renderHomeSchedule(events) {
     const upcoming = events
       .filter((event) => new Date(event.starts_at).getTime() >= Date.now())
-      .slice(0, 3);
+      .slice(0, UPCOMING_LIMIT);
     const gallery = document.querySelector("#upcoming-gallery");
     const notificationList = document.querySelector("#upcoming-notification-list");
 
     if (gallery) {
       gallery.innerHTML = "";
       upcoming.forEach((event, index) => {
-        const image = galleryImages[index % galleryImages.length];
+        const icon = api.iconFor(event);
         const link = document.createElement("a");
         const date = new Date(event.starts_at);
         link.className = "event-gallery-card";
         link.href = eventLink(event);
         link.innerHTML = `
-          <img src="${image.src}" alt="${image.alt}" width="480" height="320" decoding="async" ${index ? 'loading="lazy"' : 'fetchpriority="high"'}>
+          <span class="event-gallery-art"><img src="${escapeHtml(icon.src)}" alt="" width="480" height="320" decoding="async" ${index ? 'loading="lazy"' : 'fetchpriority="high"'}></span>
           <div class="event-gallery-copy">
             <p class="event-gallery-date"></p>
             <h3></h3>
@@ -595,6 +622,7 @@
         gallery.appendChild(link);
       });
       if (!upcoming.length) gallery.innerHTML = '<p class="schedule-empty">New classes will be posted soon.</p>';
+      bindStripArrows(gallery);
     }
 
     if (notificationList) {
@@ -614,6 +642,29 @@
       });
       if (!upcoming.length) notificationList.textContent = "No upcoming notifications yet.";
     }
+  }
+
+  // The arrows either side of the strip move it one card at a time. They
+  // only show while there is somewhere to go, and only when the pointer is
+  // near them (css); a finger just drags the strip.
+  function bindStripArrows(gallery) {
+    const shell = gallery.closest(".event-gallery-strip");
+    if (!shell || shell.dataset.bound) return;
+    shell.dataset.bound = "true";
+    const prev = shell.querySelector("[data-upcoming-prev]");
+    const next = shell.querySelector("[data-upcoming-next]");
+    const step = () => (gallery.querySelector(".event-gallery-card")?.getBoundingClientRect().width || 300) + 16;
+    prev?.addEventListener("click", () => gallery.scrollBy({ left: -step(), behavior: "smooth" }));
+    next?.addEventListener("click", () => gallery.scrollBy({ left: step(), behavior: "smooth" }));
+    const sync = () => {
+      const max = gallery.scrollWidth - gallery.clientWidth;
+      shell.classList.toggle("at-start", gallery.scrollLeft <= 1);
+      shell.classList.toggle("at-end", gallery.scrollLeft >= max - 1);
+      shell.classList.toggle("no-overflow", max <= 1);
+    };
+    gallery.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    requestAnimationFrame(sync);
   }
 
   // A link that opens the calendar on this event's day with the event
@@ -796,11 +847,49 @@
     document.body.appendChild(host);
   }
 
+  // A thin bar along the very top of the page that fills as you read down
+  // it -- the site's own scroll indicator. Browsers that can drive it from
+  // the scroll position themselves do, off the main thread; the rest, and
+  // anyone who has asked for less motion, get the same bar moved by script.
+  function initScrollProgress() {
+    const track = document.createElement("div");
+    track.className = "scroll-progress";
+    track.setAttribute("aria-hidden", "true");
+    const bar = document.createElement("div");
+    bar.className = "scroll-progress-bar";
+    track.appendChild(bar);
+    document.body.prepend(track);
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const native = !reduced && window.CSS?.supports?.("animation-timeline: scroll()");
+    if (native) {
+      track.classList.add("is-native");
+      return;
+    }
+    let queued = false;
+    const paint = () => {
+      queued = false;
+      const root = document.documentElement;
+      const range = Math.max(root.scrollHeight, document.body.scrollHeight) - window.innerHeight;
+      const progress = range > 0 ? Math.min(1, Math.max(0, window.scrollY / range)) : 0;
+      bar.style.transform = `scaleX(${progress.toFixed(4)})`;
+    };
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(paint);
+    };
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    paint();
+  }
+
   document.addEventListener("DOMContentLoaded", async () => {
     const user = await renderNav();
     renderFooter();
     initBirdLogos();
     initSettings();
+    initScrollProgress();
     initHomeSchedule();
     window.ToucanTour?.maybeAutoStart(user);
     showStudentNotices(user);
